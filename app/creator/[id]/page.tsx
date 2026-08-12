@@ -51,7 +51,7 @@ export default function CreatorPage({ params }: { params: Promise<{ id: string }
           {creator.name}
           {creator.verified && (
             <svg viewBox="0 0 20 20" className="h-[15px] w-[15px]" aria-label="인증됨">
-              <circle cx="10" cy="10" r="9" fill="#3182f6" />
+              <circle cx="10" cy="10" r="9" fill="#5b556e" />
               <path d="m6 10.2 2.6 2.6L14 7.5" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           )}
@@ -121,7 +121,32 @@ export default function CreatorPage({ params }: { params: Promise<{ id: string }
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-2 p-3">
+        <div className="p-3">
+          {/* Featured Picks — SEEIT creator shop */}
+          {shopProducts.length > 2 && (
+            <>
+              <p className="px-1 pb-2 text-[13px] font-bold">추천 픽</p>
+              <div className="no-scrollbar mb-4 flex gap-2.5 overflow-x-auto">
+                {shopProducts.slice(0, 4).map((p) => (
+                  <button
+                    key={`feat-${p.id}`}
+                    onClick={() => {
+                      track("outbound_click", { productId: p.id });
+                      window.open(p.url, "_blank", "noopener,noreferrer");
+                    }}
+                    className="press w-[104px] shrink-0 text-left"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={p.image} alt={p.name} className="h-[104px] w-[104px] rounded-(--radius-prod) border border-line object-cover" />
+                    <p className="mt-1 truncate text-[11px] text-ink-2">{p.brand}</p>
+                    <p className="truncate text-[12px] font-semibold">{won(p.price)}</p>
+                  </button>
+                ))}
+              </div>
+              <p className="px-1 pb-2 text-[13px] font-bold">룩으로 쇼핑</p>
+            </>
+          )}
+          <div className="grid grid-cols-2 gap-2">
           {shopProducts.map((p) => (
             <button
               key={p.id}
@@ -143,6 +168,7 @@ export default function CreatorPage({ params }: { params: Promise<{ id: string }
           {shopProducts.length === 0 && (
             <p className="col-span-2 py-12 text-center text-sm text-ink-2">아직 연결된 상품이 없어요.</p>
           )}
+          </div>
         </div>
       )}
     </div>

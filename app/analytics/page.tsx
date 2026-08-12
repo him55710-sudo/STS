@@ -42,11 +42,27 @@ export default function AnalyticsPage() {
         <span className="ml-auto pr-3 text-[12px] text-ink-2">이번 달</span>
       </header>
 
-      {/* 핵심 지표 */}
-      <div className="grid grid-cols-3 gap-2.5 px-4 pt-4">
-        <Kpi label="OTR" value={`${pct(t.taps, t.views)}%`} sub="목표 ≥4%" />
-        <Kpi label="Card→이동" value={`${pct(t.outbound, t.cardOpens)}%`} sub="목표 ≥35%" />
-        <Kpi label="예상 수익" value={won(estimatedEarnings(t.outbound))} sub="수수료 75%" />
+      {/* 탭 스트립 — SEEIT dashboard */}
+      <div className="no-scrollbar flex gap-4 overflow-x-auto border-b border-line px-4 pt-3">
+        {["오버뷰", "콘텐츠", "상품", "오디언스", "수익"].map((tab, i) => (
+          <button
+            key={tab}
+            className={`shrink-0 pb-2.5 text-[13px] ${
+              i === 0 ? "border-b-[1.5px] border-ink font-bold text-ink" : "font-medium text-ink-2"
+            }`}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {/* 스탯 카드 — 데스크톱 5열 대시보드 */}
+      <div className="grid grid-cols-2 gap-2.5 px-4 pt-4 lg:grid-cols-5">
+        <Kpi label="조회수" value={compact(t.views)} sub="이번 달" />
+        <Kpi label="오브젝트 탭" value={compact(t.taps)} sub={`OTR ${pct(t.taps, t.views)}%`} />
+        <Kpi label="구매처 이동" value={compact(t.outbound)} sub={`Card→이동 ${pct(t.outbound, t.cardOpens)}%`} />
+        <Kpi label="추정 GMV" value={won(Math.round(t.outbound * 0.025 * 70000))} sub="전환 2.5% 가정" />
+        <Kpi label="크리에이터 수익" value={won(estimatedEarnings(t.outbound))} sub="수수료의 70%" highlight />
       </div>
 
       {/* Funnel */}
@@ -107,10 +123,14 @@ export default function AnalyticsPage() {
   );
 }
 
-function Kpi({ label, value, sub }: { label: string; value: string; sub: string }) {
+function Kpi({ label, value, sub, highlight }: { label: string; value: string; sub: string; highlight?: boolean }) {
   return (
-    <div className="rounded-(--radius-card) border border-line bg-surface p-3">
-      <p className="text-[11px] text-ink-2">{label}</p>
+    <div
+      className={`rounded-(--radius-card) border bg-surface p-3 ${
+        highlight ? "border-primary ring-1 ring-primary/25" : "border-line"
+      }`}
+    >
+      <p className={`text-[11px] ${highlight ? "font-semibold text-primary" : "text-ink-2"}`}>{label}</p>
       <p className="mt-0.5 truncate text-[16px] font-bold tracking-tight">{value}</p>
       <p className="mt-0.5 text-[10px] text-ink-2">{sub}</p>
     </div>

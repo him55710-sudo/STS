@@ -134,6 +134,13 @@ export const BarChartIcon = ({ size = 24, strokeWidth = 1.5, className }: IconPr
   </svg>
 );
 
+export const EyeIcon = ({ size = 24, strokeWidth = 1.5, className }: IconProps) => (
+  <svg {...base(size)} strokeWidth={strokeWidth} className={className}>
+    <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
+
 export const SettingsIcon = ({ size = 24, strokeWidth = 1.5, className }: IconProps) => (
   <svg {...base(size)} strokeWidth={strokeWidth} className={className}>
     <circle cx="12" cy="12" r="3" />

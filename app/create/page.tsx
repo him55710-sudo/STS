@@ -200,13 +200,38 @@ export default function CreatePage() {
 
   return (
     <div>
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-bg/95 px-4 py-3 backdrop-blur-sm">
-        <h1 className="text-[17px] font-bold">새 콘텐츠</h1>
-        {step === "review" && (
-          <button onClick={reset} aria-label="다시 시작" className="text-[13px] text-ink-2">
-            다시 시작
-          </button>
-        )}
+      <header className="sticky top-0 z-30 border-b border-line bg-bg/95 backdrop-blur-sm">
+        <div className="flex items-center justify-between px-4 pt-3">
+          <h1 className="text-[17px] font-bold">새 콘텐츠</h1>
+          {step === "review" && (
+            <button onClick={reset} aria-label="다시 시작" className="text-[13px] text-ink-2">
+              다시 시작
+            </button>
+          )}
+        </div>
+        {/* 스텝 인디케이터 — SEEIT creator flow */}
+        <div className="flex items-center gap-1.5 px-4 pb-3 pt-2">
+          {["업로드", "AI 태깅", "상품 매칭", "발행"].map((label, i) => {
+            const current = { select: 0, analyzing: 1, review: 2, done: 3 }[step];
+            const state = i < current ? "done" : i === current ? "now" : "todo";
+            return (
+              <div key={label} className="flex flex-1 items-center gap-1.5">
+                <span
+                  className={`h-1 flex-1 rounded-full transition-colors duration-300 ${
+                    state === "todo" ? "bg-surface-2" : "bg-primary"
+                  }`}
+                />
+                <span
+                  className={`text-[10px] font-medium ${
+                    state === "now" ? "font-bold text-primary" : state === "done" ? "text-ink" : "text-ink-2"
+                  }`}
+                >
+                  {label}
+                </span>
+              </div>
+            );
+          })}
+        </div>
       </header>
 
       {step === "select" && (
@@ -309,7 +334,14 @@ export default function CreatePage() {
                       {String(i + 1).padStart(2, "0")}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-[14px] font-medium">{o.labelKo}</p>
+                      <p className="flex items-center gap-1.5 truncate text-[14px] font-medium">
+                        {o.labelKo}
+                        {o.confidence < 1 && (
+                          <span className="shrink-0 text-[10.5px] font-semibold text-ink-2">
+                            신뢰도 {Math.round(o.confidence * 100)}%
+                          </span>
+                        )}
+                      </p>
                       <ObjectStatus obj={o} />
                     </div>
                     <span

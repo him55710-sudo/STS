@@ -66,46 +66,49 @@ export default function PostCard({ post }: { post: Post }) {
         )}
       </div>
 
-      {/* content — 객체 자체가 인터페이스 */}
-      <ObjectLayer
-        postId={post.id}
-        objects={post.objects}
-        selectedId={selected?.id ?? null}
-        onSelect={setSelected}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={post.image}
-          alt={post.caption}
-          className="w-full object-cover"
-          style={{ aspectRatio: `${post.ratio}` }}
-          loading="lazy"
-        />
-      </ObjectLayer>
-
-      {/* actions */}
-      <div className="flex items-center gap-4 px-4 pt-2.5">
-        <button onClick={() => toggleLike(post.id)} aria-label="좋아요" className="press text-ink">
-          <span key={liked ? "on" : "off"} className={liked ? "heart-pop block text-[#f04452]" : "block"}>
-            <HeartIcon size={23} filled={liked} />
-          </span>
-        </button>
-        <button aria-label="공유" className="press text-ink">
-          <ShareIcon size={22} />
-        </button>
-        <button
-          onClick={() => toggleSavePost(post.id)}
-          aria-label="게시물 저장"
-          className="press ml-auto text-ink"
+      {/* content — 객체 자체가 인터페이스 + 우측 액션 레일 (SEEIT) */}
+      <div className="relative">
+        <ObjectLayer
+          postId={post.id}
+          objects={post.objects}
+          selectedId={selected?.id ?? null}
+          onSelect={setSelected}
         >
-          <BookmarkIcon size={22} filled={saved} />
-        </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={post.image}
+            alt={post.caption}
+            className="w-full object-cover"
+            style={{ aspectRatio: `${post.ratio}` }}
+            loading="lazy"
+          />
+        </ObjectLayer>
+
+        <div className="pointer-events-none absolute bottom-3 right-2.5 flex flex-col items-center gap-3.5 text-white">
+          <button
+            onClick={() => toggleLike(post.id)}
+            aria-label="좋아요"
+            className="press rail-shadow pointer-events-auto flex flex-col items-center gap-0.5"
+          >
+            <span key={liked ? "on" : "off"} className={liked ? "heart-pop block text-[#f04452]" : "block"}>
+              <HeartIcon size={26} filled={liked} strokeWidth={1.75} />
+            </span>
+            <span className="text-[11px] font-semibold">{compact(post.likes + (liked ? 1 : 0))}</span>
+          </button>
+          <button
+            onClick={() => toggleSavePost(post.id)}
+            aria-label="게시물 저장"
+            className="press rail-shadow pointer-events-auto"
+          >
+            <BookmarkIcon size={24} filled={saved} strokeWidth={1.75} />
+          </button>
+          <button aria-label="공유" className="press rail-shadow pointer-events-auto">
+            <ShareIcon size={23} strokeWidth={1.75} />
+          </button>
+        </div>
       </div>
 
-      <p className="px-4 pt-2 text-[13px] font-semibold">
-        좋아요 {compact(post.likes + (liked ? 1 : 0))}개
-      </p>
-      <p className="px-4 pt-1 text-[14px] leading-relaxed">
+      <p className="px-4 pt-2.5 text-[14px] leading-relaxed">
         <Link href={`/creator/${creator.id}`} className="mr-1.5 font-semibold">
           {creator.handle}
         </Link>

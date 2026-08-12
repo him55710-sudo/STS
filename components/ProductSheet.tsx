@@ -112,24 +112,38 @@ export default function ProductSheet({
               )}
 
               {/* CTA — 버튼 하나만 강하게 (PRD §13) */}
-              <div className="mt-4 flex items-center gap-2.5">
+              {/* 색상 스와치 (데모) — SEEIT bottom sheet */}
+              <div className="mt-3.5 flex items-center gap-2">
+                <p className="text-xs text-ink-2">색상</p>
+                {["#111214", "#b9afa3", "#efefed"].map((c, i) => (
+                  <span
+                    key={c}
+                    className={`h-5 w-5 rounded-full border ${
+                      i === 0 ? "border-ink ring-1 ring-ink ring-offset-1" : "border-line"
+                    }`}
+                    style={{ background: c }}
+                  />
+                ))}
+              </div>
+
+              <div className="mt-3.5 flex flex-col gap-2">
+                <button
+                  onClick={() => openOutbound(product)}
+                  className="press flex h-12 items-center justify-center gap-1.5 rounded-(--radius-btn) bg-primary text-[15px] font-bold text-white"
+                >
+                  구매하러 가기
+                  <ArrowUpRightIcon size={17} strokeWidth={2} />
+                </button>
                 <button
                   onClick={() => toggleSaveProduct(product.id)}
-                  aria-label="상품 저장"
-                  className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-(--radius-btn) border transition-colors ${
+                  className={`press flex h-11 items-center justify-center gap-1.5 rounded-(--radius-btn) border text-[14px] font-semibold transition-colors ${
                     savedProducts.includes(product.id)
                       ? "border-ink bg-ink text-surface"
                       : "border-line bg-surface text-ink"
                   }`}
                 >
-                  <BookmarkIcon size={19} filled={savedProducts.includes(product.id)} />
-                </button>
-                <button
-                  onClick={() => openOutbound(product)}
-                  className="press flex h-12 flex-1 items-center justify-center gap-1.5 rounded-(--radius-btn) bg-primary text-[15px] font-bold text-white"
-                >
-                  구매하러 가기
-                  <ArrowUpRightIcon size={17} strokeWidth={2} />
+                  <BookmarkIcon size={16} filled={savedProducts.includes(product.id)} />
+                  {savedProducts.includes(product.id) ? "위시리스트에 저장됨" : "위시리스트에 저장"}
                 </button>
               </div>
               <p className="mt-2 text-center text-[10.5px] leading-relaxed text-ink-2">
