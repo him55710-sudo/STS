@@ -1,5 +1,7 @@
 # OBJET — AI Visual Commerce Platform
 
+**Live**: https://objet-mongben.vercel.app
+
 > **See it. Tap it. Shop it.**
 > 사진과 영상 속 **물건 자체를 탭하면** AI가 상품을 인식해 상품 정보·유사상품·구매 링크를 즉시 제공하는 Visual Commerce 플랫폼의 MVP 웹앱.
 
