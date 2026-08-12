@@ -1,0 +1,122 @@
+@import "tailwindcss";
+
+/* ── OBJET Design Tokens — PRD §36–45 Quiet Luxury ───────────────── */
+@theme {
+  --color-bg: #f5f6f7;          /* Primary Background */
+  --color-surface: #ffffff;     /* Bottom Sheet / Modal / Card */
+  --color-surface-2: #eceef0;   /* Filter / Hover / Selected */
+  --color-ink: #151719;         /* Main CTA / Typography */
+  --color-ink-2: #6c7075;       /* Secondary Text */
+  --color-line: #dfe2e5;        /* Border */
+  --color-accent: #77727f;      /* Muted Graphite Violet */
+  --color-accent-2: #817b88;
+
+  --font-sans: "Pretendard Variable", Pretendard, "Inter", -apple-system,
+    BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", Roboto, sans-serif;
+
+  --radius-btn: 11px;
+  --radius-card: 14px;
+  --radius-sheet: 22px;
+  --radius-prod: 10px;
+}
+
+html {
+  background: var(--color-bg);
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 링크는 콘텐츠 색을 따른다 — 파란 기본 링크색 금지 (무채색 원칙) */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-accent) 22%, transparent);
+}
+
+/* 스크롤바 최소화 — 콘텐츠 우선 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line) transparent;
+}
+
+/* ── Object Highlight — bounding box 금지, mask + 1px outline ────── */
+@keyframes hint-in {
+  0% { opacity: 0; }
+  25% { opacity: 1; }
+  75% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.object-hint {
+  animation: hint-in 850ms ease-in-out forwards;
+}
+
+@keyframes dot-in {
+  from { transform: scale(0.4); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.object-dot {
+  animation: dot-in 160ms ease-out both;
+}
+
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.sheet-enter {
+  animation: sheet-up 240ms cubic-bezier(0.32, 0.72, 0.24, 1) both;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.fade-in {
+  animation: fade-in 200ms ease-out both;
+}
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.rise-in {
+  animation: rise-in 220ms ease-out both;
+}
+
+/* AI 분석 완료 시 마스크가 순차적으로 짧게 나타나는 정도 (PRD §44) */
+.stagger > * {
+  animation: rise-in 200ms ease-out both;
+}
+.stagger > *:nth-child(2) { animation-delay: 50ms; }
+.stagger > *:nth-child(3) { animation-delay: 100ms; }
+.stagger > *:nth-child(4) { animation-delay: 150ms; }
+.stagger > *:nth-child(5) { animation-delay: 200ms; }
+.stagger > *:nth-child(6) { animation-delay: 250ms; }
+
+/* 마소너리 (Discover) */
+.masonry {
+  columns: 2;
+  column-gap: 8px;
+}
+.masonry > * {
+  break-inside: avoid;
+  margin-bottom: 8px;
+}
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }

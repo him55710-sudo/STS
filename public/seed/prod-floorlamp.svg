@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800">
+<defs>
+<filter id="b6"><feGaussianBlur stdDeviation="6"/></filter>
+<filter id="b12"><feGaussianBlur stdDeviation="12"/></filter>
+<filter id="b20"><feGaussianBlur stdDeviation="20"/></filter>
+<filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" result="n"/>
+<feColorMatrix in="n" type="matrix" values="0 0 0 0 0.1 0 0 0 0 0.1 0 0 0 0 0.1 0 0 0 0.04 0"/>
+<feComposite operator="over" in2="SourceGraphic"/></filter>
+<linearGradient id="soft" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#ffffff" stop-opacity="0.5"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+</linearGradient>
+</defs><defs><linearGradient id="studio" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F0F0F1"/><stop offset="1" stop-color="#E2E3E5"/></linearGradient></defs><rect width="800" height="800" fill="url(#studio)"/><ellipse cx="400" cy="665.2" rx="71.5" ry="11.700000000000001" fill="#26282B" opacity="0.16" filter="url(#b12)"/><ellipse cx="400" cy="660" rx="57.2" ry="11.700000000000001" fill="#2B2D30"/><rect x="395.45" y="231.0" width="9.1" height="429.0" fill="#2B2D30"/><path d="M 327.2 231.0 L 472.8 231.0 L 457.2 107.5 L 342.8 107.5 Z" fill="#EDE8DC"/><path d="M 327.2 231.0 L 472.8 231.0 L 467.6 202.39999999999998 L 332.4 202.39999999999998 Z" fill="#DDD6C6"/><rect width="800" height="800" filter="url(#grain)" opacity="0.5" fill="none" pointer-events="none"/></svg>

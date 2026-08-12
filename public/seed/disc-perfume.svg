@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1200">
+<defs>
+<filter id="b6"><feGaussianBlur stdDeviation="6"/></filter>
+<filter id="b12"><feGaussianBlur stdDeviation="12"/></filter>
+<filter id="b20"><feGaussianBlur stdDeviation="20"/></filter>
+<filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" result="n"/>
+<feColorMatrix in="n" type="matrix" values="0 0 0 0 0.1 0 0 0 0 0.1 0 0 0 0 0.1 0 0 0 0.04 0"/>
+<feComposite operator="over" in2="SourceGraphic"/></filter>
+<linearGradient id="soft" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#ffffff" stop-opacity="0.5"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+</linearGradient>
+</defs><defs></defs><rect width="900" height="1200" fill="#E4E2DF"/><rect x="250" y="640" width="400" height="360" fill="#D5D2CC"/><rect x="250" y="640" width="400" height="22" fill="#C9C6BF"/><ellipse cx="450" cy="647.5" rx="96.0" ry="13.5" fill="#26282B" opacity="0.16" filter="url(#b12)"/><rect x="367.5" y="430.0" width="165.0" height="210.0" rx="15.0" fill="#DFE3E5" opacity="0.95"/><rect x="381.0" y="443.5" width="138.0" height="183.0" rx="9.0" fill="#E9ECED" opacity="0.85"/><rect x="381.0" y="522.4" width="138.0" height="91.5" rx="9.0" fill="#D3CBBB" opacity="0.6"/><rect x="426.0" y="385.0" width="48.0" height="51.0" rx="7.5" fill="#C9CBCE" /><rect width="900" height="1200" filter="url(#grain)" opacity="0.5" fill="none" pointer-events="none"/></svg>
