@@ -3,10 +3,7 @@
 <filter id="b6"><feGaussianBlur stdDeviation="6"/></filter>
 <filter id="b12"><feGaussianBlur stdDeviation="12"/></filter>
 <filter id="b20"><feGaussianBlur stdDeviation="20"/></filter>
-<filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" result="n"/>
-<feColorMatrix in="n" type="matrix" values="0 0 0 0 0.1 0 0 0 0 0.1 0 0 0 0 0.1 0 0 0 0.04 0"/>
-<feComposite operator="over" in2="SourceGraphic"/></filter>
 <linearGradient id="soft" x1="0" y1="0" x2="0" y2="1">
 <stop offset="0" stop-color="#ffffff" stop-opacity="0.5"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
 </linearGradient>
-</defs><defs><linearGradient id="studio" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F0F0F1"/><stop offset="1" stop-color="#E2E3E5"/></linearGradient></defs><rect width="800" height="800" fill="url(#studio)"/><rect x="280" y="340" width="240" height="150" rx="30" fill="#2B2D30" /><path d="M 300 340 Q 400 240 500 340" fill="none" stroke="#3A3D41" stroke-width="16"/><rect x="360" y="400" width="80" height="30" rx="8" fill="#54575C" /><ellipse cx="400" cy="510" rx="150" ry="13" fill="#26282B" opacity="0.16" filter="url(#b12)"/><rect width="800" height="800" filter="url(#grain)" opacity="0.5" fill="none" pointer-events="none"/></svg>
+</defs><defs><linearGradient id="studio" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F0F0F1"/><stop offset="1" stop-color="#E2E3E5"/></linearGradient></defs><rect width="800" height="800" fill="url(#studio)"/><rect x="280" y="340" width="240" height="150" rx="30" fill="#2B2D30" /><path d="M 300 340 Q 400 240 500 340" fill="none" stroke="#3A3D41" stroke-width="16"/><rect x="360" y="400" width="80" height="30" rx="8" fill="#54575C" /><ellipse cx="400" cy="510" rx="150" ry="13" fill="#26282B" opacity="0.2" filter="url(#b12)"/></svg>

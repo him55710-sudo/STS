@@ -3,10 +3,7 @@
 <filter id="b6"><feGaussianBlur stdDeviation="6"/></filter>
 <filter id="b12"><feGaussianBlur stdDeviation="12"/></filter>
 <filter id="b20"><feGaussianBlur stdDeviation="20"/></filter>
-<filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" result="n"/>
-<feColorMatrix in="n" type="matrix" values="0 0 0 0 0.1 0 0 0 0 0.1 0 0 0 0 0.1 0 0 0 0.04 0"/>
-<feComposite operator="over" in2="SourceGraphic"/></filter>
 <linearGradient id="soft" x1="0" y1="0" x2="0" y2="1">
 <stop offset="0" stop-color="#ffffff" stop-opacity="0.5"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
 </linearGradient>
-</defs><defs><linearGradient id="studio" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F0F0F1"/><stop offset="1" stop-color="#E2E3E5"/></linearGradient></defs><rect width="800" height="800" fill="url(#studio)"/><ellipse cx="400" cy="628.8" rx="92.4" ry="15.400000000000002" fill="#26282B" opacity="0.16" filter="url(#b12)"/><rect x="336.2" y="290.0" width="127.60000000000001" height="330.0" rx="22.0" fill="#DEE2E4" opacity="0.93"/><rect x="347.2" y="303.2" width="22.0" height="299.2" rx="11.0" fill="#ffffff" opacity="0.5"/><rect x="371.4" y="246.0" width="57.2" height="52.800000000000004" rx="11.0" fill="#F2F1EE" /><rect x="353.8" y="435.2" width="92.4" height="99.0" rx="6.6000000000000005" fill="#F6F5F2" /><rect width="800" height="800" filter="url(#grain)" opacity="0.5" fill="none" pointer-events="none"/></svg>
+</defs><defs><linearGradient id="studio" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F0F0F1"/><stop offset="1" stop-color="#E2E3E5"/></linearGradient></defs><rect width="800" height="800" fill="url(#studio)"/><ellipse cx="400" cy="628.8" rx="92.4" ry="15.4" fill="#26282B" opacity="0.2" filter="url(#b12)"/><rect x="336.2" y="290" width="127.6" height="330" rx="22" fill="#DEE2E4" opacity="0.9"/><rect x="347.2" y="303.2" width="22" height="299.2" rx="11" fill="#ffffff" opacity="0.5"/><rect x="371.4" y="246" width="57.2" height="52.8" rx="11" fill="#F2F1EE" /><rect x="353.8" y="435.2" width="92.4" height="99" rx="6.6" fill="#F6F5F2" /></svg>

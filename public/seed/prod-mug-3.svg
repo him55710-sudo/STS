@@ -3,10 +3,7 @@
 <filter id="b6"><feGaussianBlur stdDeviation="6"/></filter>
 <filter id="b12"><feGaussianBlur stdDeviation="12"/></filter>
 <filter id="b20"><feGaussianBlur stdDeviation="20"/></filter>
-<filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" result="n"/>
-<feColorMatrix in="n" type="matrix" values="0 0 0 0 0.1 0 0 0 0 0.1 0 0 0 0 0.1 0 0 0 0.04 0"/>
-<feComposite operator="over" in2="SourceGraphic"/></filter>
 <linearGradient id="soft" x1="0" y1="0" x2="0" y2="1">
 <stop offset="0" stop-color="#ffffff" stop-opacity="0.5"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
 </linearGradient>
-</defs><defs><linearGradient id="studio" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F0F0F1"/><stop offset="1" stop-color="#E2E3E5"/></linearGradient></defs><rect width="800" height="800" fill="url(#studio)"/><ellipse cx="400" cy="575.2" rx="242.00000000000003" ry="26.400000000000002" fill="#26282B" opacity="0.16" filter="url(#b12)"/><ellipse cx="400" cy="557.6" rx="209.00000000000003" ry="30.800000000000004" fill="#E4E2DC"/><path d="M 257.0 320.0 L 543.0 320.0 L 503.4 540.0 L 296.6 540.0 Z" fill="#F6F5F2"/><ellipse cx="400" cy="328.8" rx="143.0" ry="22.0" fill="#E4E2DC"/><circle cx="556.2" cy="416.8" r="52.800000000000004" fill="none" stroke="#E4E2DC" stroke-width="24.200000000000003"/><rect width="800" height="800" filter="url(#grain)" opacity="0.5" fill="none" pointer-events="none"/></svg>
+</defs><defs><linearGradient id="studio" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F0F0F1"/><stop offset="1" stop-color="#E2E3E5"/></linearGradient></defs><rect width="800" height="800" fill="url(#studio)"/><ellipse cx="400" cy="575.2" rx="242" ry="26.4" fill="#26282B" opacity="0.2" filter="url(#b12)"/><ellipse cx="400" cy="557.6" rx="209" ry="30.8" fill="#E4E2DC"/><path d="M 257 320 L 543 320 L 503.4 540 L 296.6 540 Z" fill="#F6F5F2"/><ellipse cx="400" cy="328.8" rx="143" ry="22" fill="#E4E2DC"/><circle cx="556.2" cy="416.8" r="52.8" fill="none" stroke="#E4E2DC" stroke-width="24.2"/></svg>
