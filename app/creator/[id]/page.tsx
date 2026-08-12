@@ -34,7 +34,12 @@ export default function CreatorPage({ params }: { params: Promise<{ id: string }
       </header>
 
       <div className="flex items-center gap-4 px-4 pt-5">
-        <Avatar creator={creator} size={72} />
+        {/* 스토리 링 아바타 (인스타 스타일) */}
+        <span className="story-ring shrink-0 rounded-full p-[2.5px]">
+          <span className="block rounded-full bg-bg p-[2.5px]">
+            <Avatar creator={creator} size={72} />
+          </span>
+        </span>
         <div className="flex flex-1 justify-around text-center">
           <Stat n={posts.length} label="게시물" />
           <Stat n={creator.followers} label="팔로워" compactNum />
@@ -42,17 +47,50 @@ export default function CreatorPage({ params }: { params: Promise<{ id: string }
         </div>
       </div>
       <div className="px-4 pt-3">
-        <p className="text-[14px] font-semibold">{creator.name}</p>
-        <p className="mt-0.5 text-[13px] text-ink-2">{creator.bio}</p>
-        <button
-          onClick={() => toggleFollow(id)}
-          className={`mt-3 w-full rounded-(--radius-btn) py-2.5 text-[14px] font-semibold transition-colors ${
-            follows ? "bg-surface-2 text-ink-2" : "bg-ink text-surface"
-          }`}
-        >
-          {follows ? "팔로잉" : "팔로우"}
-        </button>
+        <p className="flex items-center gap-1 text-[14px] font-semibold">
+          {creator.name}
+          {creator.verified && (
+            <svg viewBox="0 0 20 20" className="h-[15px] w-[15px]" aria-label="인증됨">
+              <circle cx="10" cy="10" r="9" fill="#3182f6" />
+              <path d="m6 10.2 2.6 2.6L14 7.5" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
+        </p>
+        <p className="mt-0.5 whitespace-pre-line text-[13px] leading-relaxed text-ink-2">{creator.bio}</p>
+        {creator.verified && (
+          <span className="mt-2 inline-block rounded-full bg-primary-soft px-2.5 py-1 text-[11px] font-semibold text-primary">
+            수익 공유 크리에이터 · 제휴 판매 수수료 70% 배분
+          </span>
+        )}
+        <div className="mt-3 flex gap-2">
+          <button
+            onClick={() => toggleFollow(id)}
+            className={`press flex-1 rounded-(--radius-btn) py-2.5 text-[14px] font-bold transition-colors ${
+              follows ? "bg-surface-2 text-ink-2" : "bg-primary text-white"
+            }`}
+          >
+            {follows ? "팔로잉" : "팔로우"}
+          </button>
+          <button className="press flex-1 rounded-(--radius-btn) bg-surface-2 py-2.5 text-[14px] font-semibold text-ink">
+            메시지
+          </button>
+        </div>
       </div>
+
+      {/* 하이라이트 (인스타 스타일) */}
+      {creator.avatarImage && (
+        <div className="no-scrollbar flex gap-4 overflow-x-auto px-4 pt-5">
+          {posts.slice(0, 4).map((p, i) => (
+            <Link key={p.id} href={`/post/${p.id}`} className="flex w-[64px] shrink-0 flex-col items-center gap-1">
+              <span className="rounded-full border border-line p-[2.5px]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={p.image} alt="" className="h-[56px] w-[56px] rounded-full object-cover" />
+              </span>
+              <span className="text-[11px] text-ink-2">{["데일리", "클래식", "미니멀", "아웃도어"][i]}</span>
+            </Link>
+          ))}
+        </div>
+      )}
 
       <div className="mt-5 flex border-b border-line">
         {(

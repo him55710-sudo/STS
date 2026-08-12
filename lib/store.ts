@@ -3,7 +3,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { productById } from "./catalog";
-import type { EventType, Post, Product, TrackedEvent } from "./types";
+import type { EventType, Post, Product, SessionUser, TrackedEvent } from "./types";
 
 interface AppState {
   savedProducts: string[];
@@ -16,7 +16,11 @@ interface AppState {
   userPosts: Post[];
   /** URL 직접 입력 등으로 만들어진 커스텀 상품 (PRD §58 방법 2·3) */
   customProducts: Product[];
+  /** 데모 로그인 세션 (실 OAuth는 클라이언트 키 등록 후 NextAuth로 대체) */
+  user: SessionUser | null;
 
+  signIn: (user: SessionUser) => void;
+  signOut: () => void;
   addCustomProduct: (p: Product) => void;
   toggleSaveProduct: (id: string) => void;
   toggleSavePost: (id: string) => void;
@@ -40,7 +44,10 @@ export const useApp = create<AppState>()(
       events: [],
       userPosts: [],
       customProducts: [],
+      user: null,
 
+      signIn: (user) => set({ user }),
+      signOut: () => set({ user: null }),
       addCustomProduct: (p) => set((s) => ({ customProducts: [...s.customProducts, p] })),
       toggleSaveProduct: (id) => {
         const has = get().savedProducts.includes(id);

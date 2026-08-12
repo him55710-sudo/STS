@@ -42,3 +42,11 @@
   Deployment Protection이 이미지 요청을 SSO로 막는 문제 발견 → 두 프로젝트 보호 해제(Act) 후 재검증 통과.
 - **참고**: Vercel 환경변수는 MCP로 설정 불가 → AI 탐지는 mock 모드로 동작.
   실탐지 활성화: Vercel 대시보드 → objet → Settings → Environment Variables → `GEMINI_API_KEY` 추가 후 Redeploy.
+
+## Cycle 4 — STS v2 (실사 콘텐츠 + 토스 UI + 수익 셰어)
+- **Do**: OBJET→STS 리브랜딩(로고·아이콘), 실사 룩 5종 게시물(Gemini 실측 좌표 + 실사 상품 크롭 21종),
+  실제 상품 딥링크(정확 상품명 검색 결과 직행), 인스타형 크리에이터 프로필(@minu.archive: 스토리 링·인증 배지·하이라이트),
+  토스풍 인터랙션(프라이머리 블루 CTA, press/heart-pop/card-in/스프링 시트), Google·Kakao 데모 로그인,
+  수수료 셰어 UX(제휴 배지·70% 배분·발행 시 "1회 판매당 ₩X" 표시), docs/BUSINESS.md(Pinterest 차별화 + 수익 아이템 6종)
+- **Check**: 빌드 무결(12 routes) · 실사진 객체 탭(크로스백/신발) → 시트 정상 · 프로필/로그인 렌더 검증
+- **비고**: 실사진(~1MB)은 인라인 배포 페이로드 한도 초과 → Vercel-GitHub 연동으로 배포하는 것이 정석

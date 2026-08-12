@@ -26,7 +26,9 @@ export default function HomePage() {
     <div>
       <header className="sticky top-0 z-30 border-b border-line bg-bg/95 backdrop-blur-sm">
         <div className="flex items-end justify-between px-4 pb-2.5 pt-3.5">
-          <h1 className="text-[19px] font-bold tracking-[0.18em]">OBJET</h1>
+          <h1 className="text-[20px] font-extrabold tracking-[0.14em]">
+            STS<span className="text-primary">.</span>
+          </h1>
           <div className="flex gap-4 text-[14px]">
             <button
               onClick={() => setTab("foryou")}
@@ -51,8 +53,10 @@ export default function HomePage() {
       </header>
 
       <div className="flex flex-col">
-        {feed.map((post) => (
-          <PostCard key={post.id} post={post} />
+        {feed.map((post, i) => (
+          <div key={post.id} className="card-in" style={{ animationDelay: `${Math.min(i, 4) * 60}ms` }}>
+            <PostCard post={post} />
+          </div>
         ))}
         {feed.length === 0 && (
           <p className="px-4 py-16 text-center text-sm text-ink-2">

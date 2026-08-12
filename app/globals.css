@@ -8,8 +8,11 @@
   --color-ink: #151719;         /* Main CTA / Typography */
   --color-ink-2: #6c7075;       /* Secondary Text */
   --color-line: #dfe2e5;        /* Border */
-  --color-accent: #77727f;      /* Muted Graphite Violet */
+  --color-accent: #77727f;      /* Muted Graphite Violet — object highlight 전용 */
   --color-accent-2: #817b88;
+  --color-primary: #3182f6;     /* Toss Blue — 핵심 CTA/인터랙션 */
+  --color-primary-soft: #e8f1fe;
+  --color-kakao: #fee500;
 
   --font-sans: "Pretendard Variable", Pretendard, "Inter", -apple-system,
     BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", Roboto, sans-serif;
@@ -76,8 +79,42 @@ a {
   to { transform: translateY(0); }
 }
 
+/* Toss식 스프링 — 살짝 오버슈트 후 안착 */
 .sheet-enter {
-  animation: sheet-up 240ms cubic-bezier(0.32, 0.72, 0.24, 1) both;
+  animation: sheet-up 320ms cubic-bezier(0.2, 0.9, 0.3, 1.04) both;
+}
+
+/* 누르는 맛 — 모든 인터랙티브 요소 공통 */
+.press {
+  transition: transform 130ms cubic-bezier(0.3, 0.7, 0.4, 1.2);
+}
+.press:active {
+  transform: scale(0.96);
+}
+
+/* 좋아요 하트 팝 */
+@keyframes heart-pop {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.4) rotate(-6deg); }
+  65% { transform: scale(0.88); }
+  100% { transform: scale(1); }
+}
+.heart-pop {
+  animation: heart-pop 380ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+/* 피드 카드 순차 등장 */
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.card-in {
+  animation: card-in 380ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+/* 스토리 링 회전 그라데이션 (프로필) */
+.story-ring {
+  background: conic-gradient(from 210deg, #3182f6, #77727f, #b9afa3, #3182f6);
 }
 
 @keyframes fade-in {

@@ -73,7 +73,11 @@ export default function ProductSheet({
                   <p className="mt-1 text-[17px] font-semibold tracking-tight">{won(product.price)}</p>
                   <p className="mt-0.5 text-xs text-ink-2">
                     {product.retailer}
-                    {product.affiliate && <span className="ml-1.5 text-[11px] text-accent">제휴 링크</span>}
+                    {product.affiliate && (
+                      <span className="ml-1.5 rounded-[5px] bg-primary-soft px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                        제휴 {product.commissionRate ? `${Math.round(product.commissionRate * 100)}%` : ""}
+                      </span>
+                    )}
                   </p>
                 </div>
               </div>
@@ -122,15 +126,17 @@ export default function ProductSheet({
                 </button>
                 <button
                   onClick={() => openOutbound(product)}
-                  className="flex h-12 flex-1 items-center justify-center gap-1.5 rounded-(--radius-btn) bg-ink text-[15px] font-semibold text-surface transition-transform active:scale-[0.99]"
+                  className="press flex h-12 flex-1 items-center justify-center gap-1.5 rounded-(--radius-btn) bg-primary text-[15px] font-bold text-white"
                 >
                   구매하러 가기
-                  <ArrowUpRightIcon size={17} strokeWidth={1.75} />
+                  <ArrowUpRightIcon size={17} strokeWidth={2} />
                 </button>
               </div>
               <p className="mt-2 text-center text-[10.5px] leading-relaxed text-ink-2">
                 {object.exactness === "similar" && "크리에이터가 확인한 유사 상품이에요. "}
-                가격·재고는 판매처 기준이며, 구매 시 크리에이터에게 수익이 발생할 수 있어요.
+                {product.affiliate
+                  ? `제휴 파트너 상품 — 구매 시 수수료의 70%가 크리에이터에게 돌아가요.`
+                  : "가격·재고는 판매처 기준이에요. 상품 페이지로 바로 연결됩니다."}
               </p>
             </>
           ) : (

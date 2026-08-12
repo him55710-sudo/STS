@@ -3,9 +3,9 @@ import "./globals.css";
 import TabBar from "@/components/TabBar";
 
 export const metadata: Metadata = {
-  title: "OBJET — See it. Tap it. Shop it.",
+  title: "STS — See it. Tap it. Shop it.",
   description:
-    "사진과 영상 속 물건을 직접 탭해서 쇼핑하는 AI Visual Commerce 플랫폼. 콘텐츠 → 객체 탭 → 상품 → 구매.",
+    "사진 속 물건을 직접 탭해서 쇼핑하는 AI Visual Commerce. 게시물의 모든 상품을 AI가 자동으로 연결하고, 크리에이터와 수익을 나눕니다.",
 };
 
 export const viewport: Viewport = {

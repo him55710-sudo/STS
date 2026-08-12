@@ -350,7 +350,7 @@ export default function CreatePage() {
             />
             <button
               onClick={publish}
-              className="mt-3 h-12 w-full rounded-(--radius-btn) bg-ink text-[15px] font-semibold text-surface transition-transform active:scale-[0.99]"
+              className="press mt-3 h-12 w-full rounded-(--radius-btn) bg-primary text-[15px] font-bold text-white"
             >
               발행하기
               {objects.filter((o) => o.productId).length > 0 &&
@@ -361,9 +361,9 @@ export default function CreatePage() {
       )}
 
       {step === "done" && (
-        <div className="flex flex-col items-center px-4 py-16 text-center">
-          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-surface-2 text-accent">
-            <CheckIcon size={26} />
+        <div className="flex flex-col items-center px-4 py-14 text-center">
+          <span className="card-in flex h-14 w-14 items-center justify-center rounded-full bg-primary-soft text-primary">
+            <CheckIcon size={26} strokeWidth={2.2} />
           </span>
           <h2 className="mt-4 text-[18px] font-bold">발행 완료</h2>
           <p className="mt-1.5 text-[13px] leading-relaxed text-ink-2">
@@ -372,6 +372,7 @@ export default function CreatePage() {
             <br />
             이제 시청자가 화면 속 물건을 탭해 구매할 수 있어요.
           </p>
+          <EarningsSummary objects={objects} />
           <div className="mt-6 flex w-full gap-2">
             <button
               onClick={reset}
@@ -395,12 +396,42 @@ export default function CreatePage() {
   );
 }
 
+/** 발행 완료 화면 — 게시물 하나가 만드는 수익 구조를 즉시 보여준다 */
+function EarningsSummary({ objects }: { objects: DraftObject[] }) {
+  const lookup = useProductLookup();
+  const partnered = objects
+    .map((o) => lookup(o.productId))
+    .filter((p) => p != null && p.affiliate);
+  if (partnered.length === 0) return null;
+  const perSale = partnered.reduce(
+    (sum, p) => sum + Math.round(p!.price * (p!.commissionRate ?? 0.05) * 0.7),
+    0
+  );
+  return (
+    <div className="card-in mt-5 w-full rounded-(--radius-card) border border-line bg-surface p-4 text-left" style={{ animationDelay: "120ms" }}>
+      <p className="text-[12px] font-semibold text-primary">수익 배분 활성화됨</p>
+      <p className="mt-1 text-[14px] leading-relaxed">
+        제휴 상품 <b>{partnered.length}개</b> 연결 · 전 상품 1회 판매 시{" "}
+        <b>₩{perSale.toLocaleString("ko-KR")}</b> 수익
+      </p>
+      <p className="mt-1 text-[11px] leading-relaxed text-ink-2">
+        판매 수수료의 70%가 크리에이터 몫이에요. 정산 내역은 애널리틱스에서 확인됩니다.
+      </p>
+    </div>
+  );
+}
+
 function ObjectStatus({ obj }: { obj: DraftObject }) {
   const lookup = useProductLookup();
   const product = lookup(obj.productId);
   return product ? (
     <p className="mt-0.5 flex items-center gap-1.5 text-[12px] text-ink-2">
       <ExactBadge exactness={obj.exactness} />
+      {product.affiliate && (
+        <span className="shrink-0 rounded-[5px] bg-primary-soft px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+          수익 {Math.round((product.commissionRate ?? 0.05) * 100 * 0.7)}%
+        </span>
+      )}
       <span className="truncate">
         {product.brand} {product.name}
       </span>
@@ -466,10 +497,17 @@ function CandidatePanel({
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={p.image} alt="" className="h-11 w-11 rounded-[7px] border border-line object-cover" />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[12px] text-ink-2">{p.brand}</p>
+          <p className="flex items-center gap-1 truncate text-[12px] text-ink-2">
+            {p.brand}
+            {p.affiliate && (
+              <span className="shrink-0 rounded-[4px] bg-primary-soft px-1 py-px text-[9px] font-semibold text-primary">
+                제휴
+              </span>
+            )}
+          </p>
           <p className="truncate text-[13px] font-medium">{p.name}</p>
         </div>
-        {picked && <CheckIcon size={16} className="shrink-0 text-accent" />}
+        {picked && <CheckIcon size={16} className="shrink-0 text-primary" />}
       </button>
     );
   };

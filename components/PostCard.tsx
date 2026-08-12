@@ -85,20 +85,18 @@ export default function PostCard({ post }: { post: Post }) {
 
       {/* actions */}
       <div className="flex items-center gap-4 px-4 pt-2.5">
-        <button
-          onClick={() => toggleLike(post.id)}
-          aria-label="좋아요"
-          className={`transition-transform active:scale-90 ${liked ? "text-ink" : "text-ink"}`}
-        >
-          <HeartIcon size={23} filled={liked} />
+        <button onClick={() => toggleLike(post.id)} aria-label="좋아요" className="press text-ink">
+          <span key={liked ? "on" : "off"} className={liked ? "heart-pop block text-[#f04452]" : "block"}>
+            <HeartIcon size={23} filled={liked} />
+          </span>
         </button>
-        <button aria-label="공유" className="text-ink">
+        <button aria-label="공유" className="press text-ink">
           <ShareIcon size={22} />
         </button>
         <button
           onClick={() => toggleSavePost(post.id)}
           aria-label="게시물 저장"
-          className="ml-auto text-ink"
+          className="press ml-auto text-ink"
         >
           <BookmarkIcon size={22} filled={saved} />
         </button>

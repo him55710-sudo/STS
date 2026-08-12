@@ -19,7 +19,7 @@ import {
  */
 export default function ProfilePage() {
   const hydrated = useHydrated();
-  const { userPosts, events } = useApp();
+  const { userPosts, events, user, signOut } = useApp();
 
   // 데모 계정은 시드 크리에이터 콘텐츠 전체를 "내 콘텐츠"로 보여준다
   const myPosts = hydrated ? [...userPosts, ...POSTS] : POSTS;
@@ -32,8 +32,21 @@ export default function ProfilePage() {
     <div>
       <header className="flex items-center justify-between px-4 pt-4">
         <div>
-          <h1 className="text-[19px] font-bold">@me.objet</h1>
-          <p className="mt-0.5 text-[12px] text-ink-2">크리에이터 스튜디오</p>
+          <h1 className="text-[19px] font-bold">
+            {hydrated && user ? user.name : "@me.sts"}
+          </h1>
+          {hydrated && user ? (
+            <p className="mt-0.5 flex items-center gap-1.5 text-[12px] text-ink-2">
+              {user.provider === "kakao" ? "카카오" : "Google"} 계정 · 크리에이터 스튜디오
+              <button onClick={signOut} className="press font-medium text-ink-2 underline underline-offset-2">
+                로그아웃
+              </button>
+            </p>
+          ) : (
+            <Link href="/login" className="mt-0.5 inline-block text-[12px] font-semibold text-primary">
+              3초 로그인하고 수익 받기 →
+            </Link>
+          )}
         </div>
         <div className="flex gap-1.5">
           <Link

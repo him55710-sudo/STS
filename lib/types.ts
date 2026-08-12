@@ -18,6 +18,8 @@ export interface Product {
   category: Category;
   /** 제휴(affiliate) 링크 여부 — 경제적 이해관계 표시에 사용 */
   affiliate: boolean;
+  /** 제휴 수수료율 (0~1). 크리에이터는 이 중 70%를 배분받는다 */
+  commissionRate?: number;
   similarIds: string[];
 }
 
@@ -60,6 +62,16 @@ export interface Creator {
   category: Category;
   /** 아바타 색 (이미지 대신 이니셜 + 톤) */
   tone: string;
+  /** 실사 아바타 이미지 (있으면 이니셜 대신 표시) */
+  avatarImage?: string;
+  /** 수익 공유 파트너 크리에이터 (인증 배지) */
+  verified?: boolean;
+}
+
+/** 데모 로그인 세션 */
+export interface SessionUser {
+  name: string;
+  provider: "google" | "kakao";
 }
 
 /** 이벤트 taxonomy — 사업계획서 §10 */
