@@ -33,3 +33,12 @@
 - [x] 이벤트(asset_view, object_tap, card_open, outbound_click) 기록 → Analytics 반영
 - [x] Quiet Luxury 디자인 원칙 준수 (무채색 90%, mask+outline, bottom sheet)
 - [x] Vercel 즉시 배포 가능 (환경변수 GEMINI_API_KEY만 옵션)
+
+## Cycle 3 — Vercel 배포
+- **Do**: Vercel MCP로 배포. 페이로드 크기 제약 대응을 위해 2-프로젝트 구성:
+  - `objet-assets` (정적): seed SVG 43종 → https://objet-assets-mongben.vercel.app
+  - `objet` (Next.js): 앱 전체, `/seed/*`를 assets 프로젝트로 rewrite → https://objet-mongben.vercel.app
+- **Check**: 빌드 READY, 홈 200 OK(피드 SSR 정상), seed 이미지 200(image/svg+xml).
+  Deployment Protection이 이미지 요청을 SSO로 막는 문제 발견 → 두 프로젝트 보호 해제(Act) 후 재검증 통과.
+- **참고**: Vercel 환경변수는 MCP로 설정 불가 → AI 탐지는 mock 모드로 동작.
+  실탐지 활성화: Vercel 대시보드 → objet → Settings → Environment Variables → `GEMINI_API_KEY` 추가 후 Redeploy.
