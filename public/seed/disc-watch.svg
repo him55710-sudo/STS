@@ -1,9 +1,40 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 900">
 <defs>
-<filter id="b6"><feGaussianBlur stdDeviation="6"/></filter>
-<filter id="b12"><feGaussianBlur stdDeviation="12"/></filter>
-<filter id="b20"><feGaussianBlur stdDeviation="20"/></filter>
+<filter id="b6">
+<feGaussianBlur stdDeviation="6"/>
+</filter>
+<filter id="b12">
+<feGaussianBlur stdDeviation="12"/>
+</filter>
+<filter id="b20">
+<feGaussianBlur stdDeviation="20"/>
+</filter>
 <linearGradient id="soft" x1="0" y1="0" x2="0" y2="1">
-<stop offset="0" stop-color="#ffffff" stop-opacity="0.5"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+<stop offset="0" stop-color="#ffffff" stop-opacity="0.5"/>
+<stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
 </linearGradient>
-</defs><defs></defs><rect width="900" height="900" fill="#DBD9D6"/><rect x="100" y="480" width="700" height="340" rx="30" fill="#3E4145"/><rect x="140" y="520" width="620" height="260" rx="22" fill="#4A4D52"/><ellipse cx="450" cy="583.6" rx="96" ry="14.4" fill="#26282B" opacity="0.2" filter="url(#b12)"/><rect x="408.4" y="257.2" width="83.2" height="345.6" rx="35.2" fill="#8E939A" /><circle cx="450" cy="430" r="99.2" fill="#D7DADC"/><circle cx="450" cy="430" r="83.2" fill="#F6F5F2"/><line x1="450" y1="359.6" x2="450" y2="353.2" stroke="#A6AAAF" stroke-width="4"/><line x1="485.2" y1="369" x2="488.4" y2="363.5" stroke="#A6AAAF" stroke-width="4"/><line x1="511" y1="394.8" x2="516.5" y2="391.6" stroke="#A6AAAF" stroke-width="4"/><line x1="520.4" y1="430" x2="526.8" y2="430" stroke="#A6AAAF" stroke-width="4"/><line x1="511" y1="465.2" x2="516.5" y2="468.4" stroke="#A6AAAF" stroke-width="4"/><line x1="485.2" y1="491" x2="488.4" y2="496.5" stroke="#A6AAAF" stroke-width="4"/><line x1="450" y1="500.4" x2="450" y2="506.8" stroke="#A6AAAF" stroke-width="4"/><line x1="414.8" y1="491" x2="411.6" y2="496.5" stroke="#A6AAAF" stroke-width="4"/><line x1="389" y1="465.2" x2="383.5" y2="468.4" stroke="#A6AAAF" stroke-width="4"/><line x1="379.6" y1="430" x2="373.2" y2="430" stroke="#A6AAAF" stroke-width="4"/><line x1="389" y1="394.8" x2="383.5" y2="391.6" stroke="#A6AAAF" stroke-width="4"/><line x1="414.8" y1="369" x2="411.6" y2="363.5" stroke="#A6AAAF" stroke-width="4"/><line x1="450" y1="430" x2="450" y2="375.6" stroke="#26282B" stroke-width="6.4" stroke-linecap="round"/><line x1="450" y1="430" x2="488.4" y2="446" stroke="#26282B" stroke-width="4.8" stroke-linecap="round"/></svg>
+</defs>
+<defs>
+</defs>
+<rect width="900" height="900" fill="#DBD9D6"/>
+<rect x="100" y="480" width="700" height="340" rx="30" fill="#3E4145"/>
+<rect x="140" y="520" width="620" height="260" rx="22" fill="#4A4D52"/>
+<ellipse cx="450" cy="583.6" rx="96" ry="14.4" fill="#26282B" opacity="0.2" filter="url(#b12)"/>
+<rect x="408.4" y="257.2" width="83.2" height="345.6" rx="35.2" fill="#8E939A" />
+<circle cx="450" cy="430" r="99.2" fill="#D7DADC"/>
+<circle cx="450" cy="430" r="83.2" fill="#F6F5F2"/>
+<line x1="450" y1="359.6" x2="450" y2="353.2" stroke="#A6AAAF" stroke-width="4"/>
+<line x1="485.2" y1="369" x2="488.4" y2="363.5" stroke="#A6AAAF" stroke-width="4"/>
+<line x1="511" y1="394.8" x2="516.5" y2="391.6" stroke="#A6AAAF" stroke-width="4"/>
+<line x1="520.4" y1="430" x2="526.8" y2="430" stroke="#A6AAAF" stroke-width="4"/>
+<line x1="511" y1="465.2" x2="516.5" y2="468.4" stroke="#A6AAAF" stroke-width="4"/>
+<line x1="485.2" y1="491" x2="488.4" y2="496.5" stroke="#A6AAAF" stroke-width="4"/>
+<line x1="450" y1="500.4" x2="450" y2="506.8" stroke="#A6AAAF" stroke-width="4"/>
+<line x1="414.8" y1="491" x2="411.6" y2="496.5" stroke="#A6AAAF" stroke-width="4"/>
+<line x1="389" y1="465.2" x2="383.5" y2="468.4" stroke="#A6AAAF" stroke-width="4"/>
+<line x1="379.6" y1="430" x2="373.2" y2="430" stroke="#A6AAAF" stroke-width="4"/>
+<line x1="389" y1="394.8" x2="383.5" y2="391.6" stroke="#A6AAAF" stroke-width="4"/>
+<line x1="414.8" y1="369" x2="411.6" y2="363.5" stroke="#A6AAAF" stroke-width="4"/>
+<line x1="450" y1="430" x2="450" y2="375.6" stroke="#26282B" stroke-width="6.4" stroke-linecap="round"/>
+<line x1="450" y1="430" x2="488.4" y2="446" stroke="#26282B" stroke-width="4.8" stroke-linecap="round"/>
+</svg>

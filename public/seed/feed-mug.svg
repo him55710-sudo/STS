@@ -1,9 +1,48 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1200">
 <defs>
-<filter id="b6"><feGaussianBlur stdDeviation="6"/></filter>
-<filter id="b12"><feGaussianBlur stdDeviation="12"/></filter>
-<filter id="b20"><feGaussianBlur stdDeviation="20"/></filter>
+<filter id="b6">
+<feGaussianBlur stdDeviation="6"/>
+</filter>
+<filter id="b12">
+<feGaussianBlur stdDeviation="12"/>
+</filter>
+<filter id="b20">
+<feGaussianBlur stdDeviation="20"/>
+</filter>
 <linearGradient id="soft" x1="0" y1="0" x2="0" y2="1">
-<stop offset="0" stop-color="#ffffff" stop-opacity="0.5"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+<stop offset="0" stop-color="#ffffff" stop-opacity="0.5"/>
+<stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
 </linearGradient>
-</defs><defs></defs><rect width="900" height="1200" fill="#E9E6E1"/><rect x="60" y="80" width="480" height="560" fill="#F1EEE8"/><rect x="60" y="80" width="480" height="560" fill="url(#soft)"/><line x1="300" y1="80" x2="300" y2="640" stroke="#DDD8D1" stroke-width="10"/><rect x="0" y="700" width="900" height="500" fill="#C4A87F"/><rect x="0" y="700" width="900" height="16" fill="#B2966F"/><ellipse cx="730" cy="706" rx="55" ry="9" fill="#26282B" opacity="0.2" filter="url(#b12)"/><path d="M 702 700 C 678 670 692 612 716 600 L 719 576 L 741 576 L 744 600 C 768 612 782 670 758 700 Z" fill="#F6F5F2"/><g transform="rotate(-14 724 576)"><line x1="724" y1="576" x2="724" y2="492" stroke="#B5A488" stroke-width="3"/><ellipse cx="724" cy="488" rx="7" ry="14" fill="#C7B69C"/></g><g transform="rotate(4 732 576)"><line x1="732" y1="576" x2="732" y2="492" stroke="#B5A488" stroke-width="3"/><ellipse cx="732" cy="488" rx="7" ry="14" fill="#C7B69C"/></g><g transform="rotate(18 739 576)"><line x1="739" y1="576" x2="739" y2="492" stroke="#B5A488" stroke-width="3"/><ellipse cx="739" cy="488" rx="7" ry="14" fill="#C7B69C"/></g><rect x="520" y="660" width="240" height="42" rx="4" fill="#EDE8DC" /><rect x="520" y="660" width="14" height="42" rx="4" fill="#DDD6C6" /><line x1="592" y1="666" x2="592" y2="696" stroke="#DDD6C6" stroke-width="1.5" opacity="0.6"/><ellipse cx="330" cy="738.5" rx="128.2" ry="18.9" fill="#26282B" opacity="0.2" filter="url(#b12)"/><circle cx="423.1" cy="640" r="45.9" fill="none" stroke="#E4E2DC" stroke-width="18.9"/><rect x="228.8" y="552.2" width="166" height="175.5" rx="21.6" fill="#F6F5F2" /><rect x="228.8" y="552.2" width="60.8" height="175.5" rx="21.6" fill="url(#soft)" /><ellipse cx="311.8" cy="560.4" rx="83" ry="12.2" fill="#E4E2DC"/><ellipse cx="311.8" cy="560.4" rx="68.9" ry="8.1" fill="#8B8680" opacity="0.6"/></svg>
+</defs>
+<defs>
+</defs>
+<rect width="900" height="1200" fill="#E9E6E1"/>
+<rect x="60" y="80" width="480" height="560" fill="#F1EEE8"/>
+<rect x="60" y="80" width="480" height="560" fill="url(#soft)"/>
+<line x1="300" y1="80" x2="300" y2="640" stroke="#DDD8D1" stroke-width="10"/>
+<rect x="0" y="700" width="900" height="500" fill="#C4A87F"/>
+<rect x="0" y="700" width="900" height="16" fill="#B2966F"/>
+<ellipse cx="730" cy="706" rx="55" ry="9" fill="#26282B" opacity="0.2" filter="url(#b12)"/>
+<path d="M 702 700 C 678 670 692 612 716 600 L 719 576 L 741 576 L 744 600 C 768 612 782 670 758 700 Z" fill="#F6F5F2"/>
+<g transform="rotate(-14 724 576)">
+<line x1="724" y1="576" x2="724" y2="492" stroke="#B5A488" stroke-width="3"/>
+<ellipse cx="724" cy="488" rx="7" ry="14" fill="#C7B69C"/>
+</g>
+<g transform="rotate(4 732 576)">
+<line x1="732" y1="576" x2="732" y2="492" stroke="#B5A488" stroke-width="3"/>
+<ellipse cx="732" cy="488" rx="7" ry="14" fill="#C7B69C"/>
+</g>
+<g transform="rotate(18 739 576)">
+<line x1="739" y1="576" x2="739" y2="492" stroke="#B5A488" stroke-width="3"/>
+<ellipse cx="739" cy="488" rx="7" ry="14" fill="#C7B69C"/>
+</g>
+<rect x="520" y="660" width="240" height="42" rx="4" fill="#EDE8DC" />
+<rect x="520" y="660" width="14" height="42" rx="4" fill="#DDD6C6" />
+<line x1="592" y1="666" x2="592" y2="696" stroke="#DDD6C6" stroke-width="1.5" opacity="0.6"/>
+<ellipse cx="330" cy="738.5" rx="128.2" ry="18.9" fill="#26282B" opacity="0.2" filter="url(#b12)"/>
+<circle cx="423.1" cy="640" r="45.9" fill="none" stroke="#E4E2DC" stroke-width="18.9"/>
+<rect x="228.8" y="552.2" width="166" height="175.5" rx="21.6" fill="#F6F5F2" />
+<rect x="228.8" y="552.2" width="60.8" height="175.5" rx="21.6" fill="url(#soft)" />
+<ellipse cx="311.8" cy="560.4" rx="83" ry="12.2" fill="#E4E2DC"/>
+<ellipse cx="311.8" cy="560.4" rx="68.9" ry="8.1" fill="#8B8680" opacity="0.6"/>
+</svg>

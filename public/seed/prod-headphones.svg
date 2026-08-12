@@ -1,9 +1,32 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800">
 <defs>
-<filter id="b6"><feGaussianBlur stdDeviation="6"/></filter>
-<filter id="b12"><feGaussianBlur stdDeviation="12"/></filter>
-<filter id="b20"><feGaussianBlur stdDeviation="20"/></filter>
+<filter id="b6">
+<feGaussianBlur stdDeviation="6"/>
+</filter>
+<filter id="b12">
+<feGaussianBlur stdDeviation="12"/>
+</filter>
+<filter id="b20">
+<feGaussianBlur stdDeviation="20"/>
+</filter>
 <linearGradient id="soft" x1="0" y1="0" x2="0" y2="1">
-<stop offset="0" stop-color="#ffffff" stop-opacity="0.5"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+<stop offset="0" stop-color="#ffffff" stop-opacity="0.5"/>
+<stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
 </linearGradient>
-</defs><defs><linearGradient id="studio" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F0F0F1"/><stop offset="1" stop-color="#E2E3E5"/></linearGradient></defs><rect width="800" height="800" fill="url(#studio)"/><ellipse cx="400" cy="608" rx="116" ry="18" fill="#26282B" opacity="0.2" filter="url(#b12)"/><rect x="390" y="300" width="20" height="300" rx="10" fill="#A6AAAF"/><ellipse cx="400" cy="600" rx="100" ry="20" fill="#A6AAAF"/><path d="M 284 424 A 116 116 0 0 1 516 424" fill="none" stroke="#EDE8DC" stroke-width="32"/><ellipse cx="284" cy="476" rx="48" ry="68" fill="#EDE8DC"/><ellipse cx="284" cy="476" rx="28" ry="46" fill="#DDD6C6"/><ellipse cx="516" cy="476" rx="48" ry="68" fill="#EDE8DC"/><ellipse cx="516" cy="476" rx="28" ry="46" fill="#DDD6C6"/></svg>
+</defs>
+<defs>
+<linearGradient id="studio" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#F0F0F1"/>
+<stop offset="1" stop-color="#E2E3E5"/>
+</linearGradient>
+</defs>
+<rect width="800" height="800" fill="url(#studio)"/>
+<ellipse cx="400" cy="608" rx="116" ry="18" fill="#26282B" opacity="0.2" filter="url(#b12)"/>
+<rect x="390" y="300" width="20" height="300" rx="10" fill="#A6AAAF"/>
+<ellipse cx="400" cy="600" rx="100" ry="20" fill="#A6AAAF"/>
+<path d="M 284 424 A 116 116 0 0 1 516 424" fill="none" stroke="#EDE8DC" stroke-width="32"/>
+<ellipse cx="284" cy="476" rx="48" ry="68" fill="#EDE8DC"/>
+<ellipse cx="284" cy="476" rx="28" ry="46" fill="#DDD6C6"/>
+<ellipse cx="516" cy="476" rx="48" ry="68" fill="#EDE8DC"/>
+<ellipse cx="516" cy="476" rx="28" ry="46" fill="#DDD6C6"/>
+</svg>

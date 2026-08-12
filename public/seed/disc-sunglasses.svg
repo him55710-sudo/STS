@@ -1,9 +1,42 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 900">
 <defs>
-<filter id="b6"><feGaussianBlur stdDeviation="6"/></filter>
-<filter id="b12"><feGaussianBlur stdDeviation="12"/></filter>
-<filter id="b20"><feGaussianBlur stdDeviation="20"/></filter>
+<filter id="b6">
+<feGaussianBlur stdDeviation="6"/>
+</filter>
+<filter id="b12">
+<feGaussianBlur stdDeviation="12"/>
+</filter>
+<filter id="b20">
+<feGaussianBlur stdDeviation="20"/>
+</filter>
 <linearGradient id="soft" x1="0" y1="0" x2="0" y2="1">
-<stop offset="0" stop-color="#ffffff" stop-opacity="0.5"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+<stop offset="0" stop-color="#ffffff" stop-opacity="0.5"/>
+<stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
 </linearGradient>
-</defs><defs></defs><rect width="900" height="900" fill="#E9E6E0"/><rect x="90" y="120" width="720" height="660" fill="#F3F1EC"/><line x1="450" y1="120" x2="450" y2="780" stroke="#DEDAD3" stroke-width="6"/><line x1="130" y1="200" x2="410" y2="200" stroke="#DEDAD3" stroke-width="8"/><line x1="490" y1="200" x2="770" y2="200" stroke="#DEDAD3" stroke-width="8"/><line x1="130" y1="290" x2="410" y2="290" stroke="#DEDAD3" stroke-width="8"/><line x1="490" y1="290" x2="770" y2="290" stroke="#DEDAD3" stroke-width="8"/><line x1="130" y1="380" x2="410" y2="380" stroke="#DEDAD3" stroke-width="8"/><line x1="490" y1="380" x2="770" y2="380" stroke="#DEDAD3" stroke-width="8"/><line x1="130" y1="470" x2="410" y2="470" stroke="#DEDAD3" stroke-width="8"/><line x1="490" y1="470" x2="770" y2="470" stroke="#DEDAD3" stroke-width="8"/><line x1="130" y1="560" x2="410" y2="560" stroke="#DEDAD3" stroke-width="8"/><line x1="490" y1="560" x2="770" y2="560" stroke="#DEDAD3" stroke-width="8"/><line x1="130" y1="650" x2="410" y2="650" stroke="#DEDAD3" stroke-width="8"/><line x1="490" y1="650" x2="770" y2="650" stroke="#DEDAD3" stroke-width="8"/><ellipse cx="450" cy="516" rx="180" ry="13.5" fill="#26282B" opacity="0.2" filter="url(#b12)"/><rect x="279" y="399" width="156" height="111" rx="33" fill="#2B2D30" /><rect x="297" y="414" width="45" height="30" rx="13.5" fill="#54575C" opacity="0.8"/><rect x="465" y="399" width="156" height="111" rx="33" fill="#2B2D30" /><rect x="483" y="414" width="45" height="30" rx="13.5" fill="#54575C" opacity="0.8"/><path d="M 432 426 Q 450 408 468 426" fill="none" stroke="#2B2D30" stroke-width="12"/><line x1="279" y1="420" x2="213" y2="447" stroke="#2B2D30" stroke-width="13.5" stroke-linecap="round"/><line x1="621" y1="420" x2="687" y2="447" stroke="#2B2D30" stroke-width="13.5" stroke-linecap="round"/></svg>
+</defs>
+<defs>
+</defs>
+<rect width="900" height="900" fill="#E9E6E0"/>
+<rect x="90" y="120" width="720" height="660" fill="#F3F1EC"/>
+<line x1="450" y1="120" x2="450" y2="780" stroke="#DEDAD3" stroke-width="6"/>
+<line x1="130" y1="200" x2="410" y2="200" stroke="#DEDAD3" stroke-width="8"/>
+<line x1="490" y1="200" x2="770" y2="200" stroke="#DEDAD3" stroke-width="8"/>
+<line x1="130" y1="290" x2="410" y2="290" stroke="#DEDAD3" stroke-width="8"/>
+<line x1="490" y1="290" x2="770" y2="290" stroke="#DEDAD3" stroke-width="8"/>
+<line x1="130" y1="380" x2="410" y2="380" stroke="#DEDAD3" stroke-width="8"/>
+<line x1="490" y1="380" x2="770" y2="380" stroke="#DEDAD3" stroke-width="8"/>
+<line x1="130" y1="470" x2="410" y2="470" stroke="#DEDAD3" stroke-width="8"/>
+<line x1="490" y1="470" x2="770" y2="470" stroke="#DEDAD3" stroke-width="8"/>
+<line x1="130" y1="560" x2="410" y2="560" stroke="#DEDAD3" stroke-width="8"/>
+<line x1="490" y1="560" x2="770" y2="560" stroke="#DEDAD3" stroke-width="8"/>
+<line x1="130" y1="650" x2="410" y2="650" stroke="#DEDAD3" stroke-width="8"/>
+<line x1="490" y1="650" x2="770" y2="650" stroke="#DEDAD3" stroke-width="8"/>
+<ellipse cx="450" cy="516" rx="180" ry="13.5" fill="#26282B" opacity="0.2" filter="url(#b12)"/>
+<rect x="279" y="399" width="156" height="111" rx="33" fill="#2B2D30" />
+<rect x="297" y="414" width="45" height="30" rx="13.5" fill="#54575C" opacity="0.8"/>
+<rect x="465" y="399" width="156" height="111" rx="33" fill="#2B2D30" />
+<rect x="483" y="414" width="45" height="30" rx="13.5" fill="#54575C" opacity="0.8"/>
+<path d="M 432 426 Q 450 408 468 426" fill="none" stroke="#2B2D30" stroke-width="12"/>
+<line x1="279" y1="420" x2="213" y2="447" stroke="#2B2D30" stroke-width="13.5" stroke-linecap="round"/>
+<line x1="621" y1="420" x2="687" y2="447" stroke="#2B2D30" stroke-width="13.5" stroke-linecap="round"/>
+</svg>
