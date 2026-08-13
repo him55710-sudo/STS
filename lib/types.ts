@@ -81,10 +81,14 @@ export interface Creator {
   verified?: boolean;
 }
 
-/** 데모 로그인 세션 */
+/** 로그인 세션 (Google=Supabase OAuth, kakao=데모) */
 export interface SessionUser {
   name: string;
   provider: "google" | "kakao";
+  /** OAuth 로그인 시 제공 (데모 로그인은 없음) */
+  email?: string;
+  /** 프로필 사진 URL (Google 계정 사진 등) */
+  avatarUrl?: string;
 }
 
 /** 이벤트 taxonomy — 사업계획서 §10 */

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 import TabBar from "@/components/TabBar";
+import SupabaseAuthProvider from "@/components/SupabaseAuthProvider";
 
 export const metadata: Metadata = {
   title: "STS — See it. Tap it. Shop it.",
@@ -26,14 +27,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body>
-        {/* 모바일: 폰 폭 컬럼 + 하단 탭바 / 데스크톱(lg+): 좌측 사이드바 + 넓은 콘텐츠 (SEEIT web layout) */}
-        <div className="mx-auto flex min-h-dvh w-full max-w-[1180px] justify-center">
-          <Sidebar />
-          <div className="min-h-dvh w-full max-w-[430px] bg-bg sm:border-x sm:border-line lg:max-w-[660px]">
-            <main className="pb-[76px] lg:pb-10">{children}</main>
-            <TabBar />
+        <SupabaseAuthProvider>
+          {/* 모바일: 폰 폭 컬럼 + 하단 탭바 / 데스크톱(lg+): 좌측 사이드바 + 넓은 콘텐츠 (SEEIT web layout) */}
+          <div className="mx-auto flex min-h-dvh w-full max-w-[1180px] justify-center">
+            <Sidebar />
+            <div className="min-h-dvh w-full max-w-[430px] bg-bg sm:border-x sm:border-line lg:max-w-[660px]">
+              <main className="pb-[76px] lg:pb-10">{children}</main>
+              <TabBar />
+            </div>
           </div>
-        </div>
+        </SupabaseAuthProvider>
       </body>
     </html>
   );
