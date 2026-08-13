@@ -26,7 +26,7 @@ Content view → Object tap → Product card → Outbound purchase → Creator r
 |---|---|
 | Web | Next.js 16 (App Router) + TypeScript + Tailwind CSS v4 |
 | 상태 | Zustand (localStorage persist) |
-| AI 탐지 | Gemini (`/api/detect`, 서버 라우트) — 키 없으면 mock fallback |
+| AI 탐지 | 1) Gemini(`/api/detect`, 키 설정 시) 2) 온디바이스 SSDLite MobileNetV2(TF.js, 셀프호스팅) 3) mock — 3단 폴백 |
 | 이벤트 | 자체 event taxonomy (asset_view / object_tap / card_open / outbound_click …) |
 | 배포 | Vercel |
 
