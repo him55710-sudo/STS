@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { letsurKey, letsurKeyRaw, letsurModel, configuredBase, probeAll, probeChat, probeManagement, letsurManagementKey, keyWarning, sanitizeKey, configuredAuthStyle, probeDiagnostic, interpretDiagnostic } from "@/lib/llm/letsur";
+import { letsurKey, letsurKeyRaw, letsurModel, configuredBase, probeAll, probeChat, probeManagement, letsurManagementKey, keyWarning, sanitizeKey, configuredAuthStyle, probeDiagnostic, interpretDiagnostic, probeBasePathSweep, interpretSweep } from "@/lib/llm/letsur";
 import { providerChain, visionJson, extractJson } from "@/lib/llm";
 import { isNaverConfigured, searchImages } from "@/lib/naver/api-hub";
 
@@ -144,8 +144,22 @@ export async function GET(req: NextRequest) {
       const diag = await probeDiagnostic(key);
       body.diagnostic = diag;
       body.diagnosis = interpretDiagnostic(diag);
+
+      // 대조군이 전부 같으면 경로 문제인지 차단인지 한 번 더 가른다
+      const allSame = new Set(diag.map((d) => `${d.status}|${d.body}`)).size === 1;
+      if (allSame) {
+        const sweep = await probeBasePathSweep();
+        body.basePathSweep = sweep;
+        body.sweepDiagnosis = interpretSweep(sweep);
+      }
     }
   }
+
+  // 환경변수 **이름만** 노출 — 값은 절대 노출하지 않는다.
+  // "분명히 넣었는데 미설정으로 나온다" 상황의 원인(오타·다른 이름·미재배포)을 가르기 위함.
+  body.envKeysPresent = Object.keys(process.env)
+    .filter((k) => /^(LETSUR|NAVER|GEMINI|LLM)_/.test(k))
+    .sort();
 
   const mgmt = await probeManagement();
   if (mgmt.length > 0) body.managementProbes = mgmt;

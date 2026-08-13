@@ -358,6 +358,52 @@ export async function probeDiagnostic(key?: string): Promise<DiagnosticProbe[]> 
   return Promise.all(probes);
 }
 
+/**
+ * base path 스윕 — "경로가 틀렸나, 아니면 문 앞에서 막혔나"를 가른다.
+ *
+ * 실측: `/v1/models` 와 **존재하지 않는 경로**가 똑같이 `403 ForbiddenException`.
+ * AWS API Gateway는 보통 없는 경로에 `MissingAuthenticationTokenException` 을 주므로,
+ * 모든 경로가 동일한 Forbidden 이라는 건 요청이 라우팅 이전 단계에서 잘린다는 뜻이다
+ * (커스텀 도메인 base-path 매핑 부재 / 리소스 정책 / WAF·IP 허용목록).
+ *
+ * 아래 경로들은 **지식이 아니라 추측**이다. 목적은 "어떤 경로가 맞다"를 찾는 게 아니라
+ * **응답 서명이 달라지는 지점이 하나라도 있는지** 보는 것이다.
+ *   - 전부 동일 → 경로 문제가 아님. 호출 주체가 차단됨 (Letsur 측 설정 필요)
+ *   - 하나라도 다름 → 그 지점이 실제 라우트. base URL을 그 값으로 고정하면 됨
+ */
+export async function probeBasePathSweep(): Promise<DiagnosticProbe[]> {
+  const host = "https://api.letsur.ai";
+  const paths = [
+    "/",
+    "/v1/models",
+    "/models",
+    "/api/v1/models",
+    "/openai/v1/models",
+    "/serving/v1/models",
+  ];
+  return Promise.all(
+    paths.map((p) => runProbe(`sweep ${p}`, `${host}${p}`, { "Content-Type": "application/json" }))
+  );
+}
+
+/** 스윕 결과 판정 — 서명이 전부 같은지 본다 */
+export function interpretSweep(probes: DiagnosticProbe[]): string {
+  const sigs = new Set(probes.map((p) => `${p.status}|${p.amznErrorType ?? ""}|${p.body}`));
+  if (sigs.size === 1) {
+    return (
+      "이 호스트의 **모든 경로**가 동일하게 거부됩니다(루트 `/` 포함). " +
+      "경로를 바꿔서 해결될 문제가 아닙니다 — 호출 주체가 게이트웨이 앞단에서 차단되고 있습니다. " +
+      "Letsur 측에서 (a) 이 API 키에 연결된 엔드포인트 주소, (b) 호출 IP 허용목록 등록 여부를 확인해야 합니다."
+    );
+  }
+  const odd = probes.filter(
+    (p) => `${p.status}|${p.amznErrorType ?? ""}|${p.body}` !== `${probes[0].status}|${probes[0].amznErrorType ?? ""}|${probes[0].body}`
+  );
+  return `응답이 다른 경로가 있습니다: ${odd
+    .map((p) => `${p.url} → ${p.status} ${p.amznErrorType ?? ""}`)
+    .join(" / ")}. 이 지점이 실제 라우트일 가능성이 높습니다.`;
+}
+
 /** 대조군 결과를 사람이 읽을 수 있는 판정으로 */
 export function interpretDiagnostic(probes: DiagnosticProbe[]): string {
   const by = (c: string) => probes.find((p) => p.case === c);
