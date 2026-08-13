@@ -11,14 +11,27 @@ export const maxDuration = 30;
 
 const MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash";
 
-const PROMPT = `You are a visual commerce tagging engine. Detect every distinct purchasable product visible in this image (clothing items, shoes, bags, accessories, furniture, home decor, electronics, beauty products, etc.).
+/**
+ * Fashion-aware detection prompt (fashion_v2) — 온톨로지 기반.
+ * 대형(의류) / 중형(신발·가방·모자·벨트·안경) / 소형(시계·팔찌·목걸이·귀걸이·반지)을
+ * 크기와 무관하게 각각 독립 객체로 요구하고, tight box를 강제한다.
+ */
+const PROMPT = `You are a visual commerce tagging engine for fashion content. Detect every distinct purchasable item visible in this image.
+
+Detect ALL of these when visible, each as its own object:
+- Garments: shirt, t-shirt, knit, blouse, hoodie, sweatshirt / jacket, blazer, coat, cardigan, fleece / pants, jeans, trousers, shorts / skirt, dress
+- Footwear: each pair of shoes, sneakers, loafers, boots, sandals, clogs (one object for the pair)
+- Bags: handbag, shoulder bag, crossbody bag, backpack, tote
+- Accessories (do NOT skip these even if small): hat, cap, glasses, sunglasses, belt, scarf, watch, bracelet, necklace, earrings, ring
+- Non-fashion products if present: furniture, home decor, electronics, beauty products
 
 Rules:
-- Detect the products a shopper could buy, not people or background architecture.
-- Separate items worn together (coat / shirt / pants / shoes / bag are each their own object).
-- Max 8 objects, most prominent first.
-- box_2d is [ymin, xmin, ymax, xmax] on a 0-1000 scale.
-- labelKo is a short Korean shopping label (e.g. "울 코트", "세라믹 머그").
+- Products only — never the person, body parts, or background architecture.
+- Layered items are separate objects (jacket AND the shirt under it AND pants AND shoes AND bag).
+- box_2d must be TIGHT around the item itself: [ymin, xmin, ymax, xmax] on a 0-1000 scale. A top ends at the waist; pants start at the waist; do not extend a garment box over the whole body.
+- Small accessories (watch, jewelry): include them even at low confidence; use a small tight box.
+- Max 10 objects, most prominent first.
+- label is a short English item name; labelKo is a short Korean shopping label (e.g. "울 코트", "가죽 시계").
 - category is one of: fashion, beauty, interior, tech, lifestyle.
 - confidence is 0~1.`;
 
@@ -59,9 +72,10 @@ export async function POST(req: NextRequest) {
   }
 
   const key = process.env.GEMINI_API_KEY;
-  if (!key) {
-    return NextResponse.json({ objects: MOCK, source: "mock" });
+  if (!key || process.env.VISION_PIPELINE === "legacy") {
+    return NextResponse.json({ objects: MOCK, source: "mock", pipelineVersion: "legacy" });
   }
+  const t0 = Date.now();
 
   const [meta, data] = image.split(",", 2);
   const mimeType = meta.slice(5, meta.indexOf(";"));
@@ -102,7 +116,7 @@ export async function POST(req: NextRequest) {
 
     const objects: DetectedObject[] = raw
       .filter((o) => Array.isArray(o.box_2d) && o.box_2d.length === 4)
-      .slice(0, 8)
+      .slice(0, 10)
       .map((o) => {
         const [ymin, xmin, ymax, xmax] = o.box_2d;
         return {
@@ -116,12 +130,17 @@ export async function POST(req: NextRequest) {
           confidence: clamp(o.confidence ?? 0.5),
         };
       })
-      .filter((o) => o.w > 0.02 && o.h > 0.02);
+      // 소형 액세서리(시계 등)를 위해 최소 크기 하한을 낮게 유지
+      .filter((o) => o.w > 0.008 && o.h > 0.008);
 
-    return NextResponse.json({ objects, source: "gemini" });
+    console.log(
+      `[vision] gemini detect ${objects.length} objects in ${Date.now() - t0}ms:`,
+      objects.map((o) => o.label).join(", ")
+    );
+    return NextResponse.json({ objects, source: "gemini", pipelineVersion: "fashion_v2" });
   } catch {
     // AI 실패는 사용자 흐름을 막지 않는다 — mock으로 계속 진행 (PRD §56)
-    return NextResponse.json({ objects: MOCK, source: "fallback" });
+    return NextResponse.json({ objects: MOCK, source: "fallback", pipelineVersion: "legacy" });
   }
 }
 

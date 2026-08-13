@@ -95,3 +95,20 @@
 - **비고**: SSDLite는 밀착된 소형 오브젝트(크로스백·손목시계)를 놓칠 수 있음 —
   화면 탭으로 수동 추가하는 기존 UX가 보완. 정밀도가 더 필요하면
   Fashionpedia 계열 패션 특화 모델(ONNX 변환 필요) 또는 Vercel 환경변수 `GEMINI_API_KEY` 설정이 다음 단계.
+
+## Cycle 7 — fashion_v2: 실루엣 마스크 파이프라인 (bbox → object shape)
+- **Plan**: 탭 하이라이트가 사각형이 아니라 실제 옷/물건의 윤곽을 따라가야 한다.
+  GPU·Python 스택 불가 환경(Vercel 서버리스 + 브라우저)에서 instance segmentation 달성.
+- **Do**: 상세는 docs/VISION.md.
+  Gemini 온톨로지 박스 탐지(시계·주얼리 포함) + MediaPipe 온디바이스 세그멘테이션
+  (InteractiveSegmenter 포인트 프롬프트 = SAM 역할, selfie_multiclass = human parsing 역할)
+  → mask fusion(클래스별 semantic prior·확장 박스·좌우 분할) → contour→simplify→
+  ≤48정점 폴리곤 → SVG 실루엣 하이라이트 + point-in-polygon 히트테스트(액세서리 우선).
+- **Check** (실측, tests/vision/benchmark.js):
+  - overall recall 55%→**86%**, watch recall 0%→67%, 실루엣률 0%→**96%**
+  - look1 기하 검증: 셔츠/청바지/시계 polygon bounds가 실측 GT와 일치, 가방은 스트랩 포함
+  - Gemini 네이티브 segmentation은 실증 후 기각(174s+토큰 잘림) — 아키텍처 결정 근거 확보
+  - 키 없는 폴백(coco-ssd+마스크), 마스크 실패 시 bbox 강등, mock까지 4단 fallback 전부 동작 확인
+- **Act**: 신발 페어 한 짝만 잡히는 문제 → 2-컴포넌트 좌/우 인스턴스 분할로 해결.
+  가방 마스크 느슨 → others(착용물체) semantic prior 우선 규칙 추가로 해결.
+  남은 이슈는 VISION.md §6 (Gemini 분산, 다인 personId, 영상 트래킹).

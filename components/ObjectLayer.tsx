@@ -3,11 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ObjectTag } from "@/lib/types";
 import { useApp } from "@/lib/store";
+import { pointInPolygon, polygonCentroid } from "@/lib/mask/geometry";
+import { canonicalClass, INTERACTION_PRIORITY, type FashionClass } from "@/lib/vision-config";
 
 /**
  * Object Interaction UX — PRD §12
  * Idle: 아무 표시 없음 → First tap: 600~900ms 은은한 하이라이트 → Object tap: 선택 + Bottom Sheet
- * Bounding box 대신 mask(accent 7~10%) + 1~1.5px outline (PRD §39)
+ * fashion_v2: polygon(실루엣)이 있으면 실제 object shape로 하이라이트/히트테스트,
+ * 없으면 bbox mask + 1~1.5px outline로 강등 (PRD §39 — detection box 금지)
  */
 export default function ObjectLayer({
   postId,
@@ -33,14 +36,25 @@ export default function ObjectLayer({
       const r = el.getBoundingClientRect();
       const x = (clientX - r.left) / r.width;
       const y = (clientY - r.top) / r.height;
-      // tap target은 넉넉하게 — 영역을 6%씩 확장해 작은 객체도 선택 가능 (사업계획서 §17)
+      // tap target은 넉넉하게 — bbox를 3%씩 확장해 작은 객체도 선택 가능 (사업계획서 §17)
       const pad = 0.03;
-      const hits = objects.filter(
-        (o) => x >= o.x - pad && x <= o.x + o.w + pad && y >= o.y - pad && y <= o.y + o.h + pad
-      );
+      const hits = objects.filter((o) => {
+        if (o.polygon && o.polygon.length >= 3) {
+          // 실루엣 정밀 히트 — 폴리곤 내부이거나, 작은 객체는 bbox 확장 범위도 허용
+          if (pointInPolygon(x, y, o.polygon)) return true;
+          const small = o.w * o.h < 0.02;
+          return small && x >= o.x - pad && x <= o.x + o.w + pad && y >= o.y - pad && y <= o.y + o.h + pad;
+        }
+        return x >= o.x - pad && x <= o.x + o.w + pad && y >= o.y - pad && y <= o.y + o.h + pad;
+      });
       if (hits.length === 0) return null;
-      // 겹칠 경우 가장 작은 객체 우선 (셔츠 위의 백 등)
-      return hits.sort((a, b) => a.w * a.h - b.w * b.h)[0];
+      // 겹칠 경우: 액세서리 > 패션 아이템 > 기타 (INTERACTION_PRIORITY), 동순위면 작은 것 우선
+      return hits.sort((a, b) => {
+        const pa = INTERACTION_PRIORITY[(a.canonicalClass as FashionClass) || canonicalClass(a.label)] ?? 50;
+        const pb = INTERACTION_PRIORITY[(b.canonicalClass as FashionClass) || canonicalClass(b.label)] ?? 50;
+        if (pa !== pb) return pb - pa;
+        return a.w * a.h - b.w * b.h;
+      })[0];
     },
     [objects]
   );
@@ -70,54 +84,82 @@ export default function ObjectLayer({
       {children}
 
       {/* Hint highlight — 850ms 후 자동 소멸 */}
-      {hintAt > 0 &&
-        objects.map((o) => (
-          <div
-            key={`hint-${o.id}-${hintAt}`}
-            className="object-hint pointer-events-none absolute rounded-[6px]"
-            style={{
-              left: `${o.x * 100}%`,
-              top: `${o.y * 100}%`,
-              width: `${o.w * 100}%`,
-              height: `${o.h * 100}%`,
-              background: "color-mix(in srgb, var(--color-accent) 9%, transparent)",
-              boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 55%, white)",
-            }}
-          >
-            <Dot />
-          </div>
-        ))}
+      {hintAt > 0 && (
+        <ShapeOverlay key={`hint-${hintAt}`} objects={objects} variant="hint" />
+      )}
 
       {/* Selected outline — 선택된 객체만 유지 */}
-      {objects
-        .filter((o) => o.id === selectedId)
-        .map((o) => (
-          <div
-            key={`sel-${o.id}`}
-            className="fade-in pointer-events-none absolute rounded-[6px]"
-            style={{
-              left: `${o.x * 100}%`,
-              top: `${o.y * 100}%`,
-              width: `${o.w * 100}%`,
-              height: `${o.h * 100}%`,
-              background: "color-mix(in srgb, var(--color-accent) 8%, transparent)",
-              boxShadow:
-                "inset 0 0 0 1.5px color-mix(in srgb, var(--color-accent) 85%, white), 0 0 0 1px rgba(255,255,255,0.35)",
-            }}
-          >
-            <Dot active />
-          </div>
-        ))}
+      <ShapeOverlay objects={objects.filter((o) => o.id === selectedId)} variant="selected" />
+    </div>
+  );
+}
+
+/**
+ * 실루엣/박스 하이라이트 오버레이.
+ * polygon이 있으면 SVG path(실제 object shape), 없으면 rounded rect.
+ */
+function ShapeOverlay({ objects, variant }: { objects: ObjectTag[]; variant: "hint" | "selected" }) {
+  if (objects.length === 0) return null;
+  const hint = variant === "hint";
+  const fillOpacity = hint ? 0.09 : 0.1;
+  const strokeWidth = hint ? 1 : 1.5;
+
+  return (
+    <div className={`pointer-events-none absolute inset-0 ${hint ? "object-hint" : "fade-in"}`}>
+      <svg
+        className="absolute inset-0 h-full w-full"
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
+      >
+        {objects.map((o) =>
+          o.polygon && o.polygon.length >= 3 ? (
+            <path
+              key={o.id}
+              d={`M ${o.polygon.map(([px, py]) => `${(px * 100).toFixed(2)} ${(py * 100).toFixed(2)}`).join(" L ")} Z`}
+              fill="var(--color-accent)"
+              fillOpacity={fillOpacity}
+              stroke={`color-mix(in srgb, var(--color-accent) ${hint ? 55 : 85}%, white)`}
+              strokeOpacity={0.95}
+              strokeWidth={strokeWidth}
+              strokeLinejoin="round"
+              vectorEffect="non-scaling-stroke"
+            />
+          ) : (
+            <rect
+              key={o.id}
+              x={o.x * 100}
+              y={o.y * 100}
+              width={o.w * 100}
+              height={o.h * 100}
+              rx={1.2}
+              fill="var(--color-accent)"
+              fillOpacity={fillOpacity}
+              stroke={`color-mix(in srgb, var(--color-accent) ${hint ? 55 : 85}%, white)`}
+              strokeWidth={strokeWidth}
+              vectorEffect="non-scaling-stroke"
+            />
+          )
+        )}
+      </svg>
+      {objects.map((o) => {
+        const [cx, cy] =
+          o.polygon && o.polygon.length >= 3
+            ? polygonCentroid(o.polygon)
+            : [o.x + o.w / 2, o.y + o.h / 2];
+        return <Dot key={`dot-${o.id}`} x={cx} y={cy} active={!hint} />;
+      })}
     </div>
   );
 }
 
 /** 작은 product indicator dot */
-function Dot({ active }: { active?: boolean }) {
+function Dot({ x, y, active }: { x: number; y: number; active?: boolean }) {
   return (
     <span
-      className="object-dot absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+      className="object-dot absolute -translate-x-1/2 -translate-y-1/2"
       style={{
+        left: `${x * 100}%`,
+        top: `${y * 100}%`,
         width: active ? 18 : 16,
         height: active ? 18 : 16,
         borderRadius: 999,

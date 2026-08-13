@@ -34,6 +34,7 @@ export default function CreatePage() {
   const { addUserPost, addCustomProduct, track } = useApp();
 
   const [step, setStep] = useState<Step>("select");
+  const [stage, setStage] = useState<"detect" | "mask">("detect");
   const [image, setImage] = useState<string | null>(null);
   const [ratio, setRatio] = useState(0.75);
   const [objects, setObjects] = useState<DraftObject[]>([]);
@@ -124,6 +125,27 @@ export default function CreatePage() {
       }
     }
 
+    // ── 실루엣 마스크 스테이지 (fashion_v2) ──
+    // 탐지된 bbox마다 온디바이스 세그멘테이션으로 실제 object shape 추출.
+    // 실패해도 bbox로 자연 강등 — 전체 흐름은 절대 막지 않는다.
+    if (detected.length > 0 && process.env.NEXT_PUBLIC_VISION_PIPELINE !== "legacy") {
+      setStage("mask");
+      try {
+        const { extractSilhouettes } = await import("@/lib/mask/client-engine");
+        detected = await Promise.race([
+          extractSilhouettes(dataUrl, detected, (info) => {
+            if (typeof window !== "undefined" && window.localStorage.getItem("VISION_DEBUG")) {
+              console.table(info.timings);
+              console.log("[vision] mask sources:", info.maskSources);
+            }
+          }),
+          new Promise<never>((_, rej) => setTimeout(() => rej(new Error("mask timeout")), 30000)),
+        ]);
+      } catch {
+        // 마스크 실패 → bbox 유지
+      }
+    }
+
     setAiSource(source);
     setObjects(
       detected.map((o) => ({
@@ -134,6 +156,7 @@ export default function CreatePage() {
       }))
     );
     setSelectedId(null);
+    setStage("detect");
     setStep("review");
   };
 
@@ -203,6 +226,8 @@ export default function CreatePage() {
         y: o.y,
         w: o.w,
         h: o.h,
+        polygon: o.polygon,
+        canonicalClass: o.canonicalClass,
         productId: o.productId,
         exactness: o.exactness,
         confidence: o.confidence,
@@ -300,7 +325,9 @@ export default function CreatePage() {
           </div>
           <div className="mt-5 flex items-center justify-center gap-2.5">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
-            <p className="text-[14px] text-ink-2">오브제를 찾고 있어요...</p>
+            <p className="text-[14px] text-ink-2">
+              {stage === "mask" ? "실루엣을 추출하고 있어요..." : "오브제를 찾고 있어요..."}
+            </p>
           </div>
           <p className="mt-2 text-center text-[11.5px] text-ink-2">
             첫 분석은 AI 모델 준비로 몇 초 더 걸릴 수 있어요
@@ -314,29 +341,51 @@ export default function CreatePage() {
           <div ref={imgRef} className="relative cursor-crosshair select-none" onClick={addObjectAt}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={image} alt="" className="w-full" />
+            {/* 실루엣(polygon) 우선, 없으면 bbox — fashion_v2 */}
+            <svg
+              className="pointer-events-none absolute inset-0 h-full w-full"
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
+            >
+              {objects.map((o) => {
+                const sel = o.id === selectedId;
+                const common = {
+                  fill: "var(--color-accent)",
+                  fillOpacity: sel ? 0.13 : 0.06,
+                  stroke: sel
+                    ? "var(--color-accent)"
+                    : "color-mix(in srgb, var(--color-accent) 45%, white)",
+                  strokeWidth: sel ? 1.5 : 1,
+                  vectorEffect: "non-scaling-stroke" as const,
+                };
+                return o.polygon && o.polygon.length >= 3 ? (
+                  <path
+                    key={o.id}
+                    d={`M ${o.polygon.map(([px, py]) => `${(px * 100).toFixed(2)} ${(py * 100).toFixed(2)}`).join(" L ")} Z`}
+                    strokeLinejoin="round"
+                    {...common}
+                  />
+                ) : (
+                  <rect
+                    key={o.id}
+                    x={o.x * 100}
+                    y={o.y * 100}
+                    width={o.w * 100}
+                    height={o.h * 100}
+                    rx={1.2}
+                    {...common}
+                  />
+                );
+              })}
+            </svg>
             {objects.map((o, i) => (
-              <div
-                key={o.id}
-                className="absolute rounded-[6px] transition-shadow"
-                style={{
-                  left: `${o.x * 100}%`,
-                  top: `${o.y * 100}%`,
-                  width: `${o.w * 100}%`,
-                  height: `${o.h * 100}%`,
-                  background:
-                    o.id === selectedId
-                      ? "color-mix(in srgb, var(--color-accent) 12%, transparent)"
-                      : "color-mix(in srgb, var(--color-accent) 6%, transparent)",
-                  boxShadow:
-                    o.id === selectedId
-                      ? "inset 0 0 0 1.5px var(--color-accent)"
-                      : "inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 45%, white)",
-                }}
+              <span
+                key={`n-${o.id}`}
+                className="absolute flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-ink text-[10px] font-bold text-surface"
+                style={{ left: `${o.x * 100}%`, top: `${o.y * 100}%` }}
               >
-                <span className="absolute -left-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-ink text-[10px] font-bold text-surface">
-                  {i + 1}
-                </span>
-              </div>
+                {i + 1}
+              </span>
             ))}
           </div>
 

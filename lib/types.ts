@@ -32,6 +32,14 @@ export interface ObjectTag {
   y: number;
   w: number;
   h: number;
+  /**
+   * 실루엣 폴리곤 (normalized, ≤48 vertices) — fashion_v2 파이프라인 산출물.
+   * 있으면 UI는 bbox 대신 실제 object shape로 하이라이트·히트테스트한다.
+   * 없으면 bbox로 자연 강등 (하위호환).
+   */
+  polygon?: [number, number][];
+  /** canonical fashion class (vision-config FASHION_ONTOLOGY 기준) */
+  canonicalClass?: string;
   /** 연결 상품. null = Unlinked Object (PRD §58 방법 4) */
   productId: string | null;
   exactness: Exactness;
@@ -107,4 +115,8 @@ export interface DetectedObject {
   confidence: number;
   /** 탐지 영역의 평균 색 (#rrggbb) — 후보 랭킹의 색상 유사도에 사용 */
   tone?: string;
+  /** 실루엣 폴리곤 (normalized) — 마스크 엔진이 추출 성공 시 */
+  polygon?: [number, number][];
+  /** canonical fashion class */
+  canonicalClass?: string;
 }
