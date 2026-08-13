@@ -21,6 +21,8 @@ interface AppState {
 
   signIn: (user: SessionUser) => void;
   signOut: () => void;
+  /** 로그인 상태에서 프로필 일부 필드만 갱신 (프로필 편집·동기화용) */
+  updateUser: (patch: Partial<SessionUser>) => void;
   addCustomProduct: (p: Product) => void;
   toggleSaveProduct: (id: string) => void;
   toggleSavePost: (id: string) => void;
@@ -48,6 +50,8 @@ export const useApp = create<AppState>()(
 
       signIn: (user) => set({ user }),
       signOut: () => set({ user: null }),
+      updateUser: (patch) =>
+        set((s) => (s.user ? { user: { ...s.user, ...patch } } : {})),
       addCustomProduct: (p) => set((s) => ({ customProducts: [...s.customProducts, p] })),
       toggleSaveProduct: (id) => {
         const has = get().savedProducts.includes(id);
