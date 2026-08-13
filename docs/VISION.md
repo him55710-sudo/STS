@@ -365,3 +365,50 @@ v3까지 웹 후보의 재랭킹은 `visual = 0` 이었다(`RANK_WEIGHTS.visual 
   → 프로덕션 `/api/vision-health` 응답으로만 판정 가능하다.
 - 회귀: 카탈로그 retrieval 벤치마크 Recall@1 96% / @3 100% / @5 100% / MRR 0.981 유지
   (네이버 미설정 시 graceful fallback = 카탈로그 전용, 기존 동작과 동일).
+
+---
+
+# Letsur 연동 — 실측 판정 (미해결, 원인 확정)
+
+## 실측 결과 (프로덕션 `/api/vision-health`)
+호출 조건을 10가지로 바꿔 `api.letsur.ai` 를 때렸다. **전부 동일한 응답**이다.
+
+| 조건 | 결과 |
+|---|---|
+| `/v1/models` + Bearer(서비스 키 `sk-…`) | 403 `ForbiddenException` |
+| `/v1/models` + `x-api-key` | 403 `ForbiddenException` |
+| `/v1/chat/completions` + Bearer / `x-api-key` | 403 `ForbiddenException` |
+| `/v1/models` + **관리 키 `mk_…`** | 403 `ForbiddenException` |
+| `/v1/models` + **가짜 키** | 403 `ForbiddenException` |
+| `/v1/models` + **인증 헤더 없음** | 403 `ForbiddenException` |
+| `/v1/__no_such_route__` (없는 경로) | 403 `ForbiddenException` |
+| `/`, `/models`, `/api/v1/models`, `/openai/v1/models`, `/serving/v1/models` | 403 `ForbiddenException` |
+
+## 판정
+**키 문제가 아니다.** 근거:
+1. 서로 다른 두 개의 실제 키, 가짜 키, 무인증이 **모두 같은 응답**을 받는다.
+   키가 검증 단계까지 도달하지 못한다는 뜻이다.
+2. **존재하지 않는 경로**도 같은 응답이다. AWS API Gateway는 없는 경로에
+   `MissingAuthenticationTokenException` 을 주는 것이 정상이므로,
+   요청이 라우팅 이전 단계에서 잘리고 있다.
+3. **루트 `/` 까지** 동일하다. 경로를 바꿔 해결될 문제가 아니다.
+
+→ 남은 가능성은 세 가지이고, 전부 **Letsur 측 정보/설정**이 있어야 풀린다:
+   (a) 호출 IP 허용목록 — Vercel 서버리스 IP가 등록되지 않음
+   (b) `api.letsur.ai` 가 이 계정의 API 호스트가 아님 (주소 자체가 다름)
+   (c) 키가 이 게이트웨이의 사용 계획에 연결되지 않음
+
+`https://api.letsur.ai/v1` 은 **내가 probe 결과로 추론한 값**이지 Letsur 문서로 확인한
+값이 아니다. 위 실측으로 그 추론은 근거를 잃었다. 다른 주소를 **추측해서 넣지 않는다.**
+
+## 필요한 정보 (Letsur 콘솔/문서에서)
+1. Chat/Completions **엔드포인트 전체 URL**
+2. **인증 헤더 이름**과 형식
+3. 사용 가능한 **모델 ID** (현재 기본값 `gpt-4o` 는 자리표시자다)
+4. 호출 IP 허용목록 등록이 필요한지
+
+이 셋이 오면 `lib/llm/letsur.ts` 어댑터의 상수만 교체하면 된다. 나머지 파이프라인은 그대로다.
+
+## 현재 서비스 영향: 없음
+`activeChain: ["letsur","gemini"]` 이고 Gemini 키가 설정돼 있어 자동 승격된다.
+Letsur 활성화는 provider 교체 건이지 기능 차단 요인이 아니다.
