@@ -258,3 +258,39 @@ attributes·생성 쿼리·top5 후보 score breakdown.
 1. **Gemini 유료 티어 전환** — 탐지 정확도 문제의 대부분이 쿼터 폴백에서 발생.
 2. **Naver Developers 앱 등록(무료)** → NAVER_CLIENT_ID/SECRET을 Vercel 환경변수에 추가
    → 실판매 상품 검색 + 상품 이미지 즉시 활성화.
+
+---
+
+# fashion_v3.2 — LLM Provider 추상화 (Letsur 전환)
+
+## 구조
+```
+app/api/detect, app/api/product-search
+        │  (provider 중립 JSON 계약)
+        ▼
+lib/llm/index.ts   providerChain(): Letsur → Gemini  (LLM_PROVIDER 로 강제 지정 가능)
+        ├─ lib/llm/letsur.ts   OpenAI 호환 /chat/completions (image_url 멀티모달)
+        │                      base URL: LETSUR_BASE_URL, 없으면 표준 후보 자동 probe + 메모리 캐시
+        └─ lib/llm/gemini.ts   기존 Gemini (폴백으로 유지)
+```
+- Gemini `responseSchema` 의존을 제거하고 **프롬프트 기반 JSON 계약**으로 교체 →
+  어떤 OpenAI 호환 provider든 동일 파이프라인에서 동작. 파서는 배열/`{objects:[]}` 양쪽 수용.
+- 실패 분류(`ok/quota/auth/unavailable/error`)로 폴백 판단 → 한 provider가 죽어도 흐름 유지.
+- 시크릿은 서버 라우트에서만 사용, 응답에는 마스킹된 접두사만 노출.
+
+## 검증 상태 (정직 보고)
+- **Letsur 실호출 미검증**: 개발 컨테이너의 egress 정책이 `letsur.ai` 를 차단
+  (`403 Host not in allowlist`, `/api/vision-health` 로 재현 확인). 공개 문서도 웹 색인에 없음.
+  → 정확한 base URL·모델 ID를 **추측해 하드코딩하지 않고**, 환경변수 + 자동 probe + 진단
+  엔드포인트로 설계했다. 키 형식(`sk-…`)에 근거해 OpenAI 호환 규약을 가정했으며,
+  실제 규약이 다르면 `lib/llm/letsur.ts` 어댑터만 교체하면 된다.
+- **폴백 체인 실측 확인**: Letsur 차단 → Gemini 승격 → look6에서 6객체 탐지,
+  브랜드 근거 추출 정상(`"small embroidered pony logo on left chest"` → Polo 0.9).
+- 회귀: 실루엣 82~84정점, 신발 2링, 후보 랭킹(라이트워시 진 → Levi's 501) 정상.
+
+## 확인 방법 (배포 후 5초)
+```
+https://sts-mongben.vercel.app/api/vision-health        → baseUrlWorking / availableModels
+https://sts-mongben.vercel.app/api/vision-health?vision=1 → 실제 비전 호출 왕복 검증
+```
+`baseUrlWorking` 이 나오면 그 값을 `LETSUR_BASE_URL`, 비전 지원 모델을 `LETSUR_MODEL` 로 고정.

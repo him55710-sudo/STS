@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { extractJson, visionJson } from "@/lib/llm";
 import type { Category, DetectedObject } from "@/lib/types";
 
-export const maxDuration = 30;
+export const maxDuration = 40;
 
 /**
  * AI Object Detection — 사업계획서 §09 "Detect" 단계.
@@ -9,7 +10,6 @@ export const maxDuration = 30;
  * 없거나 실패하면 데모용 mock 결과를 반환한다 (AI 실패는 정상 상황 — PRD §56).
  */
 
-const MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash";
 
 /**
  * Fashion-aware detection prompt (fashion_v2) — 온톨로지 기반.
@@ -43,52 +43,24 @@ Additionally, for each object extract structured retrieval attributes:
 - distinctiveFeatures: 1-3 short phrases a shopper would use (e.g. "ribbed crewneck", "gum sole", "flap pocket").
 - fit: short fit descriptor if apparent (e.g. "oversized", "slim", "wide leg").`;
 
-const RESPONSE_SCHEMA = {
-  type: "ARRAY",
-  items: {
-    type: "OBJECT",
-    properties: {
-      box_2d: { type: "ARRAY", items: { type: "INTEGER" } },
-      label: { type: "STRING" },
-      labelKo: { type: "STRING" },
-      category: {
-        type: "STRING",
-        enum: ["fashion", "beauty", "interior", "tech", "lifestyle"],
-      },
-      confidence: { type: "NUMBER" },
-      brandCandidates: {
-        type: "ARRAY",
-        items: {
-          type: "OBJECT",
-          properties: {
-            brand: { type: "STRING" },
-            confidence: { type: "NUMBER" },
-            evidence: { type: "ARRAY", items: { type: "STRING" } },
-          },
-          required: ["brand", "confidence", "evidence"],
-        },
-      },
-      pattern: {
-        type: "STRING",
-        enum: ["solid", "stripe", "check", "graphic", "logo", "denim", "other"],
-      },
-      logo: {
-        type: "OBJECT",
-        properties: {
-          detected: { type: "BOOLEAN" },
-          text: { type: "STRING" },
-          description: { type: "STRING" },
-          confidence: { type: "NUMBER" },
-        },
-        required: ["detected", "confidence"],
-      },
-      visibleText: { type: "ARRAY", items: { type: "STRING" } },
-      distinctiveFeatures: { type: "ARRAY", items: { type: "STRING" } },
-      fit: { type: "STRING" },
-    },
-    required: ["box_2d", "label", "labelKo", "category", "confidence"],
-  },
-};
+/**
+ * Provider 중립 JSON 계약 — Gemini responseSchema 의존을 제거하고
+ * 프롬프트로 형식을 강제한다 (OpenAI 호환 provider도 동일하게 동작).
+ */
+const JSON_HINT = `Return ONLY JSON in this exact shape (no markdown fence, no prose):
+{"objects":[{
+  "box_2d":[ymin,xmin,ymax,xmax],          // integers 0-1000, TIGHT around the item
+  "label":"english item name",
+  "labelKo":"짧은 한국어 상품 라벨",
+  "category":"fashion|beauty|interior|tech|lifestyle",
+  "confidence":0.0-1.0,
+  "brandCandidates":[{"brand":"","confidence":0.0-1.0,"evidence":["what you actually see"]}],
+  "pattern":"solid|stripe|check|graphic|logo|denim|other",
+  "logo":{"detected":true|false,"text":"","description":"","confidence":0.0-1.0},
+  "visibleText":[""],
+  "distinctiveFeatures":["ribbed crewneck"],
+  "fit":"oversized|slim|wide leg|..."
+}]}`;
 
 const MOCK: DetectedObject[] = [
   { label: "top", labelKo: "상의", category: "fashion", x: 0.3, y: 0.15, w: 0.4, h: 0.3, confidence: 0.72 },
@@ -108,47 +80,38 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "image dataURL required" }, { status: 400 });
   }
 
-  const key = process.env.GEMINI_API_KEY;
-  if (!key || process.env.VISION_PIPELINE === "legacy") {
+  if (process.env.VISION_PIPELINE === "legacy") {
     return NextResponse.json({ objects: MOCK, source: "mock", pipelineVersion: "legacy" });
   }
   const t0 = Date.now();
 
-  const [meta, data] = image.split(",", 2);
-  const mimeType = meta.slice(5, meta.indexOf(";"));
+  // provider 체인 (Letsur → Gemini) — 어떤 provider든 동일한 JSON 계약을 반환한다
+  const result = await visionJson({
+    imageDataUrl: image,
+    prompt: PROMPT,
+    jsonHint: JSON_HINT,
+    timeoutMs: 30000,
+  });
+
+  if (!result.data) {
+    if (result.status === "quota") {
+      // 쿼터 소진은 일반 실패와 구분해 클라이언트에 알린다 (온디바이스로 계속 진행)
+      console.warn(`[vision] ${result.provider} quota exhausted`);
+      return NextResponse.json({ objects: [], source: "quota", provider: result.provider, pipelineVersion: "fashion_v3" });
+    }
+    if (result.status === "unavailable" && result.provider === "none") {
+      return NextResponse.json({ objects: MOCK, source: "mock", pipelineVersion: "legacy" });
+    }
+    console.warn(`[vision] detect failed: ${result.provider} ${result.status} ${result.detail ?? ""}`);
+    return NextResponse.json({ objects: MOCK, source: "fallback", provider: result.provider, pipelineVersion: "legacy" });
+  }
 
   try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${key}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [{ inlineData: { mimeType, data } }, { text: PROMPT }],
-            },
-          ],
-          generationConfig: {
-            responseMimeType: "application/json",
-            responseSchema: RESPONSE_SCHEMA,
-            temperature: 0.2,
-          },
-        }),
-        signal: AbortSignal.timeout(25000),
-      }
-    );
-    if (res.status === 429) {
-      // 쿼터 소진은 일반 실패와 구분해 클라이언트에 알린다 (온디바이스로 계속 진행)
-      console.warn("[vision] gemini quota exhausted (429)");
-      return NextResponse.json({ objects: [], source: "quota", pipelineVersion: "fashion_v3" });
-    }
-    if (!res.ok) throw new Error(`gemini ${res.status}`);
-    const json = await res.json();
-    const text: string | undefined = json?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) throw new Error("empty response");
-
-    const raw = JSON.parse(text) as Array<{
+    // provider마다 배열 또는 {objects:[...]} 로 감싸 반환할 수 있어 둘 다 수용
+    const parsed = extractJson<unknown>(result.data);
+    const raw = (Array.isArray(parsed)
+      ? parsed
+      : ((parsed as { objects?: unknown[] } | null)?.objects ?? [])) as Array<{
       box_2d: number[];
       label: string;
       labelKo: string;
@@ -191,14 +154,23 @@ export async function POST(req: NextRequest) {
       // 소형 액세서리(시계 등)를 위해 최소 크기 하한을 낮게 유지
       .filter((o) => o.w > 0.008 && o.h > 0.008);
 
+    if (objects.length === 0) throw new Error("no objects parsed");
+
     console.log(
-      `[vision] gemini detect ${objects.length} objects in ${Date.now() - t0}ms:`,
+      `[vision] ${result.provider} detect ${objects.length} objects in ${Date.now() - t0}ms:`,
       objects.map((o) => o.label).join(", ")
     );
-    return NextResponse.json({ objects, source: "gemini", pipelineVersion: "fashion_v2" });
-  } catch {
+    // source는 하위호환을 위해 "gemini"(=정밀 탐지 성공)를 유지하고, provider를 따로 노출한다
+    return NextResponse.json({
+      objects,
+      source: "gemini",
+      provider: result.provider,
+      pipelineVersion: "fashion_v3",
+    });
+  } catch (e) {
     // AI 실패는 사용자 흐름을 막지 않는다 — mock으로 계속 진행 (PRD §56)
-    return NextResponse.json({ objects: MOCK, source: "fallback", pipelineVersion: "legacy" });
+    console.warn(`[vision] parse failed (${result.provider}): ${(e as Error).message}`);
+    return NextResponse.json({ objects: MOCK, source: "fallback", provider: result.provider, pipelineVersion: "legacy" });
   }
 }
 

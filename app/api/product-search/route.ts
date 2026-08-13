@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { extractJson, providerChain, textJson } from "@/lib/llm";
 
 export const maxDuration = 30;
 
@@ -52,12 +53,14 @@ export async function POST(req: NextRequest) {
     if (candidates.length > 0) return NextResponse.json({ candidates, provider: "naver" });
   }
 
-  // ── Provider 2: Gemini + Google Search grounding ──
-  const geminiKey = process.env.GEMINI_API_KEY;
-  if (geminiKey) {
-    const candidates = await searchGeminiGrounded(queries, geminiKey);
-    if (candidates.length > 0) return NextResponse.json({ candidates, provider: "gemini-web" });
-    return NextResponse.json({ candidates: [], provider: "gemini-web-empty" });
+  // ── Provider 2: LLM 웹 조사 (Letsur → Gemini 그라운딩) ──
+  const chain = providerChain();
+  if (chain.length > 0) {
+    const candidates = await searchViaLlm(queries);
+    if (candidates.length > 0) {
+      return NextResponse.json({ candidates, provider: candidates[0].source });
+    }
+    return NextResponse.json({ candidates: [], provider: "llm-empty" });
   }
 
   return NextResponse.json({ candidates: [], provider: "none" });
@@ -121,76 +124,47 @@ async function searchNaver(queries: string[], id: string, secret: string): Promi
 // ────────────────────────────────────────────────────────────
 
 /**
- * Gemini에 Google Search 도구를 붙여 "실제 판매 중인 상품"을 조사한다.
- * 그라운딩 없이 아는 척하지 않도록 근거(검색) 기반 답변을 요구하고,
- * 결과 JSON은 코드펜스 제거 후 방어적으로 파싱한다.
+ * LLM으로 "실제 판매 중인 상품"을 조사한다 (Letsur → Gemini 그라운딩 체인).
+ * 지어내지 않도록 근거 기반 답변을 요구하고, 결과 JSON은 방어적으로 파싱한다.
+ * 모델이 만든 URL은 신뢰하지 않고 정확 상품명 검색 딥링크로 대체한다.
  */
-async function searchGeminiGrounded(queries: string[], key: string): Promise<WebCandidate[]> {
-  const model = process.env.GEMINI_MODEL || "gemini-3.5-flash";
-  const prompt = `You are a fashion shopping research engine. Using Google Search, find real purchasable products currently sold online that best match this item description (Korean market preferred, global brands OK):
+async function searchViaLlm(queries: string[]): Promise<WebCandidate[]> {
+  const prompt = `You are a fashion shopping research engine. Find real purchasable products currently sold online that best match this item description (Korean market preferred, global brands OK):
 
 "${queries.join('" / "')}"
 
-Return ONLY a JSON array (no markdown fence) of up to 5 products, each:
-{"brand": string, "productName": string (Korean or English, specific model name), "colorName": string|null, "priceKRW": number|null (approximate retail), "retailer": string (official mall or major retailer name)}
+Return ONLY JSON (no markdown fence): {"products":[{"brand": string, "productName": string (specific model name), "colorName": string|null, "priceKRW": number|null, "retailer": string}]}
 
-Rules: only products you actually found via search. Do not invent model names. If unsure of price, use null.`;
+Rules: real products only, up to 5. Do NOT invent model names — if you are not confident a specific model exists, omit it. If unsure of price, use null.`;
 
-  try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          tools: [{ google_search: {} }],
-          generationConfig: { temperature: 0.2 },
-        }),
-        signal: AbortSignal.timeout(20000),
-      }
-    );
-    if (!res.ok) return [];
-    const json = await res.json();
-    const parts: { text?: string }[] = json?.candidates?.[0]?.content?.parts ?? [];
-    const text = parts.map((p) => p.text ?? "").join("");
-    if (!text) return [];
-    const cleaned = text.replace(/```json|```/g, "").trim();
-    const start = cleaned.indexOf("[");
-    const end = cleaned.lastIndexOf("]");
-    if (start < 0 || end <= start) return [];
-    const raw = JSON.parse(cleaned.slice(start, end + 1)) as {
-      brand?: string;
-      productName?: string;
-      colorName?: string | null;
-      priceKRW?: number | null;
-      retailer?: string;
-    }[];
-    // 그라운딩 출처 (있으면 신뢰 근거로 보존)
-    const sources: string[] =
-      json?.candidates?.[0]?.groundingMetadata?.groundingChunks
-        ?.map((c: { web?: { uri?: string } }) => c.web?.uri)
-        .filter(Boolean) ?? [];
+  const r = await textJson({ prompt, useWebSearch: true, timeoutMs: 20000 });
+  if (!r.data) return [];
+  const parsed = extractJson<unknown>(r.data);
+  const raw = (Array.isArray(parsed)
+    ? parsed
+    : ((parsed as { products?: unknown[] } | null)?.products ?? [])) as {
+    brand?: string;
+    productName?: string;
+    colorName?: string | null;
+    priceKRW?: number | null;
+    retailer?: string;
+  }[];
 
-    return raw
-      .filter((p) => p.productName)
-      .slice(0, 5)
-      .map((p, i) => ({
-        id: `gweb-${i}-${Date.now().toString(36)}`,
-        brand: p.brand ?? null,
-        productName: p.productName!,
-        category: null,
-        color: p.colorName ?? null,
-        price: { value: typeof p.priceKRW === "number" ? p.priceKRW : null, currency: "KRW" },
-        retailer: p.retailer ?? "웹 검색",
-        // 모델 생성 URL은 신뢰 불가 → 정확 상품명 검색 딥링크로 연결 (항상 유효)
-        url: nv([p.brand, p.productName, p.colorName].filter(Boolean).join(" ")),
-        imageUrls: [],
-        source: "gemini-web",
-        pageTrust: 0.55,
-        sourceUrl: sources[i] ?? sources[0],
-      }));
-  } catch {
-    return [];
-  }
+  return raw
+    .filter((p) => p.productName)
+    .slice(0, 5)
+    .map((p, i) => ({
+      id: `web-${r.provider}-${i}`,
+      brand: p.brand ?? null,
+      productName: p.productName!,
+      category: null,
+      color: p.colorName ?? null,
+      price: { value: typeof p.priceKRW === "number" ? p.priceKRW : null, currency: "KRW" },
+      retailer: p.retailer ?? "웹 검색",
+      // 모델 생성 URL은 신뢰 불가 → 정확 상품명 검색 딥링크로 연결 (항상 유효)
+      url: nv([p.brand, p.productName, p.colorName].filter(Boolean).join(" ")),
+      imageUrls: [],
+      source: `${r.provider}-web`,
+      pageTrust: 0.55,
+    }));
 }

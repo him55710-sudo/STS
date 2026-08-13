@@ -154,3 +154,9 @@
 - 프로덕션 실패 2건 재현·수정: 상세 docs/VISION.md v3.1 섹션.
   closing·폴백 임계 22%·anatomical guard / 쿼터 안내 UI / Naver+Gemini그라운딩 provider.
 - 회귀: 니트 80정점·신발 2링·벤치마크 96/100/100 유지. 그라운딩은 무료 쿼터로 실호출 미검증.
+
+## Cycle 11 — v3.2: LLM Provider 추상화 (Gemini → Letsur 전환)
+- lib/llm 어댑터 계층 신설(Letsur OpenAI 호환 + Gemini 폴백), 탐지/상품검색 라우트 전환,
+  Gemini responseSchema 제거 → provider 중립 JSON 계약. /api/vision-health 진단 엔드포인트 추가.
+- 개발 환경 egress가 letsur.ai 차단 → 실호출 미검증, base URL은 env+probe로 설계(추측 하드코딩 회피).
+- 폴백 체인·회귀 실측 정상(6객체, 브랜드 근거, 실루엣 82정점, 신발 2링).
