@@ -83,12 +83,21 @@ export interface Creator {
 
 /** 로그인 세션 (Google=Supabase OAuth, kakao=데모) */
 export interface SessionUser {
+  /** display name (profiles.display_name) */
   name: string;
   provider: "google" | "kakao";
   /** OAuth 로그인 시 제공 (데모 로그인은 없음) */
   email?: string;
-  /** 프로필 사진 URL (Google 계정 사진 등) */
+  /** 프로필 사진 URL (profiles.avatar_url / Google 계정 사진) */
   avatarUrl?: string;
+  /** Supabase auth user id (프로필 수정 시 필요) */
+  id?: string;
+  /** 고유 아이디 (profiles.handle, @없이 저장) */
+  username?: string;
+  /** 자기소개 (profiles.bio) */
+  bio?: string;
+  /** 아직 아이디를 직접 정하지 않음 (온보딩 유도) */
+  handleIsDefault?: boolean;
 }
 
 /** 이벤트 taxonomy — 사업계획서 §10 */

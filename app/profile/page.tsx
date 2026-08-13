@@ -43,34 +43,27 @@ export default function ProfilePage() {
   const otr = pct(t.taps, t.views);
   const earnings = estimatedEarnings(t.outbound);
 
+  const loggedIn = hydrated && !!user;
+  const handle = user?.username;
+  const needsSetup = loggedIn && user?.provider === "google" && user?.handleIsDefault;
+
   return (
     <div>
+      {/* 상단 바: 아이디 + 빠른 액션 */}
       <header className="flex items-center justify-between px-4 pt-4">
-        <div>
-          <h1 className="text-[19px] font-bold">
-            {hydrated && user ? user.name : "@me.sts"}
-          </h1>
-          {hydrated && user ? (
-            <p className="mt-0.5 flex items-center gap-1.5 text-[12px] text-ink-2">
-              {user.provider === "kakao" ? "카카오" : "Google"} 계정 · 크리에이터 스튜디오
-              <button onClick={handleSignOut} className="press font-medium text-ink-2 underline underline-offset-2">
-                로그아웃
-              </button>
-            </p>
-          ) : (
-            <Link href="/login" className="mt-0.5 inline-block text-[12px] font-semibold text-primary">
-              3초 로그인하고 수익 받기 →
+        <h1 className="truncate text-[18px] font-bold">
+          {loggedIn ? (handle && !needsSetup ? `@${handle}` : user!.name) : "@me.sts"}
+        </h1>
+        <div className="flex gap-1.5">
+          {loggedIn && (
+            <Link
+              href="/profile/edit"
+              aria-label="프로필 편집"
+              className="flex h-9 w-9 items-center justify-center rounded-(--radius-btn) border border-line text-ink-2"
+            >
+              <SettingsIcon size={17} />
             </Link>
           )}
-        </div>
-        <div className="flex gap-1.5">
-          <Link
-            href="/admin"
-            aria-label="운영"
-            className="flex h-9 w-9 items-center justify-center rounded-(--radius-btn) border border-line text-ink-2"
-          >
-            <SettingsIcon size={17} />
-          </Link>
           <Link
             href="/create"
             aria-label="새 콘텐츠"
@@ -80,6 +73,69 @@ export default function ProfilePage() {
           </Link>
         </div>
       </header>
+
+      {/* 인스타식 프로필 헤더: 아바타 + 이름 + @아이디 + 소개 */}
+      <div className="flex items-center gap-4 px-4 pt-3">
+        {loggedIn && user!.avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={user!.avatarUrl}
+            alt={user!.name}
+            className="h-[72px] w-[72px] shrink-0 rounded-full object-cover"
+            style={{ objectPosition: "50% 30%" }}
+          />
+        ) : (
+          <span className="flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-full bg-surface-2 text-[26px] font-bold text-ink-2">
+            {loggedIn ? (user!.name?.[0] ?? "@") : "@"}
+          </span>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[17px] font-bold">{loggedIn ? user!.name : "게스트"}</p>
+          {loggedIn ? (
+            <p className="truncate text-[13px] text-ink-2">
+              {handle && !needsSetup ? `@${handle}` : (user!.provider === "kakao" ? "카카오 계정" : "Google 계정")}
+            </p>
+          ) : (
+            <Link href="/login" className="inline-block text-[13px] font-semibold text-primary">
+              3초 로그인하고 수익 받기 →
+            </Link>
+          )}
+        </div>
+      </div>
+
+      {loggedIn && user!.bio ? (
+        <p className="mt-2.5 whitespace-pre-wrap px-4 text-[13.5px] leading-relaxed text-ink">{user!.bio}</p>
+      ) : null}
+
+      {loggedIn && (
+        <div className="mt-3 flex items-center gap-2 px-4">
+          <Link
+            href="/profile/edit"
+            className="press flex h-9 flex-1 items-center justify-center rounded-(--radius-btn) border border-line bg-surface text-[13px] font-semibold text-ink"
+          >
+            프로필 편집
+          </Link>
+          <button
+            onClick={handleSignOut}
+            className="press flex h-9 items-center justify-center rounded-(--radius-btn) border border-line bg-surface px-4 text-[13px] font-medium text-ink-2"
+          >
+            로그아웃
+          </button>
+        </div>
+      )}
+
+      {/* 온보딩: 아직 아이디를 직접 정하지 않은 신규 유저 유도 */}
+      {needsSetup && (
+        <Link
+          href="/profile/edit?onboarding=1"
+          className="press mx-4 mt-3 flex items-center gap-2.5 rounded-(--radius-card) border border-primary/30 bg-primary/5 px-4 py-3"
+        >
+          <span className="flex-1 text-[13px] font-medium text-ink">
+            프로필을 완성해보세요 — 나만의 <b className="text-primary">아이디</b>·사진·소개 설정하기
+          </span>
+          <ChevronRightIcon size={16} className="text-primary" />
+        </Link>
+      )}
 
       {/* Product Tap Rate를 가장 위에 (PRD §55) */}
       <div className="mx-4 mt-4 rounded-(--radius-card) border border-line bg-surface p-4">
