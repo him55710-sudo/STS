@@ -50,3 +50,27 @@
   수수료 셰어 UX(제휴 배지·70% 배분·발행 시 "1회 판매당 ₩X" 표시), docs/BUSINESS.md(Pinterest 차별화 + 수익 아이템 6종)
 - **Check**: 빌드 무결(12 routes) · 실사진 객체 탭(크로스백/신발) → 시트 정상 · 프로필/로그인 렌더 검증
 - **비고**: 실사진(~1MB)은 인라인 배포 페이로드 한도 초과 → Vercel-GitHub 연동으로 배포하는 것이 정석
+
+## Cycle 5 — STS v3 (SEEIT 디자인 시스템 + 웹 레이아웃 + 배포 파이프라인)
+- **Plan**: 사용자가 제공한 SEEIT 디자인 시스템 레퍼런스 3장을 모바일·웹에 철저히 적용.
+  그래파이트 바이올렛(#5B556E) 액센트, 뉴트럴 토큰(bg #F7F7F6 / surface #FFF / ink #111214 / line #E7E9EC),
+  데스크톱 사이드바 레이아웃, 디자인 시스템 산출물(HTML 스펙 카드) 정리, Figma·Claude Design 연동, 영구 배포 파이프라인 구축.
+- **Do**:
+  - 토큰 전면 교체(globals.css @theme) + 라디우스 체계(버튼 11 / 카드 14 / 시트 22 / 상품 10)
+  - 데스크톱 웹: `lg:` 사이드바 내비(홈/발견/저장됨/만들기/애널리틱스/운영) + 본문 660px + 3열 masonry, 모바일은 기존 탭바 유지
+  - 피드 카드: 이미지 위 액션 레일(좋아요/저장/공유 오버레이), 카드 스태거 진입 애니메이션
+  - 제품 시트: 컬러 스와치 행, 바이올렛 CTA "구매하러 가기 ↗" + 아웃라인 위시리스트, 수수료 70% 고지 푸터
+  - 애널리틱스: 오버뷰 탭 스트립 + 5-KPI 그리드(크리에이터 수익 하이라이트 카드)
+  - `design-system/` 9종 스펙 카드(@dsCard) 작성 → Claude Design 프로젝트 "STS Design System"에 publish
+  - Figma 파일 생성(GqMW4W9WfkRKFI1rfeoHcs) + "STS Colors" 변수 컬렉션 9토큰(scope 지정) 생성
+  - **배포 영구화**: Vercel `create_git_project`로 GitHub 연동 프로젝트 `sts` 생성
+    (production branch = 작업 브랜치, 푸시마다 자동 배포) → 인라인 페이로드 한도 문제 해소
+- **Check**:
+  - ✅ 로컬 빌드 무결(12 routes) + 모바일(390×844)/데스크톱(1280×800) 스크린샷 검수
+  - ✅ CSS 레이어 버그 수정: unlayered `a{color:inherit}`가 유틸리티를 이겨 사이드바 CTA가 흑배경·흑텍스트
+    → `@layer base`로 이동 후 계산값 rgb(255,255,255) 확인
+  - ✅ masonry 3열 미디어쿼리가 기본 규칙보다 앞에 있던 순서 문제 수정
+  - ✅ git 연동 첫 배포 READY 확인(dpl_6k7dEy…, production) + https://sts-mongben.vercel.app 스모크 테스트
+    (피드 SSR, /looks 실사진, 룩 게시물·크리에이터 렌더 확인)
+- **Act**: README 리브랜딩(STS)·라이브 URL 갱신. Figma 콘텐츠 프레임(파운데이션/컴포넌트)은
+  MCP 세션 재연결 후 이어서 생성 예정. 실 AI 탐지는 Vercel 대시보드에 `GEMINI_API_KEY` 추가 시 활성화.

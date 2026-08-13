@@ -1,6 +1,7 @@
-# OBJET — AI Visual Commerce Platform
+# STS — AI Visual Commerce Platform
 
-**Live**: https://objet-mongben.vercel.app
+**Live**: https://sts-mongben.vercel.app (GitHub 연동 자동 배포 · production branch: `claude/visual-commerce-prd-m2xfdo`)
+이전 프리뷰: https://objet-mongben.vercel.app
 
 > **See it. Tap it. Shop it.**
 > 사진과 영상 속 **물건 자체를 탭하면** AI가 상품을 인식해 상품 정보·유사상품·구매 링크를 즉시 제공하는 Visual Commerce 플랫폼의 MVP 웹앱.
@@ -54,7 +55,9 @@ cp .env.example .env.local
 
 ## 데모 데이터 안내
 
-콘텐츠 이미지·상품 이미지는 저장소에 포함된 **에디토리얼 SVG 일러스트**이고, 브랜드·상품·가격·크리에이터는 모두 **가상의 데모 데이터**입니다. 판매처 링크는 시연을 위해 각 커머스 홈으로 연결됩니다. 시드 애널리틱스 수치는 UI 시연용 가정값입니다.
+- **룩 게시물 5종(post-look1~5)**: 실사 사진 + 실제 브랜드/상품/가격 데이터. 구매 버튼은 정확한 상품명 검색 결과(네이버 쇼핑)로 딥링크되어 상품 카드에 바로 도달합니다. 특정 SKU를 확정할 수 없는 오브젝트(시계 등)는 "유사 상품"으로만 연결합니다.
+- **그 외 시드 콘텐츠**: 저장소에 포함된 에디토리얼 SVG 일러스트 + 가상의 데모 데이터입니다.
+- 시드 애널리틱스 수치는 UI 시연용 가정값입니다.
 
 ## 디자인 시스템 (PRD §34–45)
 
