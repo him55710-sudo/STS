@@ -32,6 +32,9 @@ export interface ProductCandidate {
   source: string;
   /** 그라운딩/검색 출처 URL (신뢰 근거, 디버그·검증용) */
   sourceUrl?: string;
+  /** 서버가 네이버 이미지 검색으로 산출한 색상 유사도 (0~1) */
+  visualScore?: number;
+  visualSource?: string;
   /** 카탈로그 상품이면 로컬 product id (링크·제휴 정보 재사용) */
   catalogProductId?: string;
   affiliate?: boolean;

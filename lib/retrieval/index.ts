@@ -33,7 +33,7 @@ export async function retrieveCandidates(obj: DetectedObject): Promise<{
     const res = await fetch("/api/product-search", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ queries: query.queries }),
+      body: JSON.stringify({ queries: query.queries, tone: query.tone }),
       signal: AbortSignal.timeout(9000),
     });
     if (res.ok) {
@@ -106,8 +106,11 @@ function scoreWebCandidate(
   }
 
   const pageTrust = c.pageTrust ?? 0.6;
+  // 서버가 네이버 이미지 검색으로 산출한 색상 유사도 (없으면 0)
+  const visual = typeof c.visualScore === "number" ? c.visualScore : 0;
+  if (visual >= 0.6) reason.push(`이미지 색상 유사 (${Math.round(visual * 100)}%)`);
   const final =
-    RANK_WEIGHTS.visual * 0 +
+    RANK_WEIGHTS.visual * visual +
     RANK_WEIGHTS.brand * brand +
     RANK_WEIGHTS.logo * logo +
     RANK_WEIGHTS.attributes * text * 0.5 +
@@ -116,7 +119,7 @@ function scoreWebCandidate(
     RANK_WEIGHTS.pageTrust * pageTrust;
 
   const scores: CandidateScores = {
-    visual: 0,
+    visual: r2(visual),
     brand: r2(brand),
     logo: r2(logo),
     color: r2(color),

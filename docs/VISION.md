@@ -186,6 +186,7 @@ GEMINI_API_KEY                  주 탐지 엔진 활성화 (Vercel 환경변수
 attributes(탐지와 동시 추출: brandCandidates+evidence/logo/pattern/visibleText/features)
 → query generation (3~5 variants: 브랜드+색상, 로고 근거, 특징+명사)
 → providers: catalog(항상) + Naver Shopping OpenAPI(키 설정 시, 서버 전용)
+   ⚠️ 쇼핑 검색 API는 2026-07-31 종료 — v3.3에서 제거됨. 아래 fashion_v3.3 섹션 참조.
 → normalize (ProductCandidate 공통 스키마)
 → rerank: composite score (visual/brand/logo/attributes/color/text/pageTrust — vision-config 가중치)
 → tier: EXACT("정확 일치 유력") / LIKELY("동일 제품 가능성") / SIMILAR("유사 상품")
@@ -245,6 +246,7 @@ attributes·생성 쿼리·top5 후보 score breakdown.
 ```
 1) Naver Shopping OpenAPI   NAVER_CLIENT_ID/SECRET 설정 시 (무료 25,000건/일)
    → 실판매 상품명·가격·이미지·몰 링크 반환 (가장 권장)
+   ⚠️ 무효 — 2026-07-31 종료. v3.3에서 코드 제거. 아래 fashion_v3.3 참조.
 2) Gemini + Google Search grounding   GEMINI_API_KEY만으로 동작
    → 웹에서 실판매 상품 조사, 링크는 정확 상품명 검색 딥링크로 안전 연결
 3) 없음 → 카탈로그 전용 (기존 동작)
@@ -256,8 +258,8 @@ attributes·생성 쿼리·top5 후보 score breakdown.
 
 ## 운영 권장사항
 1. **Gemini 유료 티어 전환** — 탐지 정확도 문제의 대부분이 쿼터 폴백에서 발생.
-2. **Naver Developers 앱 등록(무료)** → NAVER_CLIENT_ID/SECRET을 Vercel 환경변수에 추가
-   → 실판매 상품 검색 + 상품 이미지 즉시 활성화.
+2. ~~Naver Developers 앱 등록 → 쇼핑 검색~~ **폐기** (쇼핑 검색 API 종료).
+   대체안은 fashion_v3.3 섹션 참조.
 
 ---
 
@@ -294,3 +296,72 @@ https://sts-mongben.vercel.app/api/vision-health        → baseUrlWorking / ava
 https://sts-mongben.vercel.app/api/vision-health?vision=1 → 실제 비전 호출 왕복 검증
 ```
 `baseUrlWorking` 이 나오면 그 값을 `LETSUR_BASE_URL`, 비전 지원 모델을 `LETSUR_MODEL` 로 고정.
+
+---
+
+# fashion_v3.3 — NAVER API HUB 이관 대응 + visual 축 활성화
+
+## 정정 사항 (이전 문서의 오류)
+v3.1/v3.2 문서와 코드는 네이버 상품 검색을 **쇼핑 검색 API(`/v1/search/shop.json`)**로
+설계했다. 이는 현재 **동작하지 않으며 키를 바꿔도 되살아나지 않는다.**
+
+> 네이버 개발자센터 이용약관 부칙 제2조 ③ (시행 2026-07-31)
+> "'Search API' 중 '쇼핑', '책', '학술정보' 데이터 제공 서비스는
+>  2026년 7월 31일 24:00부로 종료됩니다."
+
+또한 검색 API 자체가 **NAVER API HUB(네이버클라우드플랫폼)**로 이관되었고,
+호스트·경로·인증 헤더가 **전부 바뀌었다**. "엔드포인트는 그대로"라는 이전 판단은 틀렸다.
+
+| | legacy (구 개발자센터) | apihub (신규) |
+|---|---|---|
+| Host | `openapi.naver.com` | `naverapihub.apigw.ntruss.com` |
+| Path | `/v1/search/{type}.json` | `/search/v1/{type}` |
+| 인증 | `X-Naver-Client-Id` / `X-Naver-Client-Secret` | `X-NCP-APIGW-API-KEY-ID` / `X-NCP-APIGW-API-KEY` |
+| 발급 | developers.naver.com | NCP 콘솔 → API HUB |
+| 수명 | 2027-06-30 종료 예정 | 현행 |
+| shop/book/doc | **종료됨** | **항목 없음** |
+
+## 구현 — `lib/naver/api-hub.ts`
+- 두 계약을 모두 지원하고 **자동 판별**한다. 성공한 계약을 프로세스 메모리에 캐시해
+  이후 호출은 1회 요청으로 끝난다. `NAVER_API_CONTRACT=apihub|legacy` 로 강제 가능.
+- 오류 응답이 두 층에서 서로 다른 형태로 온다
+  (`{error:{errorCode,message}}` = 게이트웨이, `{errorCode,errorMessage}` = 검색 레이어)
+  → `parseError()` 로 하나의 스키마로 정규화.
+- `RETIRED_SEARCH_TYPES = ["shop","book","doc"]` 를 상수로 박아 **호출 자체를 금지**한다.
+  종료된 API를 재시도하는 코드는 남기지 않는다.
+- 크롤링은 하지 않는다(약관·법적 리스크). 공식 API만 사용.
+
+## 죽어 있던 visual 축을 채웠다 — `lib/naver/visual-score.ts`
+v3까지 웹 후보의 재랭킹은 `visual = 0` 이었다(`RANK_WEIGHTS.visual * 0`).
+가장 큰 가중치 축이 통째로 비어 있어 "색이 전혀 다른 후보"가 상위로 올라오던 원인이다.
+
+```
+후보 상품명 → 네이버 이미지 검색 → 썸네일 대표색 서버 계산
+            → 업로드 사진 마스크 색(tone)과 RGB 거리 비교 → visual 0~1
+```
+- 상위 4개 후보만 보강(응답 지연 방지), 30분 캐시.
+- **저작권**: 검색된 이미지는 제3자 저작물이고 이미지 검색 응답에 출처 페이지 URL 필드가 없다.
+  따라서 **점수 계산에만 쓰고 화면에 노출하지 않는다.**
+- 근거 문자열은 남긴다: `"이미지 색상 유사 (78%)"`.
+
+## 진단 — `/api/vision-health`
+`checkNaver()` 가 죽은 쇼핑 API 대신 **이미지 검색**을 실제로 찔러 본다. 보고 항목:
+`contract`(어느 계약이 통했는지) · `httpStatus` · `errorCode` · 한글 원인 해설 ·
+`shoppingSearchApi: "종료됨 (2026-07-31 …)"`.
+
+자주 나오는 `errorCode`:
+| 코드 | 뜻 | 조치 |
+|---|---|---|
+| `024` | Authentication failed | 키/시크릿 값 또는 환경변수 **key·value가 뒤바뀜** |
+| `010` | 등록되지 않은 서비스 | 콘솔에서 해당 검색 API(이미지 등)를 **신청/활성화** |
+| `012` | 호출 권한 없음 | 앱에 그 API가 추가되지 않음 |
+| `101` | 잘못된 검색 API | 종료된 타입(shop/book/doc) 호출 |
+
+## 검증 상태 (정직 보고)
+- 코드: `tsc --noEmit` 무오류, `next build` 성공.
+- **실호출 미검증**: 이 개발 컨테이너의 egress 정책이 `openapi.naver.com`,
+  `naverapihub.apigw.ntruss.com`, `ncloud.com`, `developers.naver.com` 을 모두 차단한다
+  (`403 CONNECT ... Host not in allowlist`). 우회하지 않는다.
+  → 프로덕션 `/api/vision-health` 응답으로만 판정 가능하다.
+- 회귀: 카탈로그 retrieval 벤치마크 Recall@1 96% / @3 100% / @5 100% / MRR 0.981 유지
+  (네이버 미설정 시 graceful fallback = 카탈로그 전용, 기존 동작과 동일).

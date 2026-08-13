@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { letsurKey, letsurKeyRaw, letsurModel, configuredBase, probeAll, probeChat, probeManagement, letsurManagementKey, keyWarning, sanitizeKey, configuredAuthStyle } from "@/lib/llm/letsur";
 import { providerChain, visionJson, extractJson } from "@/lib/llm";
+import { isNaverConfigured, searchImages } from "@/lib/naver/api-hub";
 
 export const maxDuration = 45;
 
@@ -21,92 +22,72 @@ const TEST_PNG =
 
 const mask = (v?: string) => (v ? `${v.slice(0, 6)}…${v.slice(-3)} (len ${v.length})` : null);
 
-/** 네이버 쇼핑 검색 API 실호출 진단 — 에러 코드까지 그대로 노출해 원인을 바로 알 수 있게 한다 */
+/**
+ * 네이버 API 실호출 진단 — API HUB 이관 반영.
+ *
+ * 쇼핑 검색(/v1/search/shop.json)은 2026-07-31 종료되어 더 이상 호출하지 않는다.
+ * 대신 사용자가 실제 보유한 **이미지 검색**으로 계약(apihub/legacy)을 판별한다.
+ */
 async function checkNaver() {
-  const id = sanitizeKey(process.env.NAVER_CLIENT_ID);
-  const secret = sanitizeKey(process.env.NAVER_CLIENT_SECRET);
+  const configured = isNaverConfigured();
   const base = {
-    clientIdConfigured: Boolean(id),
-    clientIdPreview: id ? `${id.slice(0, 4)}…(len ${id.length})` : null,
-    clientSecretConfigured: Boolean(secret),
-    clientIdWarning: keyWarning(process.env.NAVER_CLIENT_ID),
-    clientSecretWarning: keyWarning(process.env.NAVER_CLIENT_SECRET),
+    configured,
+    contractFromEnv: sanitizeKey(process.env.NAVER_API_CONTRACT) ?? null,
+    clientIdPreview: (() => {
+      const id = sanitizeKey(process.env.NAVER_APIGW_API_KEY_ID) ?? sanitizeKey(process.env.NAVER_CLIENT_ID);
+      return id ? `${id.slice(0, 4)}…(len ${id.length})` : null;
+    })(),
+    secretConfigured: Boolean(
+      sanitizeKey(process.env.NAVER_APIGW_API_KEY) ?? sanitizeKey(process.env.NAVER_CLIENT_SECRET)
+    ),
+    shoppingSearchApi:
+      "종료됨 (2026-07-31, 개발자센터 이용약관 부칙 제2조 ③). API HUB에도 항목 없음 — 호출하지 않습니다.",
   };
-  if (!id || !secret) {
-    return {
-      ...base,
-      live: null,
-      hint: !id
-        ? "NAVER_CLIENT_ID 가 없습니다."
-        : "NAVER_CLIENT_SECRET 이 없습니다 — Client Secret도 환경변수에 넣어야 합니다.",
-    };
+  if (!configured) {
+    return { ...base, live: null, hint: "네이버 인증 정보가 설정되지 않았습니다." };
   }
-  const t0 = Date.now();
-  try {
-    const res = await fetch(
-      "https://openapi.naver.com/v1/search/shop.json?query=" + encodeURIComponent("니트") + "&display=3",
-      {
-        headers: { "X-Naver-Client-Id": id, "X-Naver-Client-Secret": secret },
-        signal: AbortSignal.timeout(8000),
-      }
-    );
-    const text = await res.text();
-    const elapsedMs = Date.now() - t0;
-    if (res.ok) {
-      const json = JSON.parse(text) as { total?: number; items?: { title?: string; lprice?: string }[] };
-      return {
-        ...base,
-        live: {
-          ok: true,
-          httpStatus: res.status,
-          elapsedMs,
-          totalResults: json.total ?? null,
-          sample: (json.items ?? []).slice(0, 3).map((i) => ({
-            title: (i.title ?? "").replace(/<[^>]+>/g, ""),
-            price: i.lprice ?? null,
-          })),
-        },
-        hint: "정상 — 업로드 분석 시 실제 판매 상품이 후보로 뜹니다.",
-      };
-    }
-    // 네이버 에러코드 해설 (원인 즉시 파악용)
-    let parsed: { errorCode?: string; errorMessage?: string } = {};
-    try {
-      parsed = JSON.parse(text);
-    } catch {
-      /* 텍스트 그대로 노출 */
-    }
-    const CODE_HINT: Record<string, string> = {
-      "024": "인증 실패 — Client Secret 값이 틀렸습니다.",
-      "028": "등록되지 않은 애플리케이션이거나 헤더가 잘못됐습니다 — Client ID를 확인하세요.",
-      "012": "이 애플리케이션에 '검색' API가 추가되어 있지 않습니다 — 콘솔에서 검색 API를 사용 설정하세요.",
-      "101": "잘못된 요청 — 쿼리 파라미터를 확인하세요.",
-    };
+
+  // 실제 보유 API로 검증: 이미지 검색
+  const res = await searchImages("니트", 3);
+  if (res.ok) {
     return {
       ...base,
       live: {
-        ok: false,
-        httpStatus: res.status,
-        elapsedMs,
-        errorCode: parsed.errorCode ?? null,
-        errorMessage: parsed.errorMessage ?? text.slice(0, 200),
+        ok: true,
+        contract: res.contract,
+        httpStatus: res.httpStatus,
+        elapsedMs: res.elapsedMs,
+        total: res.total ?? null,
+        sample: res.items.slice(0, 2).map((i) => ({
+          title: (i.title ?? "").replace(/<[^>]+>/g, ""),
+          thumbnail: i.thumbnail ? "(있음)" : "(없음)",
+        })),
       },
       hint:
-        (parsed.errorCode && CODE_HINT[parsed.errorCode]) ??
-        "네이버가 오류를 반환했습니다. errorCode/errorMessage를 확인하세요.",
-      // Client ID 형식으로 발급처를 추정한다 (검색 API 키인지 판별)
-      idFormatVerdict:
-        id.length <= 12
-          ? `Client ID가 ${id.length}자입니다. 검색 API(openapi.naver.com)용 Client ID는 보통 20자 내외이므로, 네이버 클라우드의 지도/AI 애플리케이션 키일 가능성이 큽니다. developers.naver.com 에서 '검색' API 애플리케이션을 별도 등록해 발급받으세요.`
-          : `Client ID 길이(${id.length}자)는 검색 API 형식과 일치합니다. Client Secret 값을 다시 확인하세요.`,
-    };
-  } catch (e) {
-    return {
-      ...base,
-      live: { ok: false, httpStatus: null, error: (e as Error).message.slice(0, 160) },
-      hint: "네이버 API에 연결하지 못했습니다.",
+        res.contract === "apihub"
+          ? "정상 — NAVER API HUB(NCP) 계약으로 연결됐습니다. 후보 상품의 색상 검증에 사용됩니다."
+          : "정상 — 구 개발자센터(legacy) 계약으로 연결됐습니다. 2027-06-30 지원 종료 예정입니다.",
     };
   }
+  const ERR_HINT: Record<string, string> = {
+    "024": "인증 실패 또는 API 미등록 — errorMessage 가 'Scope Status Invalid' 면 콘솔에서 해당 API를 추가하세요. 'Authentication failed' 면 키/계약(호스트·헤더) 불일치입니다.",
+    "012": "이 애플리케이션에 해당 API가 추가되어 있지 않습니다.",
+    "101": "잘못된 요청 — 파라미터를 확인하세요.",
+  };
+  return {
+    ...base,
+    live: {
+      ok: false,
+      contract: res.contract ?? null,
+      httpStatus: res.httpStatus ?? null,
+      errorCode: res.errorCode ?? null,
+      errorMessage: res.errorMessage ?? null,
+      elapsedMs: res.elapsedMs,
+    },
+    hint:
+      (res.errorCode && ERR_HINT[res.errorCode]) ??
+      "네이버가 오류를 반환했습니다. errorCode/errorMessage를 확인하세요.",
+  };
 }
 
 export async function GET(req: NextRequest) {

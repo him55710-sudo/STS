@@ -160,3 +160,32 @@
   Gemini responseSchema 제거 → provider 중립 JSON 계약. /api/vision-health 진단 엔드포인트 추가.
 - 개발 환경 egress가 letsur.ai 차단 → 실호출 미검증, base URL은 env+probe로 설계(추측 하드코딩 회피).
 - 폴백 체인·회귀 실측 정상(6객체, 브랜드 근거, 실루엣 82정점, 신발 2링).
+
+## Cycle 12 — v3.3: NAVER API HUB 이관 대응 + 죽어 있던 visual 축 활성화
+- **Plan**: 사용자가 "네이버 API가 API HUB로 이관됐다"고 알려줘 재조사. 이전 사이클에서
+  내가 "엔드포인트 동일, 코드 수정 불필요"라고 판단한 것이 맞는지 1차 출처로 검증한다.
+- **Do**:
+  - **판단 정정**: 호스트·경로·인증 헤더가 전부 바뀌었고, 더 중요한 것은
+    **쇼핑/책/학술정보 검색 API가 2026-07-31 종료**(개발자센터 이용약관 부칙 제2조 ③).
+    즉 v3.1에서 쓴 `/v1/search/shop.json` 은 키를 어떻게 넣어도 살아나지 않는다.
+  - `lib/naver/api-hub.ts` 신설: apihub(`naverapihub.apigw.ntruss.com/search/v1/{type}`,
+    `X-NCP-APIGW-API-KEY-*`) / legacy(`openapi.naver.com/v1/search/{type}.json`,
+    `X-Naver-Client-*`) 두 계약 자동 판별 + 성공 계약 캐시 + 오류 스키마 2종 정규화.
+    `RETIRED_SEARCH_TYPES=["shop","book","doc"]` 상수로 종료 API 호출 금지.
+  - `app/api/product-search/route.ts`: 죽은 shop 검색 분기(`searchNaver`/`NaverItem`) 제거.
+  - `lib/naver/visual-score.ts` 신설 — **재랭킹의 visual 축이 v3부터 계속 0이었다**
+    (가중치 최대 축이 통째로 빈 상태 = "색이 전혀 다른 후보가 상위" 현상의 직접 원인).
+    후보 상품명 → 네이버 이미지 검색 → 썸네일 대표색 서버 계산 → 마스크 tone과 RGB 비교.
+    상위 4개만 보강, 30분 캐시, 이미지는 **점수 계산에만** 사용(저작권 — 화면 미노출).
+  - `/api/vision-health`: 죽은 쇼핑 API 대신 이미지 검색을 실제로 찔러 보고
+    contract·errorCode·한글 원인 해설·`shoppingSearchApi:"종료됨"` 보고.
+  - `.env.example`: `NAVER_APIGW_API_KEY_ID/KEY`, `NAVER_API_CONTRACT` 문서화.
+- **Check**: `tsc --noEmit` 무오류, `next build` 성공.
+  카탈로그 retrieval 벤치마크 Recall@1 96% / @3 100% / @5 100% / MRR 0.981 유지
+  (네이버 미설정 시 graceful fallback = 카탈로그 전용).
+  **실호출은 미검증** — 개발 컨테이너 egress가 `openapi.naver.com`,
+  `naverapihub.apigw.ntruss.com`, `ncloud.com` 을 모두 차단(403 CONNECT). 우회하지 않았다.
+- **Act**: 프로덕션 `/api/vision-health` 의 `naver.errorCode` 로 판정한다 —
+  `024`=키 값/환경변수 뒤바뀜, `010`/`012`=콘솔에서 이미지 검색 API 미신청.
+  Letsur 는 `chatProbes` 결과로 활성화 여부 확정 예정(`/models` 403은
+  AWS API Gateway가 없는 경로에 주는 응답이라 인증 실패와 구분되지 않음).

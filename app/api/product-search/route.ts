@@ -1,19 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { extractJson, providerChain, textJson } from "@/lib/llm";
+import { isNaverConfigured } from "@/lib/naver/api-hub";
+import { colorSimilarity, productImageColor } from "@/lib/naver/visual-score";
 
 export const maxDuration = 30;
 
 /**
  * 웹 상품 검색 — provider adapter 체인.
  *
- *  1) Naver Shopping OpenAPI  (NAVER_CLIENT_ID/SECRET 설정 시 — 가장 정확, 상품 이미지·가격·몰 링크)
- *     https://developers.naver.com/docs/serviceapi/search/shopping/shopping.md
- *  2) Gemini + Google Search grounding (GEMINI_API_KEY만 있으면 동작 — 웹에서 실판매 상품 조사)
- *     https://ai.google.dev/gemini-api/docs/google-search
- *  3) 둘 다 없으면 { candidates: [], provider: "none" } → 클라이언트는 카탈로그 검색만 사용
+ * ⚠️ 네이버 쇼핑 검색 API(/v1/search/shop.json)는 **2026-07-31 종료**되었다.
+ *    근거: 네이버 개발자센터 이용약관 부칙 제2조 ③ —
+ *    "'Search API' 중 '쇼핑', '책', '학술정보' 데이터 제공 서비스는 2026년 7월 31일 24:00부로 종료"
+ *    NAVER API HUB(이관처)에도 쇼핑 항목이 없다. 되살릴 경로가 없으므로 호출하지 않는다.
  *
- * 모든 secret은 서버에서만 사용한다. 그라운딩 결과의 상품 URL은 모델 생성 텍스트라
- * 검증 불가 → 정확 상품명 검색 딥링크(항상 유효)로 대체하고 원 출처는 sourceUrl로 보존.
+ *  1) LLM 웹 조사 (Letsur → Gemini 그라운딩) — 실판매 상품명·브랜드·가격 추정
+ *     + 네이버 **이미지 검색**으로 해당 상품의 실제 이미지 색을 얻어 visual 점수를 채운다
+ *       (이미지는 제3자 저작물이라 노출하지 않고 점수 계산에만 사용)
+ *  2) provider가 없으면 { candidates: [], provider: "none" } → 클라이언트는 카탈로그 검색만 사용
+ *
+ * 모든 secret은 서버에서만 사용한다. 모델이 만든 상품 URL은 검증 불가하므로
+ * 정확 상품명 검색 딥링크(항상 유효)로 대체한다.
  */
 
 interface WebCandidate {
@@ -29,12 +35,15 @@ interface WebCandidate {
   source: string;
   pageTrust?: number;
   sourceUrl?: string;
+  /** 네이버 이미지 검색 기반 색상 유사도 (0~1) */
+  visualScore?: number;
+  visualSource?: string;
 }
 
 const nv = (q: string) => `https://search.shopping.naver.com/search/all?query=${encodeURIComponent(q)}`;
 
 export async function POST(req: NextRequest) {
-  let body: { queries?: string[] };
+  let body: { queries?: string[]; tone?: string };
   try {
     body = await req.json();
   } catch {
@@ -45,81 +54,45 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "queries required" }, { status: 400 });
   }
 
-  // ── Provider 1: Naver Shopping ──
-  const naverId = process.env.NAVER_CLIENT_ID;
-  const naverSecret = process.env.NAVER_CLIENT_SECRET;
-  if (naverId && naverSecret) {
-    const candidates = await searchNaver(queries, naverId, naverSecret);
-    if (candidates.length > 0) return NextResponse.json({ candidates, provider: "naver" });
+  // ── LLM 웹 조사 (Letsur → Gemini 그라운딩) ──
+  const chain = providerChain();
+  if (chain.length === 0) {
+    return NextResponse.json({ candidates: [], provider: "none" });
   }
 
-  // ── Provider 2: LLM 웹 조사 (Letsur → Gemini 그라운딩) ──
-  const chain = providerChain();
-  if (chain.length > 0) {
-    const candidates = await searchViaLlm(queries);
-    if (candidates.length > 0) {
-      return NextResponse.json({ candidates, provider: candidates[0].source });
-    }
+  const candidates = await searchViaLlm(queries);
+  if (candidates.length === 0) {
     return NextResponse.json({ candidates: [], provider: "llm-empty" });
   }
 
-  return NextResponse.json({ candidates: [], provider: "none" });
+  // ── 시각 검증: 네이버 이미지 검색으로 후보 상품의 실제 색을 얻어 visual 점수 산출 ──
+  // (이미지 자체는 노출하지 않는다 — 제3자 저작물이며 출처 URL 필드가 없다)
+  const tone = typeof body.tone === "string" ? body.tone : undefined;
+  let visualScored = 0;
+  if (tone && isNaverConfigured()) {
+    const top = candidates.slice(0, 4);
+    await Promise.all(
+      top.map(async (c) => {
+        const q = [c.brand, c.productName, c.color].filter(Boolean).join(" ");
+        const color = await productImageColor(q);
+        const sim = colorSimilarity(tone, color);
+        if (sim != null) {
+          c.visualScore = Math.round(sim * 100) / 100;
+          c.visualSource = "naver-image";
+          visualScored++;
+        }
+      })
+    );
+  }
+
+  return NextResponse.json({
+    candidates,
+    provider: candidates[0].source,
+    visualScored,
+  });
 }
 
 // ────────────────────────────────────────────────────────────
-
-interface NaverItem {
-  title: string;
-  link: string;
-  image: string;
-  lprice: string;
-  mallName: string;
-  productId: string;
-  productType: string;
-  brand: string;
-  maker: string;
-  category1: string;
-  category2: string;
-}
-
-async function searchNaver(queries: string[], id: string, secret: string): Promise<WebCandidate[]> {
-  try {
-    const results = await Promise.allSettled(
-      queries.slice(0, 3).map(async (q) => {
-        const res = await fetch(
-          `https://openapi.naver.com/v1/search/shop.json?query=${encodeURIComponent(q)}&display=6&sort=sim`,
-          {
-            headers: { "X-Naver-Client-Id": id, "X-Naver-Client-Secret": secret },
-            signal: AbortSignal.timeout(6000),
-          }
-        );
-        if (!res.ok) throw new Error(`naver ${res.status}`);
-        const json = (await res.json()) as { items?: NaverItem[] };
-        return json.items ?? [];
-      })
-    );
-    const seen = new Set<string>();
-    return results
-      .flatMap((r) => (r.status === "fulfilled" ? r.value : []))
-      .filter((it) => it.link && !seen.has(it.link) && (seen.add(it.link), true))
-      .slice(0, 12)
-      .map((it) => ({
-        id: `naver-${it.productId}`,
-        brand: it.brand || it.maker || null,
-        productName: it.title.replace(/<[^>]+>/g, ""),
-        category: it.category2 || it.category1 || null,
-        color: null,
-        price: { value: parseInt(it.lprice, 10) || null, currency: "KRW" },
-        retailer: it.mallName || "네이버쇼핑",
-        url: it.link,
-        imageUrls: it.image ? [it.image] : [],
-        source: "naver",
-        pageTrust: it.productType === "1" ? 0.85 : 0.6,
-      }));
-  } catch {
-    return [];
-  }
-}
 
 // ────────────────────────────────────────────────────────────
 
