@@ -26,6 +26,25 @@ export const PRODUCT_TONES: Record<string, string> = {
   "pl-ysl-jeans": "#23262e",
   "pl-samba": "#232324",
   "pl-cartier-tank": "#6b5340",
+  // 여성 룩 상품
+  "plw-polo-oxford": "#a9cdea",
+  "plw-levis-ribcage": "#b3cbdb",
+  "plw-samba-white": "#f4f3ee",
+  "plw-prada-re2005": "#0b0b0c",
+  "plw-tiffany-heart": "#d5d5d5",
+  "plw-silver-hoop": "#d5d5d5",
+  "plw-barbour-beadnell": "#3d4134",
+  "plw-cos-dark-jeans": "#182431",
+  "plw-longchamp": "#101010",
+  "plw-gold-hoop": "#c9a14a",
+  "plw-silver-rings": "#d5d5d5",
+  "plw-acne-sweat-oat": "#d7d0c4",
+  "plw-celine-bag": "#101010",
+  "plw-gold-chain": "#c5a04f",
+  "plw-gold-bracelet": "#c5a04f",
+  "plw-socks": "#f4f3ef",
+  "plw-silver-stud": "#d5d5d5",
+  "plw-polene-bag": "#121212",
 };
 
 /** RGB 거리 (0 ~ 441) */

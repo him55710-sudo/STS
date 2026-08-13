@@ -24,9 +24,9 @@ interface DraftObject extends DetectedObject {
 type Step = "select" | "analyzing" | "review" | "done";
 
 const SAMPLES = [
-  { src: "/seed/feed-ootd.svg", label: "OOTD" },
-  { src: "/seed/feed-mug.svg", label: "카페" },
-  { src: "/seed/feed-desk.svg", label: "데스크" },
+  { src: "/looks/look6.jpg", label: "데일리" },
+  { src: "/looks/look9.jpg", label: "아웃도어" },
+  { src: "/looks/look2.jpg", label: "헤리티지" },
 ];
 
 export default function CreatePage() {
@@ -70,7 +70,7 @@ export default function CreatePage() {
   };
 
   const useSample = async (src: string) => {
-    // SVG 샘플을 canvas로 래스터화해 실제 업로드와 동일한 경로를 태운다
+    // 샘플 사진도 canvas를 거쳐 실제 업로드와 동일한 경로를 태운다
     const img = new Image();
     img.onload = () => {
       const canvas = document.createElement("canvas");
@@ -588,7 +588,7 @@ function CandidatePanel({
       currency: "KRW",
       retailer: host,
       url,
-      image: "/seed/prod-mug.svg",
+      image: "/looks/_custom-link.svg",
       category: obj.category,
       affiliate: false,
       similarIds: [],

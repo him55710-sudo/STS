@@ -8,16 +8,20 @@ import { compact } from "@/lib/format";
 import { BagIcon, EyeIcon, HeartIcon, SearchIcon } from "@/components/Icons";
 import type { Category } from "@/lib/types";
 
-const CATS: (Category | "all")[] = ["all", "fashion", "beauty", "interior", "tech", "lifestyle"];
-const TRENDING = ["Quiet Luxury", "스트리트웨어", "미니멀", "데스크셋업", "빈티지"];
+/** 실제 콘텐츠가 있는 카테고리만 칩으로 노출 (빈 탭 방지) */
+const CATS: (Category | "all")[] = [
+  "all",
+  ...(Array.from(new Set(POSTS.map((p) => p.category))) as Category[]),
+];
+const TRENDING = ["프레피", "Quiet Luxury", "미니멀", "헤리티지", "아웃도어"];
 
 /** Explore by Style — SEEIT Discover */
 const STYLES = [
   { name: "미니멀", desc: "군더더기 없는 라인", q: "미니멀" },
-  { name: "클래식", desc: "10년을 입는 옷", q: "클래식" },
-  { name: "Quiet Luxury", desc: "절제된 고급감", q: "Quiet Luxury" },
-  { name: "시티보이", desc: "일상 속 아웃도어", q: "아웃도어" },
-  { name: "스트리트", desc: "데일리 스트리트 핏", q: "후디" },
+  { name: "프레피", desc: "옥스포드와 연청", q: "옥스포드" },
+  { name: "헤리티지", desc: "10년을 입는 옷", q: "왁스" },
+  { name: "아웃도어", desc: "일상 속 고프코어", q: "카고" },
+  { name: "프렌치", desc: "크림과 블랙 사이", q: "니트" },
 ];
 
 /** Discover — PRD §53. 이미지 그리드 중심, Pinterest식 마소너리 + 에이블리식 카테고리 칩 */
