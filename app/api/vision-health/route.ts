@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { letsurKey, letsurModel, configuredBase, probeAll } from "@/lib/llm/letsur";
+import { letsurKey, letsurModel, configuredBase, probeAll, probeManagement, letsurManagementKey } from "@/lib/llm/letsur";
 import { providerChain, visionJson, extractJson } from "@/lib/llm";
 
 export const maxDuration = 45;
@@ -34,6 +34,7 @@ export async function GET(req: NextRequest) {
       keyPreview: mask(key),
       baseUrlFromEnv: configuredBase(),
       model: letsurModel(),
+      managementKeyConfigured: Boolean(letsurManagementKey()),
     },
     gemini: {
       keyConfigured: Boolean(process.env.GEMINI_API_KEY),
@@ -47,13 +48,19 @@ export async function GET(req: NextRequest) {
       "models 목록에서 비전 지원 모델을 골라 LETSUR_MODEL 로 지정하면 됩니다.",
   };
 
-  if (key) {
-    const probes = await probeAll(key);
-    body.probes = probes;
-    const working = probes.find((p) => p.status === 200);
-    body.baseUrlWorking = working?.base ?? null;
-    body.availableModels = working?.models ?? null;
-  }
+  // 키 유무와 무관하게 probe 한다 — 주소가 맞으면 401/403이 오므로
+  // 키 없이도 올바른 base URL을 판별할 수 있다.
+  const probes = await probeAll(key);
+  body.probes = probes;
+  const working = probes.find((p) => p.status === 200);
+  body.baseUrlWorking = working?.base ?? null;
+  body.availableModels = working?.models ?? null;
+  // 200이 없더라도 401/403은 "주소는 맞다"는 강한 신호
+  body.baseUrlLikely =
+    working?.base ?? probes.find((p) => p.status === 401 || p.status === 403)?.base ?? null;
+
+  const mgmt = await probeManagement();
+  if (mgmt.length > 0) body.managementProbes = mgmt;
 
   if (wantVision) {
     const t0 = Date.now();

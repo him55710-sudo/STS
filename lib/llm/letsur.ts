@@ -17,7 +17,14 @@ export const LETSUR_BASE_CANDIDATES = [
   "https://api.platform.letsur.ai/v1",
   "https://platform.letsur.ai/api/v1",
   "https://api.letsur.ai/v1",
+  "https://api.platform.letsur.ai",
+  "https://platform.letsur.ai/api",
 ];
+
+/** 관리(Management) API 키 — 스페이스/멤버/키 조회용. 비전 호출에는 사용하지 않는다. */
+export function letsurManagementKey(): string | undefined {
+  return process.env.LETSUR_MANAGEMENT_KEY?.trim() || undefined;
+}
 
 let resolvedBase: string | null = null;
 
@@ -63,33 +70,89 @@ export async function discoverBaseUrl(key: string, timeoutMs = 6000): Promise<st
   return null;
 }
 
-/** 진단용 — 후보별 응답 상태를 그대로 보고한다 */
-export async function probeAll(key: string): Promise<
-  { base: string; status: number | "network-error"; models?: string[]; detail?: string }[]
-> {
+export interface ProbeEntry {
+  base: string;
+  status: number | "network-error";
+  models?: string[];
+  detail?: string;
+  /** 이 후보로 어떤 키를 썼는지 (none = 인증 없이 호출) */
+  auth: "service" | "management" | "none";
+}
+
+/**
+ * 진단용 — 후보 base URL별 응답 상태를 그대로 보고한다.
+ *
+ * 키가 없어도 호출한다: 존재하지 않는 호스트는 network-error, 주소가 맞으면
+ * 401/403(인증 필요)이 오므로 **키 없이도 올바른 base URL을 판별**할 수 있다.
+ */
+export async function probeAll(key?: string): Promise<ProbeEntry[]> {
   const bases = configuredBase() ? [configuredBase()!] : LETSUR_BASE_CANDIDATES;
-  const out: { base: string; status: number | "network-error"; models?: string[]; detail?: string }[] = [];
+  const mgmt = letsurManagementKey();
+  const out: ProbeEntry[] = [];
   for (const base of bases) {
-    try {
-      const res = await fetch(`${base}/models`, {
-        headers: authHeaders(key),
-        signal: AbortSignal.timeout(6000),
-      });
-      const entry: (typeof out)[number] = { base, status: res.status };
-      const text = await res.text();
-      if (res.ok) {
-        try {
-          const json = JSON.parse(text) as { data?: { id?: string }[] };
-          entry.models = (json.data ?? []).map((m) => m.id ?? "").filter(Boolean).slice(0, 30);
-        } catch {
+    const attempts: { header: Record<string, string>; auth: ProbeEntry["auth"] }[] = key
+      ? [{ header: authHeaders(key), auth: "service" }]
+      : mgmt
+        ? [{ header: authHeaders(mgmt), auth: "management" }]
+        : [{ header: { "Content-Type": "application/json" }, auth: "none" }];
+
+    for (const attempt of attempts) {
+      try {
+        const res = await fetch(`${base}/models`, {
+          headers: attempt.header,
+          signal: AbortSignal.timeout(6000),
+        });
+        const entry: ProbeEntry = { base, status: res.status, auth: attempt.auth };
+        const text = await res.text();
+        if (res.ok) {
+          try {
+            const json = JSON.parse(text) as { data?: { id?: string }[] };
+            entry.models = (json.data ?? []).map((m) => m.id ?? "").filter(Boolean).slice(0, 40);
+          } catch {
+            entry.detail = text.slice(0, 200);
+          }
+        } else {
           entry.detail = text.slice(0, 200);
         }
-      } else {
-        entry.detail = text.slice(0, 200);
+        out.push(entry);
+      } catch (e) {
+        out.push({
+          base,
+          status: "network-error",
+          detail: (e as Error).message.slice(0, 160),
+          auth: attempt.auth,
+        });
       }
-      out.push(entry);
+    }
+  }
+  return out;
+}
+
+/**
+ * 관리 API 탐색 — 문서 접근이 막힌 상태에서 실제 사용 가능한 경로를 찾기 위해
+ * 관리 키로 대표 경로들을 조회한다. (프로덕션에서만 의미 있음)
+ */
+export async function probeManagement(): Promise<
+  { url: string; status: number | "network-error"; preview?: string }[]
+> {
+  const mgmt = letsurManagementKey();
+  if (!mgmt) return [];
+  const urls = [
+    "https://api.platform.letsur.ai/v1/spaces",
+    "https://api.platform.letsur.ai/v1/models",
+    "https://platform.letsur.ai/api/v1/spaces",
+    "https://platform.letsur.ai/api/v1/models",
+  ];
+  const out: { url: string; status: number | "network-error"; preview?: string }[] = [];
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, {
+        headers: authHeaders(mgmt),
+        signal: AbortSignal.timeout(6000),
+      });
+      out.push({ url, status: res.status, preview: (await res.text()).slice(0, 300) });
     } catch (e) {
-      out.push({ base, status: "network-error", detail: (e as Error).message.slice(0, 160) });
+      out.push({ url, status: "network-error", preview: (e as Error).message.slice(0, 120) });
     }
   }
   return out;
