@@ -77,6 +77,17 @@ export interface ProbeEntry {
   detail?: string;
   /** 이 후보로 어떤 키를 썼는지 (none = 인증 없이 호출) */
   auth: "service" | "management" | "none";
+  /**
+   * 네트워크 정책(egress 프록시)이 막은 응답인지.
+   * 이런 403은 "주소가 맞다"는 신호가 아니므로 판정에서 제외해야 한다.
+   */
+  blockedByProxy?: boolean;
+}
+
+/** 프록시 차단 응답 식별 — 실제 API의 401/403과 구분한다 */
+export function isProxyBlock(status: number | "network-error", detail?: string): boolean {
+  if (!detail) return false;
+  return /not in allowlist|egress|network access|proxy/i.test(detail);
 }
 
 /**
@@ -114,6 +125,7 @@ export async function probeAll(key?: string): Promise<ProbeEntry[]> {
         } else {
           entry.detail = text.slice(0, 200);
         }
+        if (isProxyBlock(entry.status, entry.detail)) entry.blockedByProxy = true;
         out.push(entry);
       } catch (e) {
         out.push({
