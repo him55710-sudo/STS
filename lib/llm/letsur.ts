@@ -213,6 +213,60 @@ export async function probeAll(key?: string): Promise<ProbeEntry[]> {
 }
 
 /**
+ * 실제 채팅 엔드포인트 probe — 가장 중요한 진단.
+ *
+ * AWS API Gateway는 **존재하지 않는 경로에도 403 `{"message":"Forbidden"}`** 을 돌려준다.
+ * 따라서 `/models` 403 만으로는 인증 실패인지 경로 부재인지 알 수 없다.
+ * 실제로 쓰는 `/chat/completions` 를 최소 payload로 호출해 응답 본문을 그대로 보고한다:
+ *   - 400 "model not found" 류 → 인증 성공, 모델 이름만 바꾸면 됨
+ *   - 401/403 → 인증/권한 문제
+ *   - 200 → 즉시 사용 가능
+ */
+export async function probeChat(
+  key: string,
+  model = letsurModel()
+): Promise<{ url: string; authStyle: AuthStyle; status: number | "network-error"; preview: string }[]> {
+  const bases = configuredBase() ? [configuredBase()!] : LETSUR_BASE_CANDIDATES.slice(0, 2);
+  const paths = ["/chat/completions"];
+  const styles = configuredAuthStyle() ? [configuredAuthStyle()!] : AUTH_STYLES;
+  const out: { url: string; authStyle: AuthStyle; status: number | "network-error"; preview: string }[] = [];
+
+  for (const base of bases) {
+    for (const path of paths) {
+      for (const style of styles) {
+        const url = `${base}${path}`;
+        try {
+          const res = await fetch(url, {
+            method: "POST",
+            headers: authHeaders(key, style),
+            body: JSON.stringify({
+              model,
+              messages: [{ role: "user", content: "ping" }],
+              max_tokens: 5,
+            }),
+            signal: AbortSignal.timeout(12000),
+          });
+          out.push({
+            url,
+            authStyle: style,
+            status: res.status,
+            preview: (await res.text()).slice(0, 300),
+          });
+        } catch (e) {
+          out.push({
+            url,
+            authStyle: style,
+            status: "network-error",
+            preview: (e as Error).message.slice(0, 160),
+          });
+        }
+      }
+    }
+  }
+  return out;
+}
+
+/**
  * 관리 API 탐색 — 문서 접근이 막힌 상태에서 실제 사용 가능한 경로를 찾기 위해
  * 관리 키로 대표 경로들을 조회한다. (프로덕션에서만 의미 있음)
  */
@@ -221,11 +275,12 @@ export async function probeManagement(): Promise<
 > {
   const mgmt = letsurManagementKey();
   if (!mgmt) return [];
+  // 실측으로 확인된 호스트(api.letsur.ai) 기준 대표 경로
   const urls = [
-    "https://api.platform.letsur.ai/v1/spaces",
-    "https://api.platform.letsur.ai/v1/models",
-    "https://platform.letsur.ai/api/v1/spaces",
-    "https://platform.letsur.ai/api/v1/models",
+    "https://api.letsur.ai/v1/spaces",
+    "https://api.letsur.ai/v1/models",
+    "https://api.letsur.ai/spaces",
+    "https://api.letsur.ai/models",
   ];
   const out: { url: string; status: number | "network-error"; preview?: string }[] = [];
   for (const url of urls) {

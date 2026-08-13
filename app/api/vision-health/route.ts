@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { letsurKey, letsurKeyRaw, letsurModel, configuredBase, probeAll, probeManagement, letsurManagementKey, keyWarning, sanitizeKey, configuredAuthStyle } from "@/lib/llm/letsur";
+import { letsurKey, letsurKeyRaw, letsurModel, configuredBase, probeAll, probeChat, probeManagement, letsurManagementKey, keyWarning, sanitizeKey, configuredAuthStyle } from "@/lib/llm/letsur";
 import { providerChain, visionJson, extractJson } from "@/lib/llm";
 
 export const maxDuration = 45;
@@ -94,6 +94,11 @@ async function checkNaver() {
       hint:
         (parsed.errorCode && CODE_HINT[parsed.errorCode]) ??
         "네이버가 오류를 반환했습니다. errorCode/errorMessage를 확인하세요.",
+      // Client ID 형식으로 발급처를 추정한다 (검색 API 키인지 판별)
+      idFormatVerdict:
+        id.length <= 12
+          ? `Client ID가 ${id.length}자입니다. 검색 API(openapi.naver.com)용 Client ID는 보통 20자 내외이므로, 네이버 클라우드의 지도/AI 애플리케이션 키일 가능성이 큽니다. developers.naver.com 에서 '검색' API 애플리케이션을 별도 등록해 발급받으세요.`
+          : `Client ID 길이(${id.length}자)는 검색 API 형식과 일치합니다. Client Secret 값을 다시 확인하세요.`,
     };
   } catch (e) {
     return {
@@ -145,6 +150,13 @@ export async function GET(req: NextRequest) {
     probes.find((p) => !p.blockedByProxy && (p.status === 401 || p.status === 403))?.base ??
     null;
   body.blockedByNetworkPolicy = probes.some((p) => p.blockedByProxy);
+
+  // 가장 중요한 진단: 실제 채팅 엔드포인트 호출 결과
+  if (key) {
+    body.chatProbes = await probeChat(key);
+    const okChat = (body.chatProbes as { status: number | string }[]).find((c) => c.status === 200);
+    body.letsurUsable = Boolean(okChat);
+  }
 
   const mgmt = await probeManagement();
   if (mgmt.length > 0) body.managementProbes = mgmt;
