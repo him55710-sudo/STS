@@ -133,6 +133,7 @@ export async function GET(req: NextRequest) {
   body.probes = probes;
   const working = probes.find((p) => p.status === 200);
   body.baseUrlWorking = working?.base ?? null;
+  body.authStyleWorking = working?.authStyle ?? null;
   body.availableModels = working?.models ?? null;
   // 200이 없더라도 401/403은 "주소는 맞다"는 신호 — 단 프록시 차단 응답은 제외
   body.baseUrlLikely =
