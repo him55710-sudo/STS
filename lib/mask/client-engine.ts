@@ -10,7 +10,7 @@ import {
   type FashionClass,
 } from "../vision-config";
 import type { DetectedObject } from "../types";
-import { cleanMask, maskToPolygons, polygonArea, polygonBounds, polygonIou } from "./geometry";
+import { cleanMask, closeMask, maskToPolygons, polygonArea, polygonBounds, polygonCentroid, polygonIou } from "./geometry";
 
 /**
  * 온디바이스 실루엣 마스크 엔진 — MediaPipe Tasks Vision (Apache-2.0, wasm 셀프호스팅).
@@ -216,9 +216,12 @@ export async function extractSilhouettes(
       cat.close();
       res.close?.();
 
-      // 3) fusion 결과 검증: 박스 대비 마스크가 너무 작으면 신뢰 불가 → 폴백 시도
+      // 3) fusion 결과 검증 — 포인트 마스크가 박스를 충분히 못 채우면 신뢰 불가.
+      //    의류는 parsing(clothes ∩ box) 폴백이 있으므로 임계값을 공격적으로 높인다:
+      //    뒷모습·머리카락 오클루전에서 포인트 프롬프트가 머리카락/배경에 빠져
+      //    옷 일부만 잡는 실패(v3에서 관측)를 parsing 폴백으로 흡수한다.
       const boxArea = boxAreaPx;
-      if (inCount < boxArea * 0.05 && clothes && GARMENT_CLASSES.includes(cls)) {
+      if (inCount < boxArea * 0.22 && clothes && GARMENT_CLASSES.includes(cls)) {
         // clothes ∩ box 자체를 마스크로 (parsing 단독 폴백)
         let c2 = 0;
         for (let y = by0; y < by1; y++) {
@@ -228,9 +231,13 @@ export async function extractSilhouettes(
             if (clothes[i]) c2++;
           }
         }
-        inCount = c2;
-        maskSources[obj.label] = "parsing";
-      } else {
+        // parsing 폴백이 더 크면 채택 (더 작으면 포인트 결과 유지)
+        if (c2 > inCount) {
+          inCount = c2;
+          maskSources[obj.label] = "parsing";
+        }
+      }
+      if (!maskSources[obj.label]) {
         maskSources[obj.label] = useOthers
           ? "parsing-others"
           : clothes && GARMENT_CLASSES.includes(cls)
@@ -243,9 +250,14 @@ export async function extractSilhouettes(
         continue;
       }
 
-      // ── Post processing: light smoothing → multi-ring contour → polygon ──
-      // 좌/우 신발·분리 스트랩은 독립 링으로 유지한다 (링을 선으로 잇지 않는다).
-      const cleaned = cleanMask(bin, W, H, 1);
+      // ── Post processing ──
+      // 의류: morphological closing으로 머리카락·스트랩이 만든 좁은 틈을 연결
+      // (전체를 한 덩어리로 뭉개지 않고 좁은 gap만 메운다)
+      let processed: Uint8Array = bin;
+      if (isGarment) {
+        processed = closeMask(processed, W, H, Math.max(2, Math.round(Math.min(W, H) * 0.006)));
+      }
+      const cleaned = cleanMask(processed, W, H, 1);
       const rings = maskToPolygons(cleaned, W, H, {
         epsilonPx: Math.max(1.0, Math.hypot(W, H) * SEG.epsilonRatio),
         maxPointsPerRing: SEG.maxPointsPerRing,
@@ -255,6 +267,19 @@ export async function extractSilhouettes(
       }).filter((p) => polygonArea(p) >= (MIN_AREA_BY_CLASS[cls] ?? DEFAULT_MIN_AREA));
 
       if (rings.length === 0) {
+        out.push(masked);
+        continue;
+      }
+
+      // ── Anatomical guard — 마스크가 원래 탐지 위치를 벗어나면 (예: 신발 존의
+      //    포인트 세그가 바닥 카펫을 잡는 경우) 폴리곤을 버리고 bbox로 강등한다.
+      const mainCentroid = polygonCentroid(rings[0]);
+      const gx0 = obj.x - obj.w * 0.3;
+      const gy0 = obj.y - obj.h * 0.3;
+      const gx1 = obj.x + obj.w * 1.3;
+      const gy1 = obj.y + obj.h * 1.3;
+      if (mainCentroid[0] < gx0 || mainCentroid[0] > gx1 || mainCentroid[1] < gy0 || mainCentroid[1] > gy1) {
+        maskSources[obj.label] = "guard-rejected";
         out.push(masked);
         continue;
       }

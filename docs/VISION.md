@@ -220,3 +220,41 @@ attributes·생성 쿼리·top5 후보 score breakdown.
   키 없으면 graceful fallback(카탈로그 전용) 동작은 실측 확인.
 - 후보 상품 이미지 임베딩 시각 비교(visual score) — 웹 후보는 현재 0 처리.
 - 팔–몸 사이 내부 hole 링(evenodd 지원은 렌더에 이미 있음, inner contour 추적 미구현).
+
+---
+
+# fashion_v3.1 — 오클루전 강건화 + 실제 웹 상품 검색
+
+## 프로덕션 피드백 재현 → 원인
+1. **뒷모습+머리카락 사진에서 마스크 붕괴 / 모자·가방 미탐지 / 바닥 blob**
+   → 근본 원인: 프로덕션 Gemini 키가 **무료 티어 일일 쿼터 소진(429)** → coco-ssd 존 폴백
+   (상의/하의/신발만 존재, 모자·가방 클래스 없음) + 포인트 세그가 머리카락/바닥에 빠짐.
+2. **후보 상품이 색상·모델 불일치** → 검색 소스가 로컬 카탈로그뿐이라 흰 폴로셔츠 → 파란 옥스포드로 매칭.
+
+## 수정 (실측 검증)
+- **의류 마스크 closing**: 머리카락·스트랩이 만든 좁은 틈을 morphological closing으로 연결
+  (실제 옷 곡률 유지, gap만 브리지)
+- **parsing 폴백 임계값 5%→22%**: 포인트 세그가 옷 일부만 잡으면 clothes∩box 폴백이 즉시 개입
+- **Anatomical guard**: 마스크 중심이 탐지 박스(±30%)를 벗어나면 폴리곤 폐기 → bbox 강등
+  (신발 존이 바닥 카펫을 잡는 실패 차단)
+- **쿼터 상태 표시**: /api/detect가 429를 `source:"quota"`로 구분 반환 → 리뷰 화면에
+  "AI 정밀 탐지 쿼터 초과 — 기본 탐지로 진행" 안내
+- 회귀 확인: look10 니트 80정점·신발 2링 유지, retrieval 벤치마크 96/100/100 유지
+
+## 실제 웹 상품 검색 (provider chain)
+```
+1) Naver Shopping OpenAPI   NAVER_CLIENT_ID/SECRET 설정 시 (무료 25,000건/일)
+   → 실판매 상품명·가격·이미지·몰 링크 반환 (가장 권장)
+2) Gemini + Google Search grounding   GEMINI_API_KEY만으로 동작
+   → 웹에서 실판매 상품 조사, 링크는 정확 상품명 검색 딥링크로 안전 연결
+3) 없음 → 카탈로그 전용 (기존 동작)
+```
+- 구현·graceful 폴백 실측 확인. **그라운딩 실호출은 무료 티어 쿼터로 미검증**
+  (`429 RESOURCE_EXHAUSTED` — 그라운딩은 별도 소량 쿼터). 유료 전환 시 즉시 활성.
+- 웹 후보는 이미지 시각 비교 전이므로 tier 상한 likely, 모델 생성 URL은 신뢰하지 않고
+  검색 딥링크로 대체(출처는 sourceUrl 보존).
+
+## 운영 권장사항
+1. **Gemini 유료 티어 전환** — 탐지 정확도 문제의 대부분이 쿼터 폴백에서 발생.
+2. **Naver Developers 앱 등록(무료)** → NAVER_CLIENT_ID/SECRET을 Vercel 환경변수에 추가
+   → 실판매 상품 검색 + 상품 이미지 즉시 활성화.

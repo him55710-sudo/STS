@@ -83,12 +83,18 @@ function scoreWebCandidate(
   const text = uniq.length ? Math.min(1, matched.length / Math.min(uniq.length, 6)) : 0;
   if (matched.length >= 2) reason.push(`상품명 근거: ${matched.slice(0, 3).join(", ")}`);
 
-  // color — 색상명이 상품명에 포함되는지
+  // color — 후보의 색상 필드 또는 상품명에 색상명이 포함되는지
   let color = 0;
   const cn = colorName(q.tone);
-  if (cn && (hay.includes(cn.ko.toLowerCase()) || hay.includes(cn.en))) {
-    color = 0.8;
-    reason.push(`색상명 일치: ${cn.ko}`);
+  if (cn) {
+    const candColor = (c.color ?? "").toLowerCase();
+    if (candColor && (candColor.includes(cn.ko.toLowerCase()) || candColor.includes(cn.en))) {
+      color = 0.9;
+      reason.push(`색상 일치: ${cn.ko}`);
+    } else if (hay.includes(cn.ko.toLowerCase()) || hay.includes(cn.en)) {
+      color = 0.8;
+      reason.push(`색상명 일치: ${cn.ko}`);
+    }
   }
 
   // logo — 로고 텍스트가 상품명에 등장

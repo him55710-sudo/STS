@@ -130,8 +130,9 @@ export default function CreatePage() {
     } else {
       const device = await deviceP;
       if (device?.length) {
+        // 쿼터 소진으로 정밀 탐지가 빠졌음을 구분 표시
         detected = device;
-        source = "device";
+        source = server?.source === "quota" ? "device-quota" : "device";
       } else if (server?.objects?.length) {
         detected = server.objects;
         source = server.source ?? "mock";
@@ -428,7 +429,12 @@ export default function CreatePage() {
               ? `오브젝트 ${objects.length}개를 찾았어요 · 놓친 물건은 화면을 탭해 추가하세요`
               : "화면 속 물건을 탭해서 직접 추가해보세요"}
             {aiSource === "device" && " · 온디바이스 AI 탐지"}
-            {aiSource !== "gemini" && aiSource !== "device" && aiSource && " · 데모 탐지 모드"}
+            {aiSource === "device-quota" && (
+              <span className="text-[#b3752e]">
+                {" "}· AI 정밀 탐지 쿼터 초과 — 기본 탐지로 진행했어요 (모자·가방 등이 빠질 수 있어요)
+              </span>
+            )}
+            {aiSource !== "gemini" && aiSource !== "device" && aiSource !== "device-quota" && aiSource && " · 데모 탐지 모드"}
             {retrieving && (
               <span className="ml-1.5 inline-flex items-center gap-1 text-accent">
                 <span className="h-1 w-1 animate-pulse rounded-full bg-accent" />

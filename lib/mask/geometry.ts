@@ -253,6 +253,69 @@ export function maskToPolygon(
   ]);
 }
 
+/**
+ * Morphological closing (dilate→erode, box kernel) —
+ * 머리카락·스트랩이 옷을 가로질러 마스크를 조각내는 좁은 틈을 메운다.
+ * radius는 픽셀 단위. 실제 옷 경계 곡률은 유지된다 (좁은 gap만 연결).
+ */
+export function closeMask(mask: Uint8Array, w: number, h: number, radius = 2): Uint8Array {
+  const dilated = dilate(mask, w, h, radius);
+  return erode(dilated, w, h, radius);
+}
+
+function dilate(src: Uint8Array, w: number, h: number, r: number): Uint8Array {
+  // 분리형 box kernel: 가로 → 세로 2-pass
+  const tmp = new Uint8Array(w * h);
+  const out = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let v = 0;
+      for (let dx = -r; dx <= r && !v; dx++) {
+        const nx = x + dx;
+        if (nx >= 0 && nx < w && src[y * w + nx]) v = 1;
+      }
+      tmp[y * w + x] = v;
+    }
+  }
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let v = 0;
+      for (let dy = -r; dy <= r && !v; dy++) {
+        const ny = y + dy;
+        if (ny >= 0 && ny < h && tmp[ny * w + x]) v = 1;
+      }
+      out[y * w + x] = v;
+    }
+  }
+  return out;
+}
+
+function erode(src: Uint8Array, w: number, h: number, r: number): Uint8Array {
+  const tmp = new Uint8Array(w * h);
+  const out = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let v = 1;
+      for (let dx = -r; dx <= r && v; dx++) {
+        const nx = x + dx;
+        if (nx < 0 || nx >= w || !src[y * w + nx]) v = 0;
+      }
+      tmp[y * w + x] = v;
+    }
+  }
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let v = 1;
+      for (let dy = -r; dy <= r && v; dy++) {
+        const ny = y + dy;
+        if (ny < 0 || ny >= h || !tmp[ny * w + x]) v = 0;
+      }
+      out[y * w + x] = v;
+    }
+  }
+  return out;
+}
+
 /** 마스크 후처리: 작은 노이즈 제거 + hole filling 간이판 (fill: majority 3×3) */
 export function cleanMask(mask: Uint8Array, w: number, h: number, iterations = 1): Uint8Array {
   let cur = mask;

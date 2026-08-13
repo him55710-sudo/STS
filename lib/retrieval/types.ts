@@ -28,8 +28,10 @@ export interface ProductCandidate {
   url: string;
   imageUrls: string[];
   availability?: string;
-  /** "catalog" | "naver" | ... */
+  /** "catalog" | "naver" | "gemini-web" | ... */
   source: string;
+  /** 그라운딩/검색 출처 URL (신뢰 근거, 디버그·검증용) */
+  sourceUrl?: string;
   /** 카탈로그 상품이면 로컬 product id (링크·제휴 정보 재사용) */
   catalogProductId?: string;
   affiliate?: boolean;

@@ -138,6 +138,11 @@ export async function POST(req: NextRequest) {
         signal: AbortSignal.timeout(25000),
       }
     );
+    if (res.status === 429) {
+      // 쿼터 소진은 일반 실패와 구분해 클라이언트에 알린다 (온디바이스로 계속 진행)
+      console.warn("[vision] gemini quota exhausted (429)");
+      return NextResponse.json({ objects: [], source: "quota", pipelineVersion: "fashion_v3" });
+    }
     if (!res.ok) throw new Error(`gemini ${res.status}`);
     const json = await res.json();
     const text: string | undefined = json?.candidates?.[0]?.content?.parts?.[0]?.text;
