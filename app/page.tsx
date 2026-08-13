@@ -2,25 +2,34 @@
 
 import { useMemo, useState } from "react";
 import { POSTS } from "@/lib/catalog";
+import { isBackendConfigured, isDemoMode } from "@/lib/config";
 import { useApp, useHydrated } from "@/lib/store";
 import PostCard from "@/components/PostCard";
 
-/** Home Feed — PRD §11, §52. 상단은 로고 + For You/Following만, 나머지는 콘텐츠. */
+/**
+ * Home Feed — PRD §11, §52. 상단은 로고 + For You/Following만, 나머지는 콘텐츠.
+ * 서버 게시물이 우선이고, 시드/로컬 데모 콘텐츠는 데모 모드에서만 섞인다.
+ */
 export default function HomePage() {
   const [tab, setTab] = useState<"foryou" | "following">("foryou");
   const hydrated = useHydrated();
   const userPosts = useApp((s) => s.userPosts);
   const following = useApp((s) => s.following);
+  const remotePosts = useApp((s) => s.remotePosts);
+  const remoteLoaded = useApp((s) => s.remoteLoaded);
+  const demo = isDemoMode();
 
   const feed = useMemo(() => {
-    const all = [...(hydrated ? userPosts : []), ...POSTS].sort(
-      (a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)
-    );
+    const all = [
+      ...remotePosts,
+      ...(hydrated && demo ? userPosts : []),
+      ...(demo ? POSTS : []),
+    ].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
     if (tab === "following" && hydrated) {
       return all.filter((p) => following.includes(p.creatorId) || p.isUserPost);
     }
     return all;
-  }, [tab, hydrated, userPosts, following]);
+  }, [tab, hydrated, demo, userPosts, following, remotePosts]);
 
   return (
     <div>
@@ -60,7 +69,11 @@ export default function HomePage() {
         ))}
         {feed.length === 0 && (
           <p className="px-4 py-16 text-center text-sm text-ink-2">
-            팔로우한 크리에이터의 콘텐츠가 여기에 표시돼요.
+            {isBackendConfigured() && !remoteLoaded
+              ? "불러오는 중..."
+              : tab === "following"
+                ? "팔로우한 크리에이터의 콘텐츠가 여기에 표시돼요."
+                : "아직 게시물이 없어요. 첫 콘텐츠를 올려보세요."}
           </p>
         )}
       </div>

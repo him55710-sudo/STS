@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import AuthProvider from "@/components/AuthProvider";
 import Sidebar from "@/components/Sidebar";
 import TabBar from "@/components/TabBar";
 
@@ -26,6 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body>
+        <AuthProvider />
         {/* 모바일: 폰 폭 컬럼 + 하단 탭바 / 데스크톱(lg+): 좌측 사이드바 + 넓은 콘텐츠 (SEEIT web layout) */}
         <div className="mx-auto flex min-h-dvh w-full max-w-[1180px] justify-center">
           <Sidebar />

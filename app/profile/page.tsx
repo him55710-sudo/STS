@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { POSTS } from "@/lib/catalog";
 import { estimatedEarnings, pct, statsForPosts, totals } from "@/lib/analytics";
+import { isDemoMode } from "@/lib/config";
 import { compact, won } from "@/lib/format";
+import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useApp, useHydrated } from "@/lib/store";
 import {
   BarChartIcon,
@@ -19,10 +21,16 @@ import {
  */
 export default function ProfilePage() {
   const hydrated = useHydrated();
-  const { userPosts, events, user, signOut } = useApp();
+  const { userPosts, events, user, signOut, session, remotePosts } = useApp();
+  const demo = isDemoMode();
 
-  // 데모 계정은 시드 크리에이터 콘텐츠 전체를 "내 콘텐츠"로 보여준다
-  const myPosts = hydrated ? [...userPosts, ...POSTS] : POSTS;
+  // 실 세션: 내가 발행한 서버 게시물이 "내 콘텐츠". 데모 모드에서는 시드 전체를 보여준다
+  const myRemote = session ? remotePosts.filter((p) => p.creatorId === session.userId) : [];
+  const myPosts = [
+    ...myRemote,
+    ...(hydrated && demo ? userPosts : []),
+    ...(demo ? POSTS : []),
+  ];
   const stats = statsForPosts(myPosts, hydrated ? events : []);
   const t = totals(stats.values());
   const otr = pct(t.taps, t.views);
@@ -33,11 +41,21 @@ export default function ProfilePage() {
       <header className="flex items-center justify-between px-4 pt-4">
         <div>
           <h1 className="text-[19px] font-bold">
-            {hydrated && user ? user.name : "@me.sts"}
+            {session ? session.displayName : hydrated && user ? user.name : "@me.sts"}
           </h1>
-          {hydrated && user ? (
+          {session ? (
             <p className="mt-0.5 flex items-center gap-1.5 text-[12px] text-ink-2">
-              {user.provider === "kakao" ? "카카오" : "Google"} 계정 · 크리에이터 스튜디오
+              @{session.handle} · 크리에이터 스튜디오
+              <button
+                onClick={() => getBrowserSupabase()?.auth.signOut()}
+                className="press font-medium text-ink-2 underline underline-offset-2"
+              >
+                로그아웃
+              </button>
+            </p>
+          ) : hydrated && user ? (
+            <p className="mt-0.5 flex items-center gap-1.5 text-[12px] text-ink-2">
+              {user.provider === "kakao" ? "카카오" : "Google"} 데모 세션
               <button onClick={signOut} className="press font-medium text-ink-2 underline underline-offset-2">
                 로그아웃
               </button>

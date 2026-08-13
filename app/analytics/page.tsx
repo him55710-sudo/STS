@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { POSTS } from "@/lib/catalog";
 import { estimatedEarnings, pct, statsForPosts, totals } from "@/lib/analytics";
+import { isDemoMode } from "@/lib/config";
 import { compact, won } from "@/lib/format";
 import { useApp, useHydrated } from "@/lib/store";
 import { ChevronLeftIcon } from "@/components/Icons";
@@ -13,8 +14,13 @@ import { ChevronLeftIcon } from "@/components/Icons";
  */
 export default function AnalyticsPage() {
   const hydrated = useHydrated();
-  const { userPosts, events } = useApp();
-  const myPosts = hydrated ? [...userPosts, ...POSTS] : POSTS;
+  const { userPosts, events, session, remotePosts } = useApp();
+  const demo = isDemoMode();
+  const myPosts = [
+    ...(session ? remotePosts.filter((p) => p.creatorId === session.userId) : []),
+    ...(hydrated && demo ? userPosts : []),
+    ...(demo ? POSTS : []),
+  ];
   const stats = statsForPosts(myPosts, hydrated ? events : []);
   const t = totals(stats.values());
   const purchases = Math.round(t.outbound * 0.025);

@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { use } from "react";
-import { POSTS, creatorById } from "@/lib/catalog";
+import { POSTS } from "@/lib/catalog";
+import { isBackendConfigured, isDemoMode } from "@/lib/config";
 import { useApp, useHydrated } from "@/lib/store";
 import PostCard from "@/components/PostCard";
 import { ChevronLeftIcon } from "@/components/Icons";
@@ -11,17 +12,29 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
   const { id } = use(params);
   const hydrated = useHydrated();
   const userPosts = useApp((s) => s.userPosts);
-  const post = [...(hydrated ? userPosts : []), ...POSTS].find((p) => p.id === id);
+  const remotePosts = useApp((s) => s.remotePosts);
+  const remoteLoaded = useApp((s) => s.remoteLoaded);
+  const demo = isDemoMode();
 
+  const pool = [
+    ...remotePosts,
+    ...(hydrated && demo ? userPosts : []),
+    ...(demo ? POSTS : []),
+  ];
+  const post = pool.find((p) => p.id === id);
+
+  const loading = !hydrated || (isBackendConfigured() && !remoteLoaded);
   if (!post) {
     return (
       <div className="px-4 py-16 text-center text-sm text-ink-2">
-        {hydrated ? "게시물을 찾을 수 없어요." : "불러오는 중..."}
+        {loading ? "불러오는 중..." : "게시물을 찾을 수 없어요."}
       </div>
     );
   }
 
-  const related = POSTS.filter((p) => p.id !== post.id && p.category === post.category).slice(0, 4);
+  const related = pool
+    .filter((p) => p.id !== post.id && p.category === post.category)
+    .slice(0, 4);
 
   return (
     <div>
@@ -39,12 +52,9 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
           <p className="mb-2.5 text-[13px] font-semibold text-ink-2">비슷한 콘텐츠</p>
           <div className="grid grid-cols-2 gap-2">
             {related.map((p) => (
-              <Link key={p.id} href={`/post/${p.id}`} className="overflow-hidden rounded-(--radius-card) border border-line">
+              <Link key={p.id} href={`/post/${p.id}`} className="overflow-hidden rounded-(--radius-card)">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={p.image} alt={p.caption} className="w-full" style={{ aspectRatio: `${p.ratio}` }} loading="lazy" />
-                <p className="truncate bg-surface px-2 py-1.5 text-[11px] text-ink-2">
-                  @{creatorById(p.creatorId).handle}
-                </p>
+                <img src={p.image} alt={p.caption} className="aspect-[3/4] w-full object-cover" />
               </Link>
             ))}
           </div>

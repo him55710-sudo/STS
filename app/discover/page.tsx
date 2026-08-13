@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { CATEGORY_LABEL, CREATORS, POSTS, PRODUCTS, creatorById } from "@/lib/catalog";
-import { useApp, useHydrated } from "@/lib/store";
+import { CATEGORY_LABEL, POSTS, PRODUCTS } from "@/lib/catalog";
+import { isDemoMode } from "@/lib/config";
+import { useApp, useCreatorLookup, useHydrated } from "@/lib/store";
 import { compact } from "@/lib/format";
 import { BagIcon, EyeIcon, HeartIcon, SearchIcon } from "@/components/Icons";
 import type { Category } from "@/lib/types";
@@ -30,14 +31,21 @@ export default function DiscoverPage() {
   const [cat, setCat] = useState<Category | "all">("all");
   const hydrated = useHydrated();
   const userPosts = useApp((s) => s.userPosts);
+  const remotePosts = useApp((s) => s.remotePosts);
+  const lookupCreator = useCreatorLookup();
+  const demo = isDemoMode();
 
   const results = useMemo(() => {
-    const all = [...(hydrated ? userPosts : []), ...POSTS];
+    const all = [
+      ...remotePosts,
+      ...(hydrated && demo ? userPosts : []),
+      ...(demo ? POSTS : []),
+    ];
     const needle = q.trim().toLowerCase();
     return all.filter((p) => {
       if (cat !== "all" && p.category !== cat) return false;
       if (!needle) return true;
-      const creator = CREATORS.find((c) => c.id === p.creatorId);
+      const creator = lookupCreator(p.creatorId);
       const products = p.objects
         .map((o) => PRODUCTS.find((pr) => pr.id === o.productId))
         .filter(Boolean);
@@ -52,7 +60,7 @@ export default function DiscoverPage() {
         .toLowerCase();
       return hay.includes(needle);
     });
-  }, [q, cat, hydrated, userPosts]);
+  }, [q, cat, hydrated, demo, userPosts, remotePosts, lookupCreator]);
 
   return (
     <div>
@@ -116,7 +124,7 @@ export default function DiscoverPage() {
 
       <div className="masonry px-2 pt-3">
         {results.map((post) => {
-          const creator = creatorById(post.creatorId);
+          const creator = lookupCreator(post.creatorId);
           const linked = post.objects.filter((o) => o.productId).length;
           return (
             <Link

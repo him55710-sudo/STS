@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { POSTS, PRODUCTS, creatorById } from "@/lib/catalog";
-import { useApp, useHydrated } from "@/lib/store";
+import { POSTS, PRODUCTS } from "@/lib/catalog";
+import { isDemoMode } from "@/lib/config";
+import { useApp, useCreatorLookup, useHydrated } from "@/lib/store";
 import { ChevronLeftIcon } from "@/components/Icons";
 
 const EVENT_LABEL: Record<string, string> = {
@@ -20,8 +21,14 @@ const EVENT_LABEL: Record<string, string> = {
 /** Admin (lite) — 사업계획서 §17 Ops dashboard: 콘텐츠·AI 상태·이벤트 로그 */
 export default function AdminPage() {
   const hydrated = useHydrated();
-  const { userPosts, events, customProducts } = useApp();
-  const allPosts = hydrated ? [...userPosts, ...POSTS] : POSTS;
+  const { userPosts, events, customProducts, remotePosts } = useApp();
+  const lookupCreator = useCreatorLookup();
+  const demo = isDemoMode();
+  const allPosts = [
+    ...remotePosts,
+    ...(hydrated && demo ? userPosts : []),
+    ...(demo ? POSTS : []),
+  ];
   const recent = hydrated ? [...events].reverse().slice(0, 30) : [];
 
   return (
@@ -48,7 +55,7 @@ export default function AdminPage() {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[12px] font-medium">{p.caption}</p>
                 <p className="text-[11px] text-ink-2">
-                  @{creatorById(p.creatorId).handle} · 객체 {p.objects.length} · 연결{" "}
+                  @{lookupCreator(p.creatorId).handle} · 객체 {p.objects.length} · 연결{" "}
                   {p.objects.filter((o) => o.productId).length}
                 </p>
               </div>

@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { creatorById } from "@/lib/catalog";
 import { compact, timeAgo } from "@/lib/format";
-import { useApp } from "@/lib/store";
+import { useApp, useCreatorLookup } from "@/lib/store";
 import type { ObjectTag, Post } from "@/lib/types";
 import Avatar from "./Avatar";
 import { BagIcon, BookmarkIcon, HeartIcon, ShareIcon } from "./Icons";
@@ -12,7 +11,7 @@ import ObjectLayer from "./ObjectLayer";
 import ProductSheet from "./ProductSheet";
 
 export default function PostCard({ post }: { post: Post }) {
-  const creator = creatorById(post.creatorId);
+  const creator = useCreatorLookup()(post.creatorId);
   const [selected, setSelected] = useState<ObjectTag | null>(null);
   const { likedPosts, savedPosts, following, toggleLike, toggleSavePost, toggleFollow, track } =
     useApp();

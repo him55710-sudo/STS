@@ -3,6 +3,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { publishRemotePost } from "@/lib/backend/posts";
+import type { ProductSnapshot, PublishObjectPayload } from "@/lib/backend/types";
+import { productById } from "@/lib/catalog";
+import { isDemoLoginAllowed } from "@/lib/config";
 import { candidatesFor, searchProducts } from "@/lib/match";
 import { retrieveAll, type ProductCandidate, type RetrievalQuery } from "@/lib/retrieval";
 import { useApp, useProductLookup } from "@/lib/store";
@@ -36,7 +40,8 @@ const SAMPLES = [
 
 export default function CreatePage() {
   const router = useRouter();
-  const { addUserPost, addCustomProduct, track } = useApp();
+  const { addUserPost, addCustomProduct, track, session, loadRemoteFeed } = useApp();
+  const lookupProduct = useProductLookup();
 
   const [step, setStep] = useState<Step>("select");
   const [stage, setStage] = useState<"detect" | "mask">("detect");
@@ -50,6 +55,8 @@ export default function CreatePage() {
   const [elapsed, setElapsed] = useState(0);
   const [publishedId, setPublishedId] = useState("");
   const [retrieving, setRetrieving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
   const [debugFashion, setDebugFashion] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const imgRef = useRef<HTMLDivElement>(null);
@@ -237,8 +244,77 @@ export default function CreatePage() {
   };
 
   // ── Step 4: 발행 ──────────────────────────────────────
-  const publish = () => {
-    if (!image) return;
+  // 실 세션이 있으면 백엔드(스토리지 업로드 + publish_post RPC)로 발행하고,
+  // 아니면 데모 모드에 한해 로컬 발행. 프로덕션 모드에서 비로그인 발행은 로그인으로 보낸다.
+  const publish = async () => {
+    if (!image || publishing) return;
+
+    if (session) {
+      setPublishing(true);
+      setPublishError(null);
+      try {
+        const payload: PublishObjectPayload[] = objects.map((o) => {
+          const product = o.productId ? lookupProduct(o.productId) : undefined;
+          // 시드 카탈로그 밖 상품(URL 직접 연결·웹 후보)은 스냅샷으로 동행시켜
+          // 다른 기기에서도 상품 시트가 열리게 한다
+          const snapshot: ProductSnapshot | null =
+            o.productId && product && !productById(o.productId)
+              ? {
+                  brand: product.brand,
+                  name: product.name,
+                  price: product.price,
+                  currency: product.currency,
+                  retailer: product.retailer,
+                  url: product.url,
+                  image: product.image,
+                  category: product.category,
+                  affiliate: product.affiliate,
+                  commissionRate: product.commissionRate,
+                }
+              : null;
+          return {
+            label: o.labelKo || o.label,
+            canonical_class: o.canonicalClass ?? null,
+            bbox: { x: o.x, y: o.y, w: o.w, h: o.h },
+            polygon: o.polygon ?? null,
+            polygons: o.polygons ?? null,
+            confidence: o.confidence,
+            pipeline_version: "fashion_v3",
+            link: o.productId
+              ? {
+                  product_id: o.productId,
+                  relationship: o.exactness,
+                  model_confidence: o.confidence,
+                  product_snapshot: snapshot,
+                }
+              : null,
+          };
+        });
+        const remoteId = await publishRemotePost({
+          imageDataUrl: image,
+          caption: caption.trim(),
+          category: objects[0]?.category ?? "lifestyle",
+          objects: payload,
+        });
+        track("publish", { postId: remoteId });
+        await loadRemoteFeed();
+        setElapsed(Math.round((Date.now() - startedAt) / 1000));
+        setPublishedId(remoteId);
+        setStep("done");
+      } catch (e) {
+        setPublishError((e as Error).message);
+      } finally {
+        setPublishing(false);
+      }
+      return;
+    }
+
+    if (!isDemoLoginAllowed()) {
+      router.push("/login");
+      return;
+    }
+
+    // 데모 모드 로컬 발행 (localStorage — 이 브라우저에서만 보임)
     const id = `user-${Date.now().toString(36)}`;
     const post: Post = {
       id,
@@ -532,14 +608,29 @@ export default function CreatePage() {
               rows={2}
               className="w-full resize-none rounded-(--radius-card) border border-line bg-surface p-3.5 text-[14px] outline-none placeholder:text-ink-2 focus:border-accent"
             />
+            {publishError && (
+              <p className="mt-2 rounded-(--radius-btn) bg-[#fdecec] px-3 py-2.5 text-[12.5px] leading-relaxed text-[#c0392b]">
+                {publishError}
+              </p>
+            )}
             <button
               onClick={publish}
-              className="press mt-3 h-12 w-full rounded-(--radius-btn) bg-primary text-[15px] font-bold text-white"
+              disabled={publishing}
+              className="press mt-3 h-12 w-full rounded-(--radius-btn) bg-primary text-[15px] font-bold text-white disabled:opacity-60"
             >
-              발행하기
-              {objects.filter((o) => o.productId).length > 0 &&
-                ` · 상품 ${objects.filter((o) => o.productId).length}개 연결됨`}
+              {publishing
+                ? "발행 중..."
+                : `발행하기${
+                    objects.filter((o) => o.productId).length > 0
+                      ? ` · 상품 ${objects.filter((o) => o.productId).length}개 연결됨`
+                      : ""
+                  }`}
             </button>
+            {session == null && !isDemoLoginAllowed() && (
+              <p className="mt-1.5 text-center text-[11px] text-ink-2">
+                발행하려면 로그인이 필요해요
+              </p>
+            )}
           </div>
         </div>
       )}

@@ -11,13 +11,13 @@ import { ArrowUpRightIcon, BookmarkIcon } from "@/components/Icons";
 export default function SavedPage() {
   const [tab, setTab] = useState<"products" | "posts">("products");
   const hydrated = useHydrated();
-  const { savedProducts, savedPosts, toggleSaveProduct, track, userPosts } = useApp();
+  const { savedProducts, savedPosts, toggleSaveProduct, track, userPosts, remotePosts } = useApp();
   const lookup = useProductLookup();
 
   const products = hydrated ? savedProducts.map(lookup).filter((p) => p != null) : [];
   const posts = hydrated
     ? savedPosts
-        .map((id) => [...userPosts, ...POSTS].find((p) => p.id === id))
+        .map((id) => [...remotePosts, ...userPosts, ...POSTS].find((p) => p.id === id))
         .filter((p) => p != null)
     : [];
 
