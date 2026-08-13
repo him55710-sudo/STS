@@ -266,6 +266,127 @@ export async function probeChat(
   return out;
 }
 
+/* ────────────────────────────────────────────────────────────────
+ * 판별 프로브 (auth vs routing)
+ *
+ * 실측: `/models`·`/chat/completions` × `bearer`·`x-api-key` 네 조합이
+ * **전부 동일한** `403 {"message":"Forbidden"}` 을 반환했다.
+ * 키를 바꿔도 응답이 같다면 키가 평가되지 않는다는 뜻이므로,
+ * "인증 실패"와 "경로 없음/게이트웨이 차단"을 구분해야 한다.
+ *
+ * AWS API Gateway는 원인을 **응답 헤더 `x-amzn-errortype`** 에 담는다:
+ *   ForbiddenException                 → 라우트는 있고 권한이 거부됨 (키/플랜/리소스 정책)
+ *   MissingAuthenticationTokenException→ 그 경로가 존재하지 않음 (base URL·path가 틀림)
+ *   AccessDeniedException              → authorizer가 명시적 deny
+ *   (헤더 없음 + x-cache: Error from cloudfront) → WAF/CloudFront 단에서 차단 (IP 등)
+ *
+ * 이 함수는 응답 본문이 아니라 **헤더와 대조군**으로 판정한다.
+ * ──────────────────────────────────────────────────────────────── */
+
+export interface DiagnosticProbe {
+  /** 이 시도가 무엇을 확인하려는 것인지 */
+  case: string;
+  url: string;
+  status: number | "network-error";
+  /** AWS가 원인을 담는 헤더 — 판정의 핵심 */
+  amznErrorType?: string;
+  amznRequestId?: string;
+  apigwId?: string;
+  server?: string;
+  xCache?: string;
+  wwwAuthenticate?: string;
+  body: string;
+}
+
+const HEADERS_OF_INTEREST = [
+  "x-amzn-errortype",
+  "x-amzn-requestid",
+  "x-amz-apigw-id",
+  "server",
+  "x-cache",
+  "www-authenticate",
+] as const;
+
+async function runProbe(
+  label: string,
+  url: string,
+  headers: Record<string, string>
+): Promise<DiagnosticProbe> {
+  try {
+    const res = await fetch(url, { headers, signal: AbortSignal.timeout(8000) });
+    const body = (await res.text()).slice(0, 200);
+    const h = (n: (typeof HEADERS_OF_INTEREST)[number]) => res.headers.get(n) ?? undefined;
+    return {
+      case: label,
+      url,
+      status: res.status,
+      amznErrorType: h("x-amzn-errortype"),
+      amznRequestId: h("x-amzn-requestid"),
+      apigwId: h("x-amz-apigw-id"),
+      server: h("server"),
+      xCache: h("x-cache"),
+      wwwAuthenticate: h("www-authenticate"),
+      body,
+    };
+  } catch (e) {
+    return { case: label, url, status: "network-error", body: (e as Error).message.slice(0, 160) };
+  }
+}
+
+/**
+ * 대조군 실험 — 같은 경로를 4가지 조건으로 때려 응답 차이를 본다.
+ * 차이가 없으면 "키 문제"라는 가설이 기각된다.
+ */
+export async function probeDiagnostic(key?: string): Promise<DiagnosticProbe[]> {
+  const base = configuredBase() ?? LETSUR_BASE_CANDIDATES[0];
+  const json = { "Content-Type": "application/json" };
+  const probes: Promise<DiagnosticProbe>[] = [
+    // 대조군 1: 인증 헤더 자체를 안 보낸다.
+    //   실제 키와 응답이 같으면 → 키가 평가되지 않고 있다.
+    runProbe("no-auth", `${base}/models`, json),
+    // 대조군 2: 명백히 틀린 키.
+    //   실제 키와 응답이 같으면 → 역시 키가 평가되지 않고 있다.
+    runProbe("bogus-key", `${base}/models`, { ...json, Authorization: "Bearer sk-invalid-000000" }),
+    // 대조군 3: 존재할 리 없는 경로.
+    //   /models 와 응답이 **다르면** /models 는 실재하는 라우트다(= 인증 문제).
+    //   같으면 게이트웨이가 모든 것을 가리고 있다(= base URL 자체가 틀렸을 가능성).
+    runProbe("bogus-path", `${base}/__no_such_route__`, json),
+  ];
+  if (key) {
+    probes.push(runProbe("real-key", `${base}/models`, { ...json, Authorization: `Bearer ${key}` }));
+  }
+  return Promise.all(probes);
+}
+
+/** 대조군 결과를 사람이 읽을 수 있는 판정으로 */
+export function interpretDiagnostic(probes: DiagnosticProbe[]): string {
+  const by = (c: string) => probes.find((p) => p.case === c);
+  const real = by("real-key");
+  const none = by("no-auth");
+  const bogusKey = by("bogus-key");
+  const bogusPath = by("bogus-path");
+
+  const errType = real?.amznErrorType ?? none?.amznErrorType;
+  if (errType && /MissingAuthenticationToken/i.test(errType)) {
+    return "경로 없음 — 이 base URL/path 조합은 존재하지 않습니다. LETSUR_BASE_URL 이 틀렸습니다. Letsur 콘솔의 실제 엔드포인트를 확인해 주세요.";
+  }
+  if (real && none && real.status === none.status && real.body === none.body) {
+    const sameAsBogusPath = bogusPath && bogusPath.body === real.body && bogusPath.status === real.status;
+    if (sameAsBogusPath) {
+      return "키가 평가되지 않고 있습니다. 없는 경로와도 응답이 동일해 게이트웨이가 모든 요청을 같은 방식으로 거부합니다 — base URL 자체가 틀렸거나, IP 허용목록/WAF가 앞단에서 막고 있습니다.";
+    }
+    return "키가 평가되지 않고 있습니다. 인증 헤더를 아예 빼도 응답이 같습니다 — 헤더 이름이 다르거나(콘솔 문서 확인 필요), 호출 주체(IP·도메인)가 허용되지 않았습니다. 없는 경로와는 응답이 달라 이 경로 자체는 실재합니다.";
+  }
+  if (real && bogusKey && real.body === bogusKey.body && real.status === bogusKey.status) {
+    return "실제 키와 가짜 키의 응답이 동일합니다 — 키가 검증 단계까지 도달하지 못합니다. 계정/스페이스에서 이 키가 활성화됐는지, 호출 IP 제한이 있는지 확인해 주세요.";
+  }
+  if (real && real.status === 200) return "정상 — 호출 가능합니다.";
+  if (real && bogusKey && real.status !== bogusKey.status) {
+    return "키는 평가되고 있으나 거부됐습니다 — 키 자체의 권한/플랜 문제입니다. Letsur 콘솔에서 이 키의 스페이스 권한과 사용 가능 모델을 확인해 주세요.";
+  }
+  return "판정 불가 — probes 원문을 확인해 주세요.";
+}
+
 /**
  * 관리 API 탐색 — 문서 접근이 막힌 상태에서 실제 사용 가능한 경로를 찾기 위해
  * 관리 키로 대표 경로들을 조회한다. (프로덕션에서만 의미 있음)

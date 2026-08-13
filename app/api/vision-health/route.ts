@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { letsurKey, letsurKeyRaw, letsurModel, configuredBase, probeAll, probeChat, probeManagement, letsurManagementKey, keyWarning, sanitizeKey, configuredAuthStyle } from "@/lib/llm/letsur";
+import { letsurKey, letsurKeyRaw, letsurModel, configuredBase, probeAll, probeChat, probeManagement, letsurManagementKey, keyWarning, sanitizeKey, configuredAuthStyle, probeDiagnostic, interpretDiagnostic } from "@/lib/llm/letsur";
 import { providerChain, visionJson, extractJson } from "@/lib/llm";
 import { isNaverConfigured, searchImages } from "@/lib/naver/api-hub";
 
@@ -137,6 +137,14 @@ export async function GET(req: NextRequest) {
     body.chatProbes = await probeChat(key);
     const okChat = (body.chatProbes as { status: number | string }[]).find((c) => c.status === 200);
     body.letsurUsable = Boolean(okChat);
+
+    // 403이 계속 나올 때 원인을 가른다 (인증 실패인가, 경로/게이트웨이 문제인가).
+    // 대조군(무인증·가짜키·없는경로)과 AWS 오류 헤더로 판정한다.
+    if (!okChat) {
+      const diag = await probeDiagnostic(key);
+      body.diagnostic = diag;
+      body.diagnosis = interpretDiagnostic(diag);
+    }
   }
 
   const mgmt = await probeManagement();

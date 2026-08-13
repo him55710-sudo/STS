@@ -189,3 +189,18 @@
   `024`=키 값/환경변수 뒤바뀜, `010`/`012`=콘솔에서 이미지 검색 API 미신청.
   Letsur 는 `chatProbes` 결과로 활성화 여부 확정 예정(`/models` 403은
   AWS API Gateway가 없는 경로에 주는 응답이라 인증 실패와 구분되지 않음).
+
+## Cycle 13 — Letsur 403 원인 판별 프로브 (auth vs routing)
+- **Plan**: 프로덕션 health 실측에서 `/models`·`/chat/completions` × `bearer`·`x-api-key`
+  네 조합이 **전부 동일한** `403 {"message":"Forbidden"}`. 응답이 조건에 따라 달라지지
+  않으므로 "키가 틀렸다"는 가설을 검증 없이 유지할 수 없다. 대조군 실험으로 가른다.
+- **Do**: `probeDiagnostic()` 추가 — 같은 경로를 4조건으로 호출한다.
+  no-auth / bogus-key / bogus-path / real-key. 그리고 응답 **본문이 아니라 헤더**를 읽는다:
+  `x-amzn-errortype` 가 `ForbiddenException`(라우트 존재·권한 거부)인지
+  `MissingAuthenticationTokenException`(경로 자체가 없음)인지가 판정의 핵심.
+  `x-cache`/`server` 로 CloudFront·WAF 단 차단도 구분. `interpretDiagnostic()` 이 한글 판정문 생성.
+- **Check**: tsc 무오류, build 성공. **네이버는 이번 사이클에서 실호출 성공 확인** —
+  `contract:"apihub"`, HTTP 200, total 90,480,000, 아이템 정상 반환 → v3.3의 계약 자동
+  판별과 visual 축이 프로덕션에서 실제로 동작한다. (이전 사이클의 미검증 항목 해소)
+- **Act**: Letsur 판정은 프로덕션 `diagnosis` 필드로 확정. 앱은 그동안 Gemini 폴백으로
+  정상 동작(체인 letsur→gemini, 키 보유). Letsur 비활성이 기능 차단 요인은 아니다.
