@@ -1,3 +1,4 @@
+import { LEGACY_PRODUCT_VIEWS } from "./commerce";
 import type { Creator, Post, Product } from "./types";
 
 /**
@@ -9,70 +10,12 @@ import type { Creator, Post, Product } from "./types";
  * exactness = "similar": 브랜드/모델을 특정할 수 없어 같은 스타일의 구매 가능한 상품을 연결한 것
  */
 
-const nv = (q: string) => `https://search.shopping.naver.com/search/all?query=${encodeURIComponent(q)}`;
-
-/** 남성 룩 1~5 상품 */
-export const LOOK_PRODUCTS: Product[] = [
-  // Look 1 — 스마트 캐주얼 / 아이비리그
-  { id: "pl-polo-oxford", brand: "Polo Ralph Lauren", name: "아이코닉 옥스포드 셔츠 클래식 핏", price: 259000, currency: "KRW", retailer: "폴로 공식몰", url: nv("폴로 랄프로렌 아이코닉 옥스포드 셔츠 클래식핏 블루"), image: "/looks/pl-polo-oxford.jpg", category: "fashion", affiliate: true, commissionRate: 0.07, similarIds: ["plw-polo-oxford", "pl-uniqlo-tee"] },
-  { id: "pl-levis-501", brand: "Levi's", name: "501 오리지널 라이트 워시", price: 91300, currency: "KRW", retailer: "리바이스 공식몰", url: nv("리바이스 501 오리지널 라이트 인디고"), image: "/looks/pl-levis-501.jpg", category: "fashion", affiliate: true, commissionRate: 0.08, similarIds: ["pl-apc-jeans", "plw-levis-ribcage"] },
-  { id: "pl-dm-1461", brand: "Dr. Martens", name: "1461 스무스 블랙", price: 195000, currency: "KRW", retailer: "닥터마틴 공식몰", url: nv("닥터마틴 1461 스무스 블랙 3홀"), image: "/looks/pl-dm-1461.jpg", category: "fashion", affiliate: true, commissionRate: 0.06, similarIds: ["pl-samba"] },
-  { id: "pl-prada-bag", brand: "Prada", name: "리나일론 사피아노 숄더백", price: 2300000, currency: "KRW", retailer: "프라다 공식", url: nv("프라다 리나일론 사피아노 숄더백 블랙"), image: "/looks/pl-prada-bag.jpg", category: "fashion", affiliate: false, similarIds: ["plw-prada-re2005"] },
-  // Look 2 — 모던 클래식 / 헤리티지
-  { id: "pl-barbour-bedale", brand: "Barbour", name: "비데일 왁스 자켓 세이지", price: 384000, currency: "KRW", retailer: "바버 공식몰", url: nv("바버 비데일 왁스자켓 세이지"), image: "/looks/pl-barbour-bedale.jpg", category: "fashion", affiliate: true, commissionRate: 0.07, similarIds: ["plw-barbour-beadnell", "pl-patagonia-retrox"] },
-  { id: "pl-uniqlo-tee", brand: "Uniqlo", name: "수피마 코튼 크루넥 티셔츠", price: 19900, currency: "KRW", retailer: "유니클로", url: nv("유니클로 수피마 코튼 크루넥 티셔츠 화이트"), image: "/looks/pl-uniqlo-tee.jpg", category: "fashion", affiliate: true, commissionRate: 0.03, similarIds: [] },
-  { id: "pl-apc-jeans", brand: "A.P.C.", name: "쁘띠 스탠다드 로우 인디고 셀비지", price: 329000, currency: "KRW", retailer: "A.P.C. 공식", url: nv("아페쎄 쁘띠 스탠다드 셀비지 데님"), image: "/looks/pl-apc-jeans.jpg", category: "fashion", affiliate: false, similarIds: ["pl-levis-501", "plw-cos-dark-jeans"] },
-  { id: "pl-clarks-wallabee", brand: "Clarks Originals", name: "왈라비 메이플 스웨이드", price: 259000, currency: "KRW", retailer: "클락스 공식몰", url: nv("클락스 왈라비 메이플 스웨이드"), image: "/looks/pl-clarks-wallabee.jpg", category: "fashion", affiliate: true, commissionRate: 0.08, similarIds: ["pl-birken-boston"] },
-  { id: "pl-omega-speedmaster", brand: "Omega", name: "스피드마스터 문워치 프로페셔널", price: 11500000, currency: "KRW", retailer: "오메가 부티크", url: nv("오메가 스피드마스터 문워치 프로페셔널"), image: "/looks/pl-omega-speedmaster.jpg", category: "fashion", affiliate: false, similarIds: ["pl-cartier-tank"] },
-  // Look 3 — 미니멀 컨템포러리
-  { id: "pl-acne-sweat", brand: "Acne Studios", name: "러버 로고 플리스 스웨트셔츠", price: 450000, currency: "KRW", retailer: "아크네 공식", url: nv("아크네 스튜디오 로고 스웨트셔츠 그레이"), image: "/looks/pl-acne-sweat.jpg", category: "fashion", affiliate: false, similarIds: ["plw-acne-sweat-oat"] },
-  { id: "pl-acne-scarf", brand: "Acne Studios", name: "투톤 울 스카프 라이트 베이지", price: 290000, currency: "KRW", retailer: "아크네 공식", url: nv("아크네 스튜디오 울 머플러 베이지"), image: "/looks/pl-acne-scarf.jpg", category: "fashion", affiliate: false, similarIds: [] },
-  { id: "pl-cos-pants", brand: "COS", name: "와이드 레그 울 트라우저 블랙", price: 159000, currency: "KRW", retailer: "COS 공식몰", url: nv("COS 와이드 레그 트라우저 블랙"), image: "/looks/pl-cos-pants.jpg", category: "fashion", affiliate: true, commissionRate: 0.06, similarIds: ["pl-tnf-pants"] },
-  { id: "pl-margiela-replica", brand: "Maison Margiela", name: "레플리카 스니커즈 화이트", price: 790000, currency: "KRW", retailer: "마르지엘라 공식", url: nv("메종 마르지엘라 레플리카 스니커즈 화이트"), image: "/looks/pl-margiela-replica.jpg", category: "fashion", affiliate: false, similarIds: ["pl-samba", "plw-samba-white"] },
-  // Look 4 — 시티보이 / 아웃도어
-  { id: "pl-patagonia-retrox", brand: "Patagonia", name: "클래식 레트로X 플리스 자켓", price: 289000, currency: "KRW", retailer: "파타고니아 코리아", url: nv("파타고니아 클래식 레트로X 자켓 내추럴"), image: "/looks/pl-patagonia-retrox.jpg", category: "fashion", affiliate: true, commissionRate: 0.06, similarIds: ["pl-barbour-bedale"] },
-  { id: "pl-tnf-pants", brand: "The North Face", name: "카고 조거 팬츠 다크 그레이", price: 139000, currency: "KRW", retailer: "노스페이스 코리아", url: nv("노스페이스 카고 조거 팬츠 다크그레이"), image: "/looks/pl-tnf-pants.jpg", category: "fashion", affiliate: true, commissionRate: 0.07, similarIds: ["pl-cos-pants"] },
-  { id: "pl-birken-boston", brand: "Birkenstock", name: "보스턴 소프트풋베드 스웨이드 토프", price: 229000, currency: "KRW", retailer: "버켄스탁 공식몰", url: nv("버켄스탁 보스턴 소프트풋베드 스웨이드 토프"), image: "/looks/pl-birken-boston.jpg", category: "fashion", affiliate: true, commissionRate: 0.08, similarIds: ["pl-clarks-wallabee"] },
-  { id: "pl-arc-heliad", brand: "Arc'teryx", name: "헬리어드 15 백팩 블랙", price: 180000, currency: "KRW", retailer: "아크테릭스 코리아", url: nv("아크테릭스 헬리어드 15 백팩"), image: "/looks/pl-arc-heliad.jpg", category: "fashion", affiliate: true, commissionRate: 0.05, similarIds: [] },
-  // Look 5 — 프렌치 럭셔리 스트리트
-  { id: "pl-ami-knit", brand: "AMI Paris", name: "아미 드 쾨르 크루넥 울 니트 내추럴", price: 595000, currency: "KRW", retailer: "AMI 공식", url: nv("아미 파리 하트로고 크루넥 니트 내추럴"), image: "/looks/pl-ami-knit.jpg", category: "fashion", affiliate: false, similarIds: ["plw-acne-sweat-oat"] },
-  { id: "pl-ysl-jeans", brand: "Saint Laurent", name: "슬림핏 진 다크 블루 블랙", price: 1340000, currency: "KRW", retailer: "생로랑 공식", url: nv("생로랑 슬림핏 데님 블랙"), image: "/looks/pl-ysl-jeans.jpg", category: "fashion", affiliate: false, similarIds: ["plw-cos-dark-jeans"] },
-  { id: "pl-samba", brand: "Adidas", name: "삼바 OG 블랙", price: 139000, currency: "KRW", retailer: "아디다스 코리아", url: nv("아디다스 삼바 OG 블랙"), image: "/looks/pl-samba.jpg", category: "fashion", affiliate: true, commissionRate: 0.06, similarIds: ["plw-samba-white", "pl-dm-1461"] },
-  { id: "pl-cartier-tank", brand: "Cartier", name: "탱크 머스트 레더 스트랩", price: 4300000, currency: "KRW", retailer: "까르띠에 부티크", url: nv("까르띠에 탱크 머스트"), image: "/looks/pl-cartier-tank.jpg", category: "fashion", affiliate: false, similarIds: ["pl-omega-speedmaster"] },
-];
-
-/** 여성 룩 6~10 상품 */
-export const LOOK_PRODUCTS_W: Product[] = [
-  // Look 6 — 프레피 스마트 캐주얼
-  { id: "plw-polo-oxford", brand: "Polo Ralph Lauren", name: "클래식 핏 옥스포드 셔츠 스카이 블루", price: 198000, currency: "KRW", retailer: "폴로 공식몰", url: nv("폴로 랄프로렌 여성 클래식핏 옥스포드 셔츠 블루"), image: "/looks/plw-polo-oxford.jpg", category: "fashion", affiliate: true, commissionRate: 0.07, similarIds: ["pl-polo-oxford"] },
-  { id: "plw-levis-ribcage", brand: "Levi's", name: "리브케이지 스트레이트 앵클 라이트 워시", price: 148000, currency: "KRW", retailer: "리바이스 공식몰", url: nv("리바이스 리브케이지 스트레이트 앵클 라이트"), image: "/looks/plw-levis-ribcage.jpg", category: "fashion", affiliate: true, commissionRate: 0.08, similarIds: ["pl-levis-501"] },
-  { id: "plw-samba-white", brand: "Adidas", name: "삼바 OG 클라우드 화이트 · 검", price: 139000, currency: "KRW", retailer: "아디다스 코리아", url: nv("아디다스 삼바 OG 화이트 검"), image: "/looks/plw-samba-white.jpg", category: "fashion", affiliate: true, commissionRate: 0.06, similarIds: ["pl-samba"] },
-  { id: "plw-prada-re2005", brand: "Prada", name: "리에디션 2005 리나일론 숄더백 블랙", price: 2150000, currency: "KRW", retailer: "프라다 공식", url: nv("프라다 리에디션 2005 리나일론 숄더백 블랙"), image: "/looks/plw-prada-re2005.jpg", category: "fashion", affiliate: false, similarIds: ["pl-prada-bag"] },
-  { id: "plw-tiffany-heart", brand: "Tiffany & Co.", name: "리턴 투 티파니 하트 태그 펜던트", price: 545000, currency: "KRW", retailer: "티파니 공식", url: nv("티파니 리턴투티파니 하트 태그 펜던트 실버"), image: "/looks/plw-tiffany-heart.jpg", category: "fashion", affiliate: false, similarIds: ["plw-gold-chain"] },
-  { id: "plw-silver-hoop", brand: "OST", name: "실버 925 미니 후프 이어링", price: 49000, currency: "KRW", retailer: "OST 공식몰", url: nv("실버 925 미니 후프 이어링"), image: "/looks/plw-silver-hoop.jpg", category: "fashion", affiliate: true, commissionRate: 0.05, similarIds: ["plw-gold-hoop", "plw-silver-stud"] },
-
-  // Look 7 — 브리티시 헤리티지 캐주얼
-  { id: "plw-barbour-beadnell", brand: "Barbour", name: "비드넬 왁스 자켓 올리브", price: 399000, currency: "KRW", retailer: "바버 공식몰", url: nv("바버 비드넬 왁스자켓 올리브 여성"), image: "/looks/plw-barbour-beadnell.jpg", category: "fashion", affiliate: true, commissionRate: 0.07, similarIds: ["pl-barbour-bedale"] },
-  { id: "plw-cos-dark-jeans", brand: "COS", name: "스트레이트 레그 진 다크 인디고", price: 139000, currency: "KRW", retailer: "COS 공식몰", url: nv("COS 스트레이트 레그 진 다크 인디고"), image: "/looks/plw-cos-dark-jeans.jpg", category: "fashion", affiliate: true, commissionRate: 0.06, similarIds: ["pl-apc-jeans"] },
-  { id: "plw-longchamp", brand: "Longchamp", name: "르 플리아쥬 오리지널 L 롱핸들 블랙", price: 165000, currency: "KRW", retailer: "롱샴 공식몰", url: nv("롱샴 르플리아쥬 오리지널 L 롱핸들 블랙"), image: "/looks/plw-longchamp.jpg", category: "fashion", affiliate: true, commissionRate: 0.05, similarIds: ["plw-polene-bag"] },
-  { id: "plw-gold-hoop", brand: "Lloyd", name: "14K 골드 미니 후프 이어링", price: 129000, currency: "KRW", retailer: "로이드 공식몰", url: nv("14K 골드 미니 후프 이어링"), image: "/looks/plw-gold-hoop.jpg", category: "fashion", affiliate: true, commissionRate: 0.05, similarIds: ["plw-silver-hoop"] },
-  { id: "plw-silver-rings", brand: "OST", name: "실버 925 레이어드 링 세트", price: 59000, currency: "KRW", retailer: "OST 공식몰", url: nv("실버 925 레이어드 반지 세트"), image: "/looks/plw-silver-rings.jpg", category: "fashion", affiliate: true, commissionRate: 0.05, similarIds: ["plw-silver-hoop"] },
-
-  // Look 8 — 미니멀 컨템포러리
-  { id: "plw-acne-sweat-oat", brand: "Acne Studios", name: "오버사이즈 코튼 스웨트셔츠 오트밀", price: 420000, currency: "KRW", retailer: "아크네 공식", url: nv("아크네 스튜디오 오버사이즈 스웨트셔츠 오트밀"), image: "/looks/plw-acne-sweat-oat.jpg", category: "fashion", affiliate: false, similarIds: ["pl-acne-sweat", "pl-ami-knit"] },
-  { id: "plw-celine-bag", brand: "Celine", name: "트리옹프 스몰 숄더백 블랙", price: 5900000, currency: "KRW", retailer: "셀린느 공식", url: nv("셀린느 트리옹프 숄더백 블랙"), image: "/looks/plw-celine-bag.jpg", category: "fashion", affiliate: false, similarIds: ["plw-polene-bag", "plw-prada-re2005"] },
-  { id: "plw-gold-chain", brand: "골든듀", name: "14K 라운드 체인 네크리스", price: 298000, currency: "KRW", retailer: "골든듀 공식몰", url: nv("14K 골드 체인 목걸이 레이어드"), image: "/looks/plw-gold-chain.jpg", category: "fashion", affiliate: true, commissionRate: 0.05, similarIds: ["plw-tiffany-heart"] },
-  { id: "plw-gold-bracelet", brand: "골든듀", name: "14K 체인 브레이슬릿", price: 248000, currency: "KRW", retailer: "골든듀 공식몰", url: nv("14K 골드 체인 팔찌"), image: "/looks/plw-gold-bracelet.jpg", category: "fashion", affiliate: true, commissionRate: 0.05, similarIds: ["plw-gold-chain"] },
-
-  // Look 9 — 아웃도어 시티걸
-  { id: "plw-socks", brand: "Uniqlo", name: "리브 크루 삭스 화이트", price: 9900, currency: "KRW", retailer: "유니클로", url: nv("유니클로 리브 크루 삭스 화이트"), image: "/looks/plw-socks.jpg", category: "fashion", affiliate: true, commissionRate: 0.03, similarIds: [] },
-  { id: "plw-silver-stud", brand: "OST", name: "실버 925 미니 스터드 이어링", price: 39000, currency: "KRW", retailer: "OST 공식몰", url: nv("실버 925 미니 스터드 귀걸이"), image: "/looks/plw-silver-stud.jpg", category: "fashion", affiliate: true, commissionRate: 0.05, similarIds: ["plw-silver-hoop"] },
-
-  // Look 10 — 프렌치 럭셔리 캐주얼
-  { id: "plw-polene-bag", brand: "Polène", name: "뉴메로 위 나노 블랙", price: 580000, currency: "KRW", retailer: "폴렌 공식", url: nv("폴렌 뉴메로 위 나노 블랙"), image: "/looks/plw-polene-bag.jpg", category: "fashion", affiliate: false, similarIds: ["plw-celine-bag", "plw-longchamp"] },
-];
-
-export const PRODUCTS: Product[] = [...LOOK_PRODUCTS, ...LOOK_PRODUCTS_W];
+/**
+ * 상품 데이터는 commerce product graph로 이관되었다 (lib/commerce/seed.ts).
+ * PRODUCTS는 canonical product + 최적 오퍼를 평탄화한 legacy 호환 뷰다 —
+ * id·이름·이미지는 canonical에서, 가격·판매처·링크는 OfferResolver의 best offer에서 온다.
+ */
+export const PRODUCTS: Product[] = LEGACY_PRODUCT_VIEWS;
 
 export const CREATORS: Creator[] = [
   { id: "c-minu", handle: "minu.archive", name: "김민우", bio: "매일의 실물 착장 아카이브 📌\n사진 속 물건을 탭하면 바로 구매로 이어져요", followers: 218000, category: "fashion", tone: "#4A4D52", avatarImage: "/looks/look1.jpg", verified: true },

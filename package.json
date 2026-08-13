@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "test": "tsx --test tests/commerce/offer-resolver.test.ts tests/commerce/sheet-model.test.ts"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "^20230920.0.0",
@@ -25,6 +26,7 @@
     "@types/react-dom": "^19.2.4",
     "postcss": "^8.5.26",
     "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.12",
     "typescript": "^7.0.2"
   }
 }
