@@ -5,6 +5,7 @@ import { POSTS } from "@/lib/catalog";
 import { estimatedEarnings, pct, statsForPosts, totals } from "@/lib/analytics";
 import { compact, won } from "@/lib/format";
 import { useApp, useHydrated } from "@/lib/store";
+import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import {
   BarChartIcon,
   ChevronRightIcon,
@@ -20,6 +21,20 @@ import {
 export default function ProfilePage() {
   const hydrated = useHydrated();
   const { userPosts, events, user, signOut } = useApp();
+
+  // Google(Supabase) 세션이면 Supabase 로그아웃까지 수행한다.
+  // (SupabaseAuthProvider 가 SIGNED_OUT 을 받아 store 도 비우지만,
+  //  데모 세션까지 커버하려고 store.signOut 도 함께 호출한다 — idempotent.)
+  const handleSignOut = async () => {
+    if (isSupabaseConfigured()) {
+      try {
+        await getSupabaseBrowserClient().auth.signOut();
+      } catch {
+        // 네트워크 실패 등은 무시하고 로컬 세션은 확실히 정리
+      }
+    }
+    signOut();
+  };
 
   // 데모 계정은 시드 크리에이터 콘텐츠 전체를 "내 콘텐츠"로 보여준다
   const myPosts = hydrated ? [...userPosts, ...POSTS] : POSTS;
@@ -38,7 +53,7 @@ export default function ProfilePage() {
           {hydrated && user ? (
             <p className="mt-0.5 flex items-center gap-1.5 text-[12px] text-ink-2">
               {user.provider === "kakao" ? "카카오" : "Google"} 계정 · 크리에이터 스튜디오
-              <button onClick={signOut} className="press font-medium text-ink-2 underline underline-offset-2">
+              <button onClick={handleSignOut} className="press font-medium text-ink-2 underline underline-offset-2">
                 로그아웃
               </button>
             </p>
