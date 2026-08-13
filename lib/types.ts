@@ -105,4 +105,6 @@ export interface DetectedObject {
   w: number;
   h: number;
   confidence: number;
+  /** 탐지 영역의 평균 색 (#rrggbb) — 후보 랭킹의 색상 유사도에 사용 */
+  tone?: string;
 }

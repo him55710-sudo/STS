@@ -82,35 +82,59 @@ export default function CreatePage() {
   };
 
   // ── Step 2: AI 분석 ───────────────────────────────────
+  // 1순위 Gemini(서버 키 설정 시) → 2순위 온디바이스 오픈소스 모델(coco-ssd)
+  // → 3순위 데모 mock. AI 실패는 흐름을 막지 않는다 (PRD §56).
   const startAnalysis = async (dataUrl: string, r: number) => {
     setImage(dataUrl);
     setRatio(r);
     setStep("analyzing");
     setStartedAt(Date.now());
     track("asset_view"); // upload_start에 해당
-    try {
-      const res = await fetch("/api/detect", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: dataUrl }),
-      });
-      const json = await res.json();
-      const detected: DetectedObject[] = json.objects ?? [];
-      setAiSource(json.source ?? "");
-      setObjects(
-        detected.map((o) => ({
-          ...o,
-          id: `d-${seq.current++}`,
-          productId: candidatesFor(o)[0]?.id ?? null,
-          exactness: "similar" as Exactness,
-        }))
-      );
-      setSelectedId(null);
-      setStep("review");
-    } catch {
-      setObjects([]);
-      setStep("review");
+
+    const serverP = fetch("/api/detect", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: dataUrl }),
+    })
+      .then((res) => res.json() as Promise<{ objects?: DetectedObject[]; source?: string }>)
+      .catch(() => null);
+    const deviceP = import("@/lib/vision")
+      .then((m) =>
+        Promise.race([
+          m.detectOnDevice(dataUrl),
+          new Promise<never>((_, rej) => setTimeout(() => rej(new Error("timeout")), 25000)),
+        ])
+      )
+      .catch(() => null);
+
+    let detected: DetectedObject[] = [];
+    let source = "";
+    const server = await serverP;
+    if (server?.source === "gemini" && server.objects?.length) {
+      detected = server.objects;
+      source = "gemini";
+    } else {
+      const device = await deviceP;
+      if (device?.length) {
+        detected = device;
+        source = "device";
+      } else if (server?.objects?.length) {
+        detected = server.objects;
+        source = server.source ?? "mock";
+      }
     }
+
+    setAiSource(source);
+    setObjects(
+      detected.map((o) => ({
+        ...o,
+        id: `d-${seq.current++}`,
+        productId: candidatesFor(o)[0]?.id ?? null,
+        exactness: "similar" as Exactness,
+      }))
+    );
+    setSelectedId(null);
+    setStep("review");
   };
 
   // ── Step 3: 객체/상품 편집 ─────────────────────────────
@@ -278,6 +302,9 @@ export default function CreatePage() {
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
             <p className="text-[14px] text-ink-2">오브제를 찾고 있어요...</p>
           </div>
+          <p className="mt-2 text-center text-[11.5px] text-ink-2">
+            첫 분석은 AI 모델 준비로 몇 초 더 걸릴 수 있어요
+          </p>
         </div>
       )}
 
@@ -317,7 +344,8 @@ export default function CreatePage() {
             {objects.length > 0
               ? `오브젝트 ${objects.length}개를 찾았어요 · 놓친 물건은 화면을 탭해 추가하세요`
               : "화면 속 물건을 탭해서 직접 추가해보세요"}
-            {aiSource !== "gemini" && aiSource && " · 데모 탐지 모드"}
+            {aiSource === "device" && " · 온디바이스 AI 탐지"}
+            {aiSource !== "gemini" && aiSource !== "device" && aiSource && " · 데모 탐지 모드"}
           </p>
 
           {/* Detected objects 목록 — PRD §15 2단 구조 */}
@@ -489,6 +517,7 @@ function CandidatePanel({
   const [q, setQ] = useState("");
   const [url, setUrl] = useState("");
   const [name, setName] = useState("");
+  const [price, setPrice] = useState("");
   const lookup = useProductLookup();
   const candidates = candidatesFor(obj);
   const results = searchProducts(q);
@@ -506,7 +535,7 @@ function CandidatePanel({
       id: `custom-${Date.now().toString(36)}`,
       brand: host,
       name: name.trim() || "직접 연결한 상품",
-      price: 0,
+      price: Math.max(0, parseInt(price.replace(/[^0-9]/g, ""), 10) || 0),
       currency: "KRW",
       retailer: host,
       url,
@@ -517,7 +546,7 @@ function CandidatePanel({
     });
   };
 
-  const Row = ({ p }: { p: Product }) => {
+  const Row = ({ p, top }: { p: Product; top?: boolean }) => {
     const picked = obj.productId === p.id;
     return (
       <button
@@ -533,12 +562,20 @@ function CandidatePanel({
             {p.brand}
             {p.affiliate && (
               <span className="shrink-0 rounded-[4px] bg-primary-soft px-1 py-px text-[9px] font-semibold text-primary">
-                제휴
+                제휴 {Math.round((p.commissionRate ?? 0.05) * 100)}%
+              </span>
+            )}
+            {top && (
+              <span className="shrink-0 rounded-[4px] bg-ink px-1 py-px text-[9px] font-semibold text-surface">
+                AI 추천
               </span>
             )}
           </p>
           <p className="truncate text-[13px] font-medium">{p.name}</p>
         </div>
+        <span className="shrink-0 text-[12px] font-semibold text-ink-2">
+          ₩{p.price.toLocaleString("ko-KR")}
+        </span>
         {picked && <CheckIcon size={16} className="shrink-0 text-primary" />}
       </button>
     );
@@ -575,8 +612,8 @@ function CandidatePanel({
       {mode === "candidates" &&
         (candidates.length ? (
           <div className="flex flex-col gap-1.5">
-            {candidates.map((p) => (
-              <Row key={p.id} p={p} />
+            {candidates.map((p, i) => (
+              <Row key={p.id} p={p} top={i === 0} />
             ))}
           </div>
         ) : (
@@ -615,12 +652,21 @@ function CandidatePanel({
               className="h-9 w-full bg-transparent text-[13px] outline-none"
             />
           </div>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="상품명 (선택)"
-            className="h-9 rounded-(--radius-btn) bg-surface-2 px-2.5 text-[13px] outline-none"
-          />
+          <div className="flex gap-2">
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="상품명 (선택)"
+              className="h-9 flex-1 rounded-(--radius-btn) bg-surface-2 px-2.5 text-[13px] outline-none"
+            />
+            <input
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              placeholder="가격 (선택)"
+              inputMode="numeric"
+              className="h-9 w-28 rounded-(--radius-btn) bg-surface-2 px-2.5 text-[13px] outline-none"
+            />
+          </div>
           <button
             onClick={submitUrl}
             className="h-9 rounded-(--radius-btn) bg-ink text-[13px] font-semibold text-surface"
