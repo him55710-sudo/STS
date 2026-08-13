@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { letsurKey, letsurModel, configuredBase, probeAll, probeManagement, letsurManagementKey } from "@/lib/llm/letsur";
+import { letsurKey, letsurKeyRaw, letsurModel, configuredBase, probeAll, probeManagement, letsurManagementKey, keyWarning, sanitizeKey, configuredAuthStyle } from "@/lib/llm/letsur";
 import { providerChain, visionJson, extractJson } from "@/lib/llm";
 
 export const maxDuration = 45;
@@ -23,12 +23,14 @@ const mask = (v?: string) => (v ? `${v.slice(0, 6)}…${v.slice(-3)} (len ${v.le
 
 /** 네이버 쇼핑 검색 API 실호출 진단 — 에러 코드까지 그대로 노출해 원인을 바로 알 수 있게 한다 */
 async function checkNaver() {
-  const id = process.env.NAVER_CLIENT_ID?.trim();
-  const secret = process.env.NAVER_CLIENT_SECRET?.trim();
+  const id = sanitizeKey(process.env.NAVER_CLIENT_ID);
+  const secret = sanitizeKey(process.env.NAVER_CLIENT_SECRET);
   const base = {
     clientIdConfigured: Boolean(id),
     clientIdPreview: id ? `${id.slice(0, 4)}…(len ${id.length})` : null,
     clientSecretConfigured: Boolean(secret),
+    clientIdWarning: keyWarning(process.env.NAVER_CLIENT_ID),
+    clientSecretWarning: keyWarning(process.env.NAVER_CLIENT_SECRET),
   };
   if (!id || !secret) {
     return {
@@ -113,6 +115,8 @@ export async function GET(req: NextRequest) {
     letsur: {
       keyConfigured: Boolean(key),
       keyPreview: mask(key),
+      keyWarning: keyWarning(letsurKeyRaw()),
+      authStyleFromEnv: configuredAuthStyle(),
       baseUrlFromEnv: configuredBase(),
       model: letsurModel(),
       managementKeyConfigured: Boolean(letsurManagementKey()),

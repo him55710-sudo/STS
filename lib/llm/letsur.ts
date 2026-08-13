@@ -40,23 +40,50 @@ export function configuredAuthStyle(): AuthStyle | null {
 
 /** 관리(Management) API 키 — 스페이스/멤버/키 조회용. 비전 호출에는 사용하지 않는다. */
 export function letsurManagementKey(): string | undefined {
-  return process.env.LETSUR_MANAGEMENT_KEY?.trim() || undefined;
+  return sanitizeKey(process.env.LETSUR_MANAGEMENT_KEY);
 }
 
 let resolvedBase: string | null = null;
 
 export function configuredBase(): string | null {
-  const raw = process.env.LETSUR_BASE_URL?.trim();
+  const raw = sanitizeKey(process.env.LETSUR_BASE_URL);
   if (!raw) return null;
   return raw.replace(/\/+$/, "");
 }
 
+/**
+ * 환경변수 값 정리 — 붙여넣기 사고에 강하게.
+ * 값에 줄바꿈/공백이 섞이거나 같은 키가 여러 번 들어가도 첫 토큰만 사용한다.
+ * (HTTP 헤더에 줄바꿈이 들어가면 `Headers.append` 가 예외를 던져 전체 호출이 실패한다)
+ */
+export function sanitizeKey(raw?: string): string | undefined {
+  if (!raw) return undefined;
+  const first = raw
+    .split(/[\s\r\n]+/)
+    .map((s) => s.trim())
+    .filter(Boolean)[0];
+  return first || undefined;
+}
+
+/** 원본과 정리본이 다르면 경고 문구를 만든다 (진단용) */
+export function keyWarning(raw?: string): string | null {
+  if (!raw) return null;
+  const clean = sanitizeKey(raw);
+  if (!clean || clean === raw.trim()) return null;
+  const repeats = raw.split(/[\s\r\n]+/).filter(Boolean).length;
+  return `환경변수 값에 줄바꿈/중복이 있어 자동 정리했습니다 (원본 ${raw.length}자, 토큰 ${repeats}개 → ${clean.length}자 사용). Vercel 값에 키를 한 번만 넣어주세요.`;
+}
+
 export function letsurKey(): string | undefined {
-  return process.env.LETSUR_API_KEY?.trim() || undefined;
+  return sanitizeKey(process.env.LETSUR_API_KEY);
+}
+
+export function letsurKeyRaw(): string | undefined {
+  return process.env.LETSUR_API_KEY;
 }
 
 export function letsurModel(): string {
-  return process.env.LETSUR_MODEL?.trim() || "gpt-4o";
+  return sanitizeKey(process.env.LETSUR_MODEL) || "gpt-4o";
 }
 
 function authHeaders(key: string, style: AuthStyle = "bearer"): Record<string, string> {
