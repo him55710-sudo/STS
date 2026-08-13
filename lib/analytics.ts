@@ -1,3 +1,4 @@
+import { DEFAULT_CREATOR_SHARE } from "./commerce/revenue";
 import type { Post, TrackedEvent } from "./types";
 
 /**
@@ -56,6 +57,16 @@ export function totals(stats: Iterable<PostStats>): PostStats {
 
 export const pct = (a: number, b: number) => (b > 0 ? ((a / b) * 100).toFixed(1) : "0.0");
 
-/** 예상 수익 (데모): outbound × 전환율 2.5% × AOV 7만원 × 수수료 5% × 크리에이터 몫 75% */
-export const estimatedEarnings = (outbound: number) =>
-  Math.round(outbound * 0.025 * 70000 * 0.05 * 0.75);
+/**
+ * ⚠️ DEMO ESTIMATE — 실 데이터가 아니다.
+ * 가정: outbound × 전환율 2.5% × AOV 7만원 × 수수료 5% × 크리에이터 몫(설정값).
+ * 프로덕션 수치는 conversions·creator_ledger_entries(재무 진실)에서만 나온다 —
+ * 이 함수를 쓰는 UI는 반드시 "데모 추정치"로 라벨링해야 한다.
+ */
+export const DEMO_ASSUMED_CVR = 0.025;
+export const DEMO_ASSUMED_AOV = 70000;
+export const DEMO_ASSUMED_COMMISSION = 0.05;
+export const demoEstimatedEarnings = (outbound: number) =>
+  Math.round(
+    outbound * DEMO_ASSUMED_CVR * DEMO_ASSUMED_AOV * DEMO_ASSUMED_COMMISSION * DEFAULT_CREATOR_SHARE
+  );

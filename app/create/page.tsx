@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { publishRemotePost } from "@/lib/backend/posts";
 import type { ProductSnapshot, PublishObjectPayload } from "@/lib/backend/types";
 import { productById } from "@/lib/catalog";
+import { creatorSharePercent, DEFAULT_CREATOR_SHARE } from "@/lib/commerce/revenue";
 import { isDemoLoginAllowed } from "@/lib/config";
 import { candidatesFor, searchProducts } from "@/lib/match";
 import { retrieveAll, type ProductCandidate, type RetrievalQuery } from "@/lib/retrieval";
@@ -679,7 +680,7 @@ function EarningsSummary({ objects }: { objects: DraftObject[] }) {
     .filter((p) => p != null && p.affiliate);
   if (partnered.length === 0) return null;
   const perSale = partnered.reduce(
-    (sum, p) => sum + Math.round(p!.price * (p!.commissionRate ?? 0.05) * 0.7),
+    (sum, p) => sum + Math.round(p!.price * (p!.commissionRate ?? 0.05) * DEFAULT_CREATOR_SHARE),
     0
   );
   return (
@@ -690,7 +691,7 @@ function EarningsSummary({ objects }: { objects: DraftObject[] }) {
         <b>₩{perSale.toLocaleString("ko-KR")}</b> 수익
       </p>
       <p className="mt-1 text-[11px] leading-relaxed text-ink-2">
-        판매 수수료의 70%가 크리에이터 몫이에요. 정산 내역은 애널리틱스에서 확인됩니다.
+        판매 수수료의 {creatorSharePercent()}%가 크리에이터 몫이에요. 정산 내역은 수익 페이지에서 확인됩니다.
       </p>
     </div>
   );
@@ -704,7 +705,7 @@ function ObjectStatus({ obj }: { obj: DraftObject }) {
       <ExactBadge exactness={obj.exactness} />
       {product.affiliate && (
         <span className="shrink-0 rounded-[5px] bg-primary-soft px-1.5 py-0.5 text-[10px] font-semibold text-primary">
-          수익 {Math.round((product.commissionRate ?? 0.05) * 100 * 0.7)}%
+          수익 {Math.round((product.commissionRate ?? 0.05) * 100 * DEFAULT_CREATOR_SHARE)}%
         </span>
       )}
       <span className="truncate">

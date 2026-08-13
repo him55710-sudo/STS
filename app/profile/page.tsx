@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { POSTS } from "@/lib/catalog";
-import { estimatedEarnings, pct, statsForPosts, totals } from "@/lib/analytics";
+import { demoEstimatedEarnings, pct, statsForPosts, totals } from "@/lib/analytics";
 import { isDemoMode } from "@/lib/config";
 import { compact, won } from "@/lib/format";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -34,7 +34,7 @@ export default function ProfilePage() {
   const stats = statsForPosts(myPosts, hydrated ? events : []);
   const t = totals(stats.values());
   const otr = pct(t.taps, t.views);
-  const earnings = estimatedEarnings(t.outbound);
+  const earnings = demoEstimatedEarnings(t.outbound);
 
   return (
     <div>
@@ -103,12 +103,20 @@ export default function ProfilePage() {
         <Metric label="이번 달 조회" value={compact(t.views)} />
         <Metric label="오브젝트 탭" value={compact(t.taps)} />
         <Metric label="구매처 이동" value={compact(t.outbound)} />
-        <Metric label="예상 수익" value={won(earnings)} accent />
+        <Metric label="수익 (데모 추정치)" value={won(earnings)} accent />
       </div>
 
       <Link
-        href="/analytics"
+        href="/creator/earnings"
         className="mx-4 mt-2.5 flex items-center gap-2.5 rounded-(--radius-card) border border-line bg-surface px-4 py-3.5"
+      >
+        <BarChartIcon size={18} className="text-primary" />
+        <span className="flex-1 text-[14px] font-medium">수익 정산 (실데이터)</span>
+        <ChevronRightIcon size={16} className="text-ink-2" />
+      </Link>
+      <Link
+        href="/analytics"
+        className="mx-4 mt-2 flex items-center gap-2.5 rounded-(--radius-card) border border-line bg-surface px-4 py-3.5"
       >
         <BarChartIcon size={18} className="text-accent" />
         <span className="flex-1 text-[14px] font-medium">상세 애널리틱스</span>

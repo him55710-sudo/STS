@@ -4,6 +4,8 @@ import Link from "next/link";
 import { use, useEffect, useState } from "react";
 import { fetchCreatorProfile } from "@/lib/backend/posts";
 import { CREATORS, POSTS } from "@/lib/catalog";
+import { productOutboundUrl } from "@/lib/commerce/outbound";
+import { creatorSharePercent } from "@/lib/commerce/revenue";
 import { isBackendConfigured, isDemoMode, isUuid } from "@/lib/config";
 import { compact, won } from "@/lib/format";
 import { useApp, useCreatorLookup, useHydrated, useProductLookup } from "@/lib/store";
@@ -60,6 +62,16 @@ export default function CreatorPage({ params }: { params: Promise<{ id: string }
     .filter((p) => p != null);
   const follows = hydrated && following.includes(id);
 
+  // 크리에이터 숍 아웃바운드 — /go 경유 (creator_shop 어트리뷰션, 판매처 직행 금지)
+  const openShopProduct = (p: { id: string; url: string }) => {
+    track("outbound_click", { productId: p.id });
+    window.open(
+      productOutboundUrl(p.id, p.url, { creatorId: id, surface: "creator_shop" }),
+      "_blank",
+      "noopener,noreferrer"
+    );
+  };
+
   return (
     <div>
       <header className="sticky top-0 z-30 flex items-center gap-2 border-b border-line bg-bg/95 px-2 py-2.5 backdrop-blur-sm">
@@ -95,7 +107,7 @@ export default function CreatorPage({ params }: { params: Promise<{ id: string }
         <p className="mt-0.5 whitespace-pre-line text-[13px] leading-relaxed text-ink-2">{creator.bio}</p>
         {creator.verified && (
           <span className="mt-2 inline-block rounded-full bg-primary-soft px-2.5 py-1 text-[11px] font-semibold text-primary">
-            수익 공유 크리에이터 · 제휴 판매 수수료 70% 배분
+            수익 공유 크리에이터 · 제휴 판매 수수료 {creatorSharePercent()}% 배분
           </span>
         )}
         <div className="mt-3 flex gap-2">
@@ -169,10 +181,7 @@ export default function CreatorPage({ params }: { params: Promise<{ id: string }
                 {shopProducts.slice(0, 4).map((p) => (
                   <button
                     key={`feat-${p.id}`}
-                    onClick={() => {
-                      track("outbound_click", { productId: p.id });
-                      window.open(p.url, "_blank", "noopener,noreferrer");
-                    }}
+                    onClick={() => openShopProduct(p)}
                     className="press w-[104px] shrink-0 text-left"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -189,10 +198,7 @@ export default function CreatorPage({ params }: { params: Promise<{ id: string }
             {shopProducts.map((p) => (
               <button
                 key={p.id}
-                onClick={() => {
-                  track("outbound_click", { productId: p.id });
-                  window.open(p.url, "_blank", "noopener,noreferrer");
-                }}
+                onClick={() => openShopProduct(p)}
                 className="overflow-hidden rounded-(--radius-card) border border-line bg-surface text-left"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}

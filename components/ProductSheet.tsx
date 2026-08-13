@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect } from "react";
+import { buildGoUrl, type SourceSurface } from "@/lib/commerce/click";
+import { productOutboundUrl } from "@/lib/commerce/outbound";
+import { creatorSharePercent } from "@/lib/commerce/revenue";
 import { buildProductSheetModel } from "@/lib/commerce/sheet-model";
 import type { RankedOffer } from "@/lib/commerce/offer-resolver";
 import { won } from "@/lib/format";
@@ -12,15 +15,19 @@ import { ArrowUpRightIcon, BookmarkIcon, SearchIcon, XIcon } from "./Icons";
  * Product Bottom Sheet — PRD §13 + Phase 2 commerce graph.
  *
  * 구조: 착용 상품(exact canonical) → Buy CTA(best offer) → 다른 판매처 → 비슷한 스타일.
- * "무슨 상품인가"(canonical)와 "어디서 살까"(offers)가 분리되어 있고,
- * exact 상품 영역과 similar 스타일 영역은 절대 섞이지 않는다.
+ * 모든 판매처 아웃바운드는 /go/[offerId]를 경유한다 (Phase 3 어트리뷰션) —
+ * 분석 이벤트(track)와 별개로 서버가 권위 클릭 행을 남긴다.
  */
 export default function ProductSheet({
   postId,
+  creatorId,
+  surface = "feed",
   object,
   onClose,
 }: {
   postId: string;
+  creatorId?: string;
+  surface?: SourceSurface;
   object: ObjectTag;
   onClose: () => void;
 }) {
@@ -29,6 +36,8 @@ export default function ProductSheet({
   const track = useApp((s) => s.track);
   const savedProducts = useApp((s) => s.savedProducts);
   const toggleSaveProduct = useApp((s) => s.toggleSaveProduct);
+
+  const goCtx = { postId, objectId: object.id, creatorId, surface };
 
   const productId = object.productId;
   useEffect(() => {
@@ -65,16 +74,16 @@ export default function ProductSheet({
               model={model}
               saved={savedProducts.includes(model.canonical.id)}
               onSave={() => toggleSaveProduct(model.canonical.id)}
-              onOpen={(url) => openUrl(url, model.canonical.id)}
-              onOpenSimilar={(p) => openUrl(p.url, p.id)}
+              onOpenOffer={(r) => openUrl(buildGoUrl(r.offer.id, goCtx), model.canonical.id)}
+              onOpenSimilar={(p) => openUrl(productOutboundUrl(p.id, p.url, goCtx), p.id)}
             />
           ) : model?.kind === "legacy" ? (
             <LegacySheet
               model={model}
               saved={savedProducts.includes(model.product.id)}
               onSave={() => toggleSaveProduct(model.product.id)}
-              onOpen={() => openUrl(model.product.url, model.product.id)}
-              onOpenSimilar={(p) => openUrl(p.url, p.id)}
+              onOpen={() => openUrl(productOutboundUrl(model.product.id, model.product.url, goCtx), model.product.id)}
+              onOpenSimilar={(p) => openUrl(productOutboundUrl(p.id, p.url, goCtx), p.id)}
             />
           ) : (
             /* Unlinked Object — 상품 미연결 (PRD §58) */
@@ -105,17 +114,16 @@ function CanonicalSheet({
   model,
   saved,
   onSave,
-  onOpen,
+  onOpenOffer,
   onOpenSimilar,
 }: {
   model: Extract<ReturnType<typeof buildProductSheetModel>, { kind: "canonical" }>;
   saved: boolean;
   onSave: () => void;
-  onOpen: (url: string) => void;
+  onOpenOffer: (r: RankedOffer) => void;
   onOpenSimilar: (p: Product) => void;
 }) {
   const { canonical, bestOffer, otherOffers, unavailableOffers, exactness } = model;
-  const offerUrl = (r: RankedOffer) => r.offer.affiliateUrl ?? r.offer.productUrl;
 
   return (
     <>
@@ -169,7 +177,7 @@ function CanonicalSheet({
       <div className="mt-4 flex flex-col gap-2">
         {bestOffer && (
           <button
-            onClick={() => onOpen(offerUrl(bestOffer))}
+            onClick={() => onOpenOffer(bestOffer)}
             className="press flex h-12 items-center justify-center gap-1.5 rounded-(--radius-btn) bg-primary text-[15px] font-bold text-white"
           >
             {bestOffer.merchant.name}에서 구매하기
@@ -195,7 +203,7 @@ function CanonicalSheet({
             {otherOffers.map((r) => (
               <button
                 key={r.offer.id}
-                onClick={() => onOpen(offerUrl(r))}
+                onClick={() => onOpenOffer(r)}
                 className="flex w-full items-center gap-2.5 border-b border-line bg-surface px-3 py-2.5 text-left last:border-b-0"
               >
                 <div className="min-w-0 flex-1">
@@ -342,7 +350,7 @@ function SheetFooter({ exactness, affiliate }: { exactness: "exact" | "similar";
     <p className="mt-3 text-center text-[10.5px] leading-relaxed text-ink-2">
       {exactness === "similar" && "크리에이터가 확인한 유사 상품이에요. "}
       {affiliate
-        ? "제휴 파트너 상품 — 구매 시 수수료의 70%가 크리에이터에게 돌아가요."
+        ? `제휴 파트너 상품 — 구매 시 수수료의 ${creatorSharePercent()}%가 크리에이터에게 돌아가요.`
         : "가격·재고는 판매처 기준이에요. 상품 페이지로 바로 연결됩니다."}
     </p>
   );

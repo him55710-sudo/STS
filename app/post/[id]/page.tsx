@@ -45,7 +45,7 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
         <p className="text-[15px] font-semibold">게시물</p>
       </header>
 
-      <PostCard post={post} />
+      <PostCard post={post} surface="post" />
 
       {related.length > 0 && (
         <div className="px-4 pb-6 pt-5">

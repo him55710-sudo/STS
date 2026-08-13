@@ -4,6 +4,7 @@ import Link from "next/link";
 import { POSTS, PRODUCTS } from "@/lib/catalog";
 import { isDemoMode } from "@/lib/config";
 import { useApp, useCreatorLookup, useHydrated } from "@/lib/store";
+import AdminCommerce from "@/components/AdminCommerce";
 import { ChevronLeftIcon } from "@/components/Icons";
 
 const EVENT_LABEL: Record<string, string> = {
@@ -88,6 +89,9 @@ export default function AdminPage() {
           </p>
         )}
       </Section>
+
+      {/* 커머스 운영 — 클릭/전환/원장/반전/실패 postback (관리자 RLS) */}
+      <AdminCommerce />
       <div className="h-8" />
     </div>
   );

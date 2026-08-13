@@ -18,7 +18,7 @@ export interface Product {
   category: Category;
   /** 제휴(affiliate) 링크 여부 — 경제적 이해관계 표시에 사용 */
   affiliate: boolean;
-  /** 제휴 수수료율 (0~1). 크리에이터는 이 중 70%를 배분받는다 */
+  /** 제휴 수수료율 (0~1). 크리에이터 몫은 NEXT_PUBLIC_CREATOR_SHARE 설정을 따른다 */
   commissionRate?: number;
   similarIds: string[];
 }

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import type { SourceSurface } from "@/lib/commerce/click";
 import { compact, timeAgo } from "@/lib/format";
 import { useApp, useCreatorLookup } from "@/lib/store";
 import type { ObjectTag, Post } from "@/lib/types";
@@ -10,7 +11,13 @@ import { BagIcon, BookmarkIcon, HeartIcon, ShareIcon } from "./Icons";
 import ObjectLayer from "./ObjectLayer";
 import ProductSheet from "./ProductSheet";
 
-export default function PostCard({ post }: { post: Post }) {
+export default function PostCard({
+  post,
+  surface = "feed",
+}: {
+  post: Post;
+  surface?: SourceSurface;
+}) {
   const creator = useCreatorLookup()(post.creatorId);
   const [selected, setSelected] = useState<ObjectTag | null>(null);
   const { likedPosts, savedPosts, following, toggleLike, toggleSavePost, toggleFollow, track } =
@@ -123,7 +130,13 @@ export default function PostCard({ post }: { post: Post }) {
       )}
 
       {selected && (
-        <ProductSheet postId={post.id} object={selected} onClose={() => setSelected(null)} />
+        <ProductSheet
+          postId={post.id}
+          creatorId={post.creatorId}
+          surface={surface}
+          object={selected}
+          onClose={() => setSelected(null)}
+        />
       )}
     </article>
   );

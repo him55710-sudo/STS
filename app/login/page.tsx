@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import { creatorSharePercent } from "@/lib/commerce/revenue";
 import { isBackendConfigured, isDemoLoginAllowed } from "@/lib/config";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useApp } from "@/lib/store";
@@ -111,7 +112,7 @@ function LoginBody() {
         <p className="card-in mt-3 text-[14px] leading-relaxed text-ink-2" style={{ animationDelay: "120ms" }}>
           3초 만에 시작하고, 내가 올린 착장으로
           <br />
-          판매 수수료의 70%를 받아보세요.
+          판매 수수료의 {creatorSharePercent()}%를 받아보세요.
         </p>
       </div>
 

@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "tsx --test tests/commerce/offer-resolver.test.ts tests/commerce/sheet-model.test.ts"
+    "test": "tsx --test tests/commerce/*.test.ts"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "^20230920.0.0",

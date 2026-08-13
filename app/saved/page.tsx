@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { POSTS } from "@/lib/catalog";
+import { productOutboundUrl } from "@/lib/commerce/outbound";
 import { won } from "@/lib/format";
 import { useApp, useHydrated, useProductLookup } from "@/lib/store";
 import { ArrowUpRightIcon, BookmarkIcon } from "@/components/Icons";
@@ -64,7 +65,12 @@ export default function SavedPage() {
                 <button
                   onClick={() => {
                     track("outbound_click", { productId: p.id });
-                    window.open(p.url, "_blank", "noopener,noreferrer");
+                    // 저장 목록 아웃바운드도 /go 경유 (saved 어트리뷰션)
+                    window.open(
+                      productOutboundUrl(p.id, p.url, { surface: "saved" }),
+                      "_blank",
+                      "noopener,noreferrer"
+                    );
                   }}
                   aria-label="구매하러 가기"
                   className="flex h-9 w-9 items-center justify-center rounded-(--radius-btn) bg-ink text-surface"
