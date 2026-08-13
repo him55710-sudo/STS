@@ -160,13 +160,55 @@ export const ANATOMICAL_PENALTY = 0.45; // 밴드 밖이면 confidence × (1 - p
 /** 같은 클래스 중복 억제(마스크/박스 IoU 기준) */
 export const DEDUPE_IOU = 0.45;
 
-/** 폴리곤 단순화 허용 오차 — 이미지 대각선 대비 비율 */
-export const POLYGON_EPSILON_RATIO = 0.004;
-/** 프론트 전달용 최대 vertex 수 */
-export const POLYGON_MAX_POINTS = 48;
+/**
+ * Segmentation 품질 설정 — Boundary Accuracy가 UX의 핵심이므로
+ * 해상도·정점 수를 넉넉히 잡고, 단순화는 최소한으로 한다.
+ */
+export const SEG = {
+  /** 세그멘테이션 입력 최대 폭 (원본이 작으면 그대로) */
+  inputMaxWidth: 1024,
+  /** Douglas-Peucker 허용 오차 — 입력 대각선 대비 비율 (곡선 보존 우선) */
+  epsilonRatio: 0.0022,
+  /** 링(연결 컴포넌트)당 최대 정점 수 */
+  maxPointsPerRing: 120,
+  /** 객체당 최대 링 수 — 신발 좌/우, 분리된 스트랩 등 */
+  maxRings: 3,
+  /** 2번째 이후 링의 최소 면적 (최대 링 대비 비율) */
+  minRingAreaRatio: 0.12,
+  /** Chaikin corner-cutting 반복 횟수 (아주 가벼운 smoothing) */
+  chaikinIterations: 1,
+} as const;
+
+/** @deprecated SEG.epsilonRatio 사용 */
+export const POLYGON_EPSILON_RATIO = SEG.epsilonRatio;
+/** @deprecated SEG.maxPointsPerRing 사용 */
+export const POLYGON_MAX_POINTS = SEG.maxPointsPerRing;
 
 /** 탐지 최대 객체 수 */
 export const MAX_OBJECTS = 10;
+
+/**
+ * Product Retrieval 랭킹 가중치 — 절대값이 아니라 벤치마크로 조정하는 값.
+ * (visual = 색상·실루엣 비교, 현 단계에서 카탈로그 provider는 색상 거리가 visual 신호)
+ */
+export const RANK_WEIGHTS = {
+  visual: 0.35,
+  brand: 0.2,
+  logo: 0.15,
+  attributes: 0.1,
+  color: 0.08,
+  text: 0.07,
+  pageTrust: 0.05,
+} as const;
+
+/** Exact / Likely / Similar 판정 임계값 (finalScore 0~1) */
+export const MATCH_TIERS = {
+  exactMin: 0.78,
+  likelyMin: 0.58,
+} as const;
+
+/** 상품 검색 동시 실행 상한 (객체 수만큼 무제한 병렬 금지) */
+export const RETRIEVAL_CONCURRENCY = 3;
 
 /** Gemini 설정 */
 export const GEMINI = {

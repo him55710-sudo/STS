@@ -33,11 +33,16 @@ export interface ObjectTag {
   w: number;
   h: number;
   /**
-   * 실루엣 폴리곤 (normalized, ≤48 vertices) — fashion_v2 파이프라인 산출물.
+   * 실루엣 폴리곤 (normalized) — fashion_v2 파이프라인 산출물.
    * 있으면 UI는 bbox 대신 실제 object shape로 하이라이트·히트테스트한다.
    * 없으면 bbox로 자연 강등 (하위호환).
    */
   polygon?: [number, number][];
+  /**
+   * 다중 링 실루엣 — 신발 좌/우처럼 분리된 컴포넌트를 독립 링으로 유지.
+   * 있으면 polygon보다 우선 사용 (렌더는 M..Z M..Z, 히트테스트는 any-ring).
+   */
+  polygons?: [number, number][][];
   /** canonical fashion class (vision-config FASHION_ONTOLOGY 기준) */
   canonicalClass?: string;
   /** 연결 상품. null = Unlinked Object (PRD §58 방법 4) */
@@ -115,8 +120,25 @@ export interface DetectedObject {
   confidence: number;
   /** 탐지 영역의 평균 색 (#rrggbb) — 후보 랭킹의 색상 유사도에 사용 */
   tone?: string;
+  /** 마스크 픽셀 기반 보조 색상들 (#rrggbb) */
+  secondaryTones?: string[];
   /** 실루엣 폴리곤 (normalized) — 마스크 엔진이 추출 성공 시 */
   polygon?: [number, number][];
+  /** 다중 링 실루엣 (신발 좌/우 등) */
+  polygons?: [number, number][][];
   /** canonical fashion class */
   canonicalClass?: string;
+  /** 탐지 단계에서 추출된 구조화 속성 (브랜드 후보·로고·패턴 등) */
+  attributes?: FashionAttributes;
+}
+
+/** 객체별 구조화 속성 — 상품 검색 쿼리·재랭킹·근거 표시에 사용 */
+export interface FashionAttributes {
+  brandCandidates: { brand: string; confidence: number; evidence: string[] }[];
+  primaryColorName?: string;
+  pattern?: "solid" | "stripe" | "check" | "graphic" | "logo" | "denim" | "other";
+  fit?: string;
+  logo?: { detected: boolean; text?: string; description?: string; confidence: number };
+  visibleText?: string[];
+  distinctiveFeatures: string[];
 }

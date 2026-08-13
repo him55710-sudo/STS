@@ -103,6 +103,57 @@ export function capPolygon(points: Point[], maxPoints: number): Point[] {
   return out;
 }
 
+/**
+ * Chaikin corner-cutting — 아주 가벼운 곡선화.
+ * 소매 끝·신발 앞코 같은 실제 곡률은 살리고 픽셀 계단만 완화한다.
+ */
+export function chaikin(points: Point[], iterations = 1): Point[] {
+  let pts = points;
+  for (let it = 0; it < iterations; it++) {
+    const out: Point[] = [];
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i];
+      const b = pts[(i + 1) % pts.length];
+      out.push([a[0] * 0.75 + b[0] * 0.25, a[1] * 0.75 + b[1] * 0.25]);
+      out.push([a[0] * 0.25 + b[0] * 0.75, a[1] * 0.25 + b[1] * 0.75]);
+    }
+    pts = out;
+  }
+  return pts;
+}
+
+/**
+ * binary mask → 정규화 다중 링 폴리곤.
+ * 신발 좌/우, 분리된 스트랩처럼 한 객체가 여러 연결 컴포넌트를 가질 때
+ * 링을 독립적으로 유지한다 (좌우 신발을 선으로 잇는 실패 케이스 방지).
+ */
+export function maskToPolygons(
+  mask: Uint8Array,
+  maskW: number,
+  maskH: number,
+  opts: {
+    epsilonPx: number;
+    maxPointsPerRing: number;
+    maxRings: number;
+    minRingAreaRatio: number;
+    chaikinIterations?: number;
+  }
+): Point[][] {
+  const contours = traceContours(mask, maskW, maskH, opts.maxRings);
+  const rings = contours
+    .map((c) => {
+      let poly = simplifyPolygon(c, opts.epsilonPx);
+      poly = capPolygon(poly, opts.maxPointsPerRing);
+      if (opts.chaikinIterations) poly = chaikin(poly, opts.chaikinIterations);
+      return poly.map(([px, py]) => [(px + 0.5) / maskW, (py + 0.5) / maskH] as Point);
+    })
+    .filter((p) => p.length >= 3);
+  if (rings.length <= 1) return rings;
+  const areas = rings.map(polygonArea);
+  const maxArea = Math.max(...areas);
+  return rings.filter((_, i) => areas[i] >= maxArea * opts.minRingAreaRatio);
+}
+
 /** point-in-polygon (ray casting) — 좌표계 일치 필요 (둘 다 normalized 권장) */
 export function pointInPolygon(x: number, y: number, poly: Point[]): boolean {
   let inside = false;

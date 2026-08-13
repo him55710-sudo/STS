@@ -158,3 +158,65 @@ NEXT_PUBLIC_VISION_PIPELINE=legacy   클라 마스크 스테이지 비활성 (bb
 localStorage.VISION_DEBUG=1     콘솔에 stage timing·mask source 출력
 GEMINI_API_KEY                  주 탐지 엔진 활성화 (Vercel 환경변수)
 ```
+
+---
+
+# fashion_v3 — Pixel-Precise Boundary + Product Retrieval Pipeline
+
+## 개선 요약 (v2 → v3)
+
+**Segmentation (Boundary Accuracy)**
+| 항목 | v2 | v3 |
+|---|---|---|
+| 세그 입력 해상도 | 640px | **1024px** |
+| Douglas-Peucker ε | 대각선×0.008 (~7px) | **×0.0022 (~2px)** |
+| 정점 수 | ≤48 (전체) | **링당 ≤120 + Chaikin smoothing** |
+| 링 구조 | 객체당 외곽 1개 | **다중 링 ≤3 (신발 좌/우 독립, M..Z M..Z 렌더)** |
+| 히트테스트 | 단일 폴리곤 PIP | **any-ring PIP** |
+| 스트로크 | 1/1.5px, fill 9~10% | **1.25/1.75px, fill 3~6%** (얇고 정밀) |
+| 실측 (look10 니트) | 21 verts, 직선 다수 | **76 verts, 소매·밑단 곡선 추종** |
+| 신발 페어 | 한 링으로 연결/한 짝 누락 | **2 독립 링, 좌·우 각각 탭 가능 (실측 검증)** |
+
+**색상 추출** — LLM 질의가 아니라 **마스크 내부 픽셀의 dominant color 클러스터링**
+(4bit/채널 히스토그램 → 인접 bin 병합, 하이라이트·딥섀도 가중 절감).
+실측: AMI 니트 #dfd8c8(크림), 블랙진 #0b0c0f — 배경·피부 오염 없음.
+
+**Product Retrieval (multi-stage)**
+```
+attributes(탐지와 동시 추출: brandCandidates+evidence/logo/pattern/visibleText/features)
+→ query generation (3~5 variants: 브랜드+색상, 로고 근거, 특징+명사)
+→ providers: catalog(항상) + Naver Shopping OpenAPI(키 설정 시, 서버 전용)
+→ normalize (ProductCandidate 공통 스키마)
+→ rerank: composite score (visual/brand/logo/attributes/color/text/pageTrust — vision-config 가중치)
+→ tier: EXACT("정확 일치 유력") / LIKELY("동일 제품 가능성") / SIMILAR("유사 상품")
+→ matchReason (근거 문자열, UI 노출)
+```
+- **No-hallucination 규칙**: brandCandidates는 시각적 evidence가 있을 때만 채워지도록 스키마에서 강제.
+  브랜드 근거 없으면 후보 패널에 "브랜드 근거를 찾지 못했어요" 안내 + tier는 similar 상한.
+  웹 후보는 이미지 시각 비교 전이므로 exact 부여 금지(최대 likely).
+- 동시 실행 상한 3, 세션 캐시, 쿼리 dedupe.
+
+## Retrieval 벤치마크 (tests/vision/retrieval-benchmark.ts — 실측)
+ground truth = 시드 10개 게시물의 54개 객체-상품 연결.
+```
+Recall@1 : 96%
+Recall@3 : 100%
+Recall@5 : 100%
+MRR      : 0.981
+```
+
+## Boundary 지표
+GT 마스크가 없어 Mask IoU / Boundary F-score는 **not measured** —
+정점 수·링 구조·시각 검수로 대체(위 표). GT 어노테이션 확보 시 측정 예정.
+
+## Debug View
+`?debugFashion=true` (development 전용): 객체별 bbox·conf·링/정점 수·tone·
+attributes·생성 쿼리·top5 후보 score breakdown.
+
+## 미검증/남은 항목
+- **Gemini 속성 추출 실호출**: 무료 티어 일일 쿼터 소진(429 RESOURCE_EXHAUSTED)으로
+  금일 폴백 경로만 실측 — 스키마·파싱·랭킹 연동은 구현 완료, 쿼터 리셋 후 검증 필요.
+- **Naver Shopping provider**: 키(NAVER_CLIENT_ID/SECRET) 미보유로 실호출 미검증.
+  키 없으면 graceful fallback(카탈로그 전용) 동작은 실측 확인.
+- 후보 상품 이미지 임베딩 시각 비교(visual score) — 웹 후보는 현재 0 처리.
+- 팔–몸 사이 내부 hole 링(evenodd 지원은 렌더에 이미 있음, inner contour 추적 미구현).

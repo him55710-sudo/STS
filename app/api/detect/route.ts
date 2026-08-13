@@ -33,7 +33,15 @@ Rules:
 - Max 10 objects, most prominent first.
 - label is a short English item name; labelKo is a short Korean shopping label (e.g. "울 코트", "가죽 시계").
 - category is one of: fashion, beauty, interior, tech, lifestyle.
-- confidence is 0~1.`;
+- confidence is 0~1.
+
+Additionally, for each object extract structured retrieval attributes:
+- brandCandidates: brands this item could be, ONLY when there is visible evidence (logo, distinctive design signature). Each entry has brand, confidence 0~1, and evidence (what you actually see, e.g. "black heart-A chest logo", "triangle metal plate"). If there is NO visible evidence, return an EMPTY array — never guess a brand from vibes.
+- pattern: one of solid / stripe / check / graphic / logo / denim / other.
+- logo: detected true/false; if true add text (letters if readable), description (shape/placement, e.g. "black heart with letter A, left chest"), confidence.
+- visibleText: any readable text on the item.
+- distinctiveFeatures: 1-3 short phrases a shopper would use (e.g. "ribbed crewneck", "gum sole", "flap pocket").
+- fit: short fit descriptor if apparent (e.g. "oversized", "slim", "wide leg").`;
 
 const RESPONSE_SCHEMA = {
   type: "ARRAY",
@@ -48,6 +56,35 @@ const RESPONSE_SCHEMA = {
         enum: ["fashion", "beauty", "interior", "tech", "lifestyle"],
       },
       confidence: { type: "NUMBER" },
+      brandCandidates: {
+        type: "ARRAY",
+        items: {
+          type: "OBJECT",
+          properties: {
+            brand: { type: "STRING" },
+            confidence: { type: "NUMBER" },
+            evidence: { type: "ARRAY", items: { type: "STRING" } },
+          },
+          required: ["brand", "confidence", "evidence"],
+        },
+      },
+      pattern: {
+        type: "STRING",
+        enum: ["solid", "stripe", "check", "graphic", "logo", "denim", "other"],
+      },
+      logo: {
+        type: "OBJECT",
+        properties: {
+          detected: { type: "BOOLEAN" },
+          text: { type: "STRING" },
+          description: { type: "STRING" },
+          confidence: { type: "NUMBER" },
+        },
+        required: ["detected", "confidence"],
+      },
+      visibleText: { type: "ARRAY", items: { type: "STRING" } },
+      distinctiveFeatures: { type: "ARRAY", items: { type: "STRING" } },
+      fit: { type: "STRING" },
     },
     required: ["box_2d", "label", "labelKo", "category", "confidence"],
   },
@@ -112,6 +149,12 @@ export async function POST(req: NextRequest) {
       labelKo: string;
       category: Category;
       confidence: number;
+      brandCandidates?: { brand: string; confidence: number; evidence: string[] }[];
+      pattern?: "solid" | "stripe" | "check" | "graphic" | "logo" | "denim" | "other";
+      logo?: { detected: boolean; text?: string; description?: string; confidence: number };
+      visibleText?: string[];
+      distinctiveFeatures?: string[];
+      fit?: string;
     }>;
 
     const objects: DetectedObject[] = raw
@@ -128,6 +171,16 @@ export async function POST(req: NextRequest) {
           w: clamp((xmax - xmin) / 1000),
           h: clamp((ymax - ymin) / 1000),
           confidence: clamp(o.confidence ?? 0.5),
+          attributes: {
+            brandCandidates: (o.brandCandidates ?? [])
+              .filter((b) => b.brand && Array.isArray(b.evidence) && b.evidence.length > 0)
+              .slice(0, 3),
+            pattern: o.pattern,
+            logo: o.logo,
+            visibleText: o.visibleText?.slice(0, 3),
+            distinctiveFeatures: o.distinctiveFeatures?.slice(0, 3) ?? [],
+            fit: o.fit,
+          },
         };
       })
       // 소형 액세서리(시계 등)를 위해 최소 크기 하한을 낮게 유지

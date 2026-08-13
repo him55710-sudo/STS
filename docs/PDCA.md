@@ -134,3 +134,18 @@
   - 폴리곤 생성률 51/54 (미생성 3건은 초소형 주얼리 → bbox 폴백, 의도된 동작)
 - **Act**: 발견 화면의 카테고리 칩을 실제 보유 카테고리에서 파생하도록 변경(빈 탭 제거),
   스타일 카드 검색어를 신규 콘텐츠에 맞게 교체.
+
+## Cycle 9 — fashion_v3: 픽셀 정밀 경계 + 상품 검색 파이프라인
+- **Plan**: "점 몇 개 직선 연결" 수준의 outline을 실제 픽셀 경계 추종으로, category-level
+  상품 매칭을 multi-stage retrieval(속성→쿼리→provider→rerank→tier)로 전면 개선.
+- **Do**: 상세는 docs/VISION.md fashion_v3 섹션. 세그 1024px·ε 2px·링당 120정점·Chaikin,
+  다중 링(신발 좌/우 독립), 마스크 픽셀 색상 클러스터링, 탐지 동시 속성 추출(브랜드 evidence 강제),
+  쿼리 3~5 variants, catalog+Naver provider adapter, composite rerank, EXACT/LIKELY/SIMILAR tier,
+  근거(matchReason) UI, ?debugFashion 디버그 뷰, 시드 52객체 55링 재주입.
+- **Check** (실측):
+  - look10 회귀: 니트 76정점 곡선 추종·신발 2 독립 링·좌우 각각 탭→삼바 시트 ✓
+  - Retrieval 벤치마크(54 GT): Recall@1 96% / @3 100% / @5 100% / MRR 0.981
+  - 마스크 색상: 크림 니트 #dfd8c8, 블랙진 #0b0c0f (배경·피부 오염 없음)
+  - 빌드 무결 · 전 라우트 200
+- **Act/남은 것**: Gemini 쿼터 소진으로 속성 추출 실호출은 리셋 후 검증,
+  Naver 키 입력 시 웹 검색 활성화, 후보 이미지 임베딩 비교는 다음 단계.

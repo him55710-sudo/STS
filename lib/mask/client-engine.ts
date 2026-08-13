@@ -6,11 +6,11 @@ import {
   DEFAULT_MIN_AREA,
   MIN_AREA_BY_CLASS,
   PIPELINE_VERSION,
-  POLYGON_MAX_POINTS,
+  SEG,
   type FashionClass,
 } from "../vision-config";
 import type { DetectedObject } from "../types";
-import { capPolygon, cleanMask, polygonArea, polygonBounds, polygonIou, simplifyPolygon, traceContours } from "./geometry";
+import { cleanMask, maskToPolygons, polygonArea, polygonBounds, polygonIou } from "./geometry";
 
 /**
  * 온디바이스 실루엣 마스크 엔진 — MediaPipe Tasks Vision (Apache-2.0, wasm 셀프호스팅).
@@ -98,16 +98,23 @@ export async function extractSilhouettes(
   }
   timings.engineLoad = Math.round(performance.now() - t0);
 
-  // 세그멘테이션 입력 크기 제한 (속도) — 마스크 좌표는 normalized라 무손실 복원
+  // 세그멘테이션 입력 해상도 — Boundary Accuracy가 핵심이므로 1024px까지 유지
   const canvas = document.createElement("canvas");
-  const MAXW = 640;
+  const MAXW = SEG.inputMaxWidth;
   const scale = Math.min(1, MAXW / img.width);
   canvas.width = Math.round(img.width * scale);
   canvas.height = Math.round(img.height * scale);
-  const ctx = canvas.getContext("2d")!;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
   const W = canvas.width;
   const H = canvas.height;
+  // 색상 추출용 프레임 픽셀 (1회 읽기) — 마스크 내부 픽셀만 사용해 배경·피부 영향 제거
+  let framePixels: Uint8ClampedArray | null = null;
+  try {
+    framePixels = ctx.getImageData(0, 0, W, H).data;
+  } catch {
+    framePixels = null;
+  }
 
   // ── Human parsing 역할: 멀티클래스 시맨틱 마스크 (1회) ──
   // clothes(4) = 의류 픽셀, others(5) = 착용 액세서리·가방·신발 등 비의류 물체 픽셀
@@ -236,51 +243,42 @@ export async function extractSilhouettes(
         continue;
       }
 
-      // ── Post processing: majority smoothing → contour(s) → polygon ──
+      // ── Post processing: light smoothing → multi-ring contour → polygon ──
+      // 좌/우 신발·분리 스트랩은 독립 링으로 유지한다 (링을 선으로 잇지 않는다).
       const cleaned = cleanMask(bin, W, H, 1);
-      // 신발·귀걸이류는 좌/우 두 컴포넌트로 나뉠 수 있다 → 상위 2개 contour 유지
-      const pairable = cls === "shoes" || cls === "earrings";
-      const contours = traceContours(cleaned, W, H, pairable ? 2 : 1);
-      const polys = contours
-        .map((c) => {
-          const eps = Math.max(1.2, Math.hypot(W, H) * 0.008);
-          let poly = simplifyPolygon(c, eps);
-          poly = capPolygon(poly, POLYGON_MAX_POINTS);
-          return poly.map(([px, py]) => [(px + 0.5) / W, (py + 0.5) / H] as [number, number]);
-        })
-        .filter((p) => {
-          if (p.length < 3) return false;
-          const minArea = MIN_AREA_BY_CLASS[cls] ?? DEFAULT_MIN_AREA;
-          return polygonArea(p) >= minArea;
-        });
-      // 페어 분할: 2번째 컴포넌트가 1번째의 30% 이상일 때만 별도 인스턴스
-      const main = polys[0];
-      if (!main) {
+      const rings = maskToPolygons(cleaned, W, H, {
+        epsilonPx: Math.max(1.0, Math.hypot(W, H) * SEG.epsilonRatio),
+        maxPointsPerRing: SEG.maxPointsPerRing,
+        maxRings: SEG.maxRings,
+        minRingAreaRatio: SEG.minRingAreaRatio,
+        chaikinIterations: SEG.chaikinIterations,
+      }).filter((p) => polygonArea(p) >= (MIN_AREA_BY_CLASS[cls] ?? DEFAULT_MIN_AREA));
+
+      if (rings.length === 0) {
         out.push(masked);
         continue;
       }
-      const second =
-        pairable && polys[1] && polygonArea(polys[1]) >= polygonArea(main) * 0.3 ? polys[1] : null;
 
-      const b = polygonBounds(main);
-      masked.polygon = main;
+      // bbox = 전체 링의 합집합 경계, polygon(하위호환) = 최대 링
+      const allBounds = rings.map(polygonBounds);
+      const minX = Math.min(...allBounds.map((b) => b.x));
+      const minY = Math.min(...allBounds.map((b) => b.y));
+      masked.polygon = rings[0];
+      masked.polygons = rings;
       masked.maskSource = maskSources[obj.label];
-      masked.x = b.x;
-      masked.y = b.y;
-      masked.w = b.w;
-      masked.h = b.h;
-      out.push(masked);
-      if (second) {
-        const b2 = polygonBounds(second);
-        out.push({
-          ...masked,
-          polygon: second,
-          x: b2.x,
-          y: b2.y,
-          w: b2.w,
-          h: b2.h,
-        });
+      masked.x = minX;
+      masked.y = minY;
+      masked.w = Math.max(...allBounds.map((b) => b.x + b.w)) - minX;
+      masked.h = Math.max(...allBounds.map((b) => b.y + b.h)) - minY;
+      // 마스크 픽셀 기반 색상 (배경·피부 영향 없음 — 마스크 내부만 사용)
+      if (framePixels) {
+        const colors = dominantColors(framePixels, bin, W, bx0, by0, bx1, by1);
+        if (colors.length > 0) {
+          masked.tone = colors[0];
+          if (colors.length > 1) masked.secondaryTones = colors.slice(1, 3);
+        }
       }
+      out.push(masked);
     } catch {
       out.push(masked); // 개별 객체 실패는 전체를 죽이지 않는다
     }
@@ -342,6 +340,74 @@ function dedupeMasked(objects: MaskedObject[]): MaskedObject[] {
   }
   return kept;
 }
+
+/**
+ * 마스크 내부 픽셀의 dominant color 클러스터링.
+ * 4bit/채널 히스토그램 → 상위 bin들을 거리 기준으로 병합 → 대표색 반환.
+ * 하이라이트(거의 흰색)·딥섀도(거의 검정)는 옷 실색이 아닐 확률이 높아 가중치를 낮춘다.
+ */
+function dominantColors(
+  pixels: Uint8ClampedArray,
+  mask: Uint8Array,
+  W: number,
+  bx0: number,
+  by0: number,
+  bx1: number,
+  by1: number
+): string[] {
+  const bins = new Map<number, { n: number; r: number; g: number; b: number }>();
+  for (let y = by0; y < by1; y += 2) {
+    for (let x = bx0; x < bx1; x += 2) {
+      const i = y * W + x;
+      if (!mask[i]) continue;
+      const p = i * 4;
+      const r = pixels[p];
+      const g = pixels[p + 1];
+      const b = pixels[p + 2];
+      const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+      // 반사광·그림자 극단값은 절반 가중
+      const w = lum > 245 || lum < 12 ? 0.5 : 1;
+      const key = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4);
+      const bin = bins.get(key) ?? { n: 0, r: 0, g: 0, b: 0 };
+      bin.n += w;
+      bin.r += r * w;
+      bin.g += g * w;
+      bin.b += b * w;
+      bins.set(key, bin);
+    }
+  }
+  const top = [...bins.values()].sort((a, b) => b.n - a.n).slice(0, 8);
+  if (top.length === 0) return [];
+  // 가까운 bin 병합 (채도 낮은 옷은 인접 bin으로 흩어진다)
+  const clusters: { n: number; r: number; g: number; b: number }[] = [];
+  for (const t of top) {
+    const cr = t.r / t.n;
+    const cg = t.g / t.n;
+    const cb = t.b / t.n;
+    const near = clusters.find((c) => {
+      const dr = c.r / c.n - cr;
+      const dg = c.g / c.n - cg;
+      const db = c.b / c.n - cb;
+      return dr * dr + dg * dg + db * db < 42 * 42;
+    });
+    if (near) {
+      near.n += t.n;
+      near.r += t.r;
+      near.g += t.g;
+      near.b += t.b;
+    } else {
+      clusters.push({ ...t });
+    }
+  }
+  const total = clusters.reduce((s, c) => s + c.n, 0);
+  return clusters
+    .sort((a, b) => b.n - a.n)
+    .filter((c) => c.n / total > 0.08)
+    .slice(0, 3)
+    .map((c) => `#${hex2(c.r / c.n)}${hex2(c.g / c.n)}${hex2(c.b / c.n)}`);
+}
+
+const hex2 = (n: number) => Math.round(Math.max(0, Math.min(255, n))).toString(16).padStart(2, "0");
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {

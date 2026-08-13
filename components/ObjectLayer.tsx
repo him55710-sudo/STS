@@ -39,9 +39,10 @@ export default function ObjectLayer({
       // tap target은 넉넉하게 — bbox를 3%씩 확장해 작은 객체도 선택 가능 (사업계획서 §17)
       const pad = 0.03;
       const hits = objects.filter((o) => {
-        if (o.polygon && o.polygon.length >= 3) {
-          // 실루엣 정밀 히트 — 폴리곤 내부이거나, 작은 객체는 bbox 확장 범위도 허용
-          if (pointInPolygon(x, y, o.polygon)) return true;
+        const rings = o.polygons ?? (o.polygon && o.polygon.length >= 3 ? [o.polygon] : null);
+        if (rings) {
+          // 실루엣 정밀 히트 — 어느 링이든 내부면 hit. 작은 객체는 bbox 확장 범위도 허용
+          if (rings.some((ring) => pointInPolygon(x, y, ring))) return true;
           const small = o.w * o.h < 0.02;
           return small && x >= o.x - pad && x <= o.x + o.w + pad && y >= o.y - pad && y <= o.y + o.h + pad;
         }
@@ -101,8 +102,9 @@ export default function ObjectLayer({
 function ShapeOverlay({ objects, variant }: { objects: ObjectTag[]; variant: "hint" | "selected" }) {
   if (objects.length === 0) return null;
   const hint = variant === "hint";
-  const fillOpacity = hint ? 0.09 : 0.1;
-  const strokeWidth = hint ? 1 : 1.5;
+  // 얇고 정밀한 선이 원칙 — 기본 1.25px, 선택 1.75px / fill은 3~5%만
+  const fillOpacity = hint ? 0.05 : 0.06;
+  const strokeWidth = hint ? 1.25 : 1.75;
 
   return (
     <div className={`pointer-events-none absolute inset-0 ${hint ? "object-hint" : "fade-in"}`}>
@@ -111,17 +113,20 @@ function ShapeOverlay({ objects, variant }: { objects: ObjectTag[]; variant: "hi
         viewBox="0 0 100 100"
         preserveAspectRatio="none"
       >
-        {objects.map((o) =>
-          o.polygon && o.polygon.length >= 3 ? (
+        {objects.map((o) => {
+          const rings = o.polygons ?? (o.polygon && o.polygon.length >= 3 ? [o.polygon] : null);
+          return rings ? (
             <path
               key={o.id}
-              d={`M ${o.polygon.map(([px, py]) => `${(px * 100).toFixed(2)} ${(py * 100).toFixed(2)}`).join(" L ")} Z`}
+              d={ringsToPath(rings)}
+              fillRule="evenodd"
               fill="var(--color-accent)"
               fillOpacity={fillOpacity}
-              stroke={`color-mix(in srgb, var(--color-accent) ${hint ? 55 : 85}%, white)`}
+              stroke={`color-mix(in srgb, var(--color-accent) ${hint ? 60 : 90}%, white)`}
               strokeOpacity={0.95}
               strokeWidth={strokeWidth}
               strokeLinejoin="round"
+              strokeLinecap="round"
               vectorEffect="non-scaling-stroke"
             />
           ) : (
@@ -134,22 +139,31 @@ function ShapeOverlay({ objects, variant }: { objects: ObjectTag[]; variant: "hi
               rx={1.2}
               fill="var(--color-accent)"
               fillOpacity={fillOpacity}
-              stroke={`color-mix(in srgb, var(--color-accent) ${hint ? 55 : 85}%, white)`}
+              stroke={`color-mix(in srgb, var(--color-accent) ${hint ? 60 : 90}%, white)`}
               strokeWidth={strokeWidth}
               vectorEffect="non-scaling-stroke"
             />
-          )
-        )}
+          );
+        })}
       </svg>
       {objects.map((o) => {
+        const main = o.polygons?.[0] ?? o.polygon;
         const [cx, cy] =
-          o.polygon && o.polygon.length >= 3
-            ? polygonCentroid(o.polygon)
-            : [o.x + o.w / 2, o.y + o.h / 2];
+          main && main.length >= 3 ? polygonCentroid(main) : [o.x + o.w / 2, o.y + o.h / 2];
         return <Dot key={`dot-${o.id}`} x={cx} y={cy} active={!hint} />;
       })}
     </div>
   );
+}
+
+/** 다중 링 → 단일 path (M..Z M..Z). 링끼리 선으로 연결되지 않는다. */
+export function ringsToPath(rings: [number, number][][]): string {
+  return rings
+    .map(
+      (ring) =>
+        `M ${ring.map(([px, py]) => `${(px * 100).toFixed(2)} ${(py * 100).toFixed(2)}`).join(" L ")} Z`
+    )
+    .join(" ");
 }
 
 /** 작은 product indicator dot */

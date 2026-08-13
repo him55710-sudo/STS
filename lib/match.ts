@@ -9,7 +9,7 @@ import type { DetectedObject, Product } from "./types";
  * 후보를 순위화한다. 제휴 상품이 우선 추천되어야 수수료 셰어 BM이 돈다.
  */
 
-const KEYWORDS: Record<string, string[]> = {
+export const KEYWORDS: Record<string, string[]> = {
   // ── 실상품 (룩 게시물 카탈로그) ──────────────────────────
   "pl-polo-oxford": ["shirt", "top", "oxford", "셔츠", "상의", "옥스포드"],
   "pl-uniqlo-tee": ["tee", "t-shirt", "top", "shirt", "티셔츠", "상의"],
@@ -25,7 +25,7 @@ const KEYWORDS: Record<string, string[]> = {
   "pl-tnf-pants": ["cargo", "jogger", "pants", "bottom", "카고", "조거", "팬츠", "하의", "바지"],
   "pl-dm-1461": ["shoes", "derby", "boots", "더비", "슈즈", "신발", "구두", "1461"],
   "pl-samba": ["sneakers", "shoes", "trainer", "스니커즈", "신발", "운동화", "삼바"],
-  "pl-margiela-replica": ["sneakers", "shoes", "trainer", "스니커즈", "신발", "운동화", "레플리카"],
+  "pl-margiela-replica": ["sneakers", "shoes", "trainer", "스니커즈", "신발", "운동화", "레플리카", "트레이너", "저먼"],
   "pl-clarks-wallabee": ["shoes", "wallabee", "moccasin", "왈라비", "신발", "모카신"],
   "pl-birken-boston": ["clogs", "shoes", "sandal", "mule", "클로그", "신발", "샌들", "뮬", "보스턴"],
   "pl-prada-bag": ["bag", "crossbody", "shoulder", "백", "가방", "크로스", "숄더"],

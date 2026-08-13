@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { candidatesFor, searchProducts } from "@/lib/match";
+import { retrieveAll, type ProductCandidate, type RetrievalQuery } from "@/lib/retrieval";
 import { useApp, useProductLookup } from "@/lib/store";
 import type { Category, DetectedObject, Exactness, Post, Product } from "@/lib/types";
 import { CheckIcon, ImageIcon, LinkIcon, SearchIcon, TrashIcon, XIcon } from "@/components/Icons";
 import { ExactBadge } from "@/components/ProductSheet";
+import { ringsToPath } from "@/components/ObjectLayer";
 
 /**
  * AI Tagging Creator Flow — PRD §14–15.
@@ -19,6 +21,9 @@ interface DraftObject extends DetectedObject {
   id: string;
   productId: string | null;
   exactness: Exactness;
+  /** multi-stage retrieval 결과 (카탈로그+웹, rerank 완료) */
+  candidates?: ProductCandidate[];
+  retrievalQuery?: RetrievalQuery;
 }
 
 type Step = "select" | "analyzing" | "review" | "done";
@@ -44,9 +49,17 @@ export default function CreatePage() {
   const [startedAt, setStartedAt] = useState(0);
   const [elapsed, setElapsed] = useState(0);
   const [publishedId, setPublishedId] = useState("");
+  const [retrieving, setRetrieving] = useState(false);
+  const [debugFashion, setDebugFashion] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const imgRef = useRef<HTMLDivElement>(null);
   const seq = useRef(0);
+
+  // 디버그 뷰 (?debugFashion=true) — production 빌드에서는 비활성
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "development") return;
+    setDebugFashion(new URLSearchParams(window.location.search).get("debugFashion") === "true");
+  }, []);
 
   // ── Step 1: 이미지 선택 ────────────────────────────────
   const onFile = (file: File) => {
@@ -147,17 +160,34 @@ export default function CreatePage() {
     }
 
     setAiSource(source);
-    setObjects(
-      detected.map((o) => ({
-        ...o,
-        id: `d-${seq.current++}`,
-        productId: candidatesFor(o)[0]?.id ?? null,
-        exactness: "similar" as Exactness,
-      }))
-    );
+    const drafts: DraftObject[] = detected.map((o) => ({
+      ...o,
+      id: `d-${seq.current++}`,
+      productId: candidatesFor(o)[0]?.id ?? null,
+      exactness: "similar" as Exactness,
+    }));
+    setObjects(drafts);
     setSelectedId(null);
     setStage("detect");
     setStep("review");
+
+    // ── 상품 검색 스테이지 (비차단) ──
+    // attributes → 쿼리 생성 → 카탈로그+웹 provider → rerank → tier.
+    // 리뷰 화면을 먼저 보여주고 후보는 도착하는 대로 채운다.
+    if (drafts.length > 0) {
+      setRetrieving(true);
+      retrieveAll(drafts)
+        .then((results) => {
+          setObjects((prev) =>
+            prev.map((o) => {
+              const i = drafts.findIndex((d) => d.id === o.id);
+              const r = i >= 0 ? results.get(i) : undefined;
+              return r ? { ...o, candidates: r.candidates, retrievalQuery: r.query } : o;
+            })
+          );
+        })
+        .finally(() => setRetrieving(false));
+    }
   };
 
   // ── Step 3: 객체/상품 편집 ─────────────────────────────
@@ -227,6 +257,7 @@ export default function CreatePage() {
         w: o.w,
         h: o.h,
         polygon: o.polygon,
+        polygons: o.polygons,
         canonicalClass: o.canonicalClass,
         productId: o.productId,
         exactness: o.exactness,
@@ -351,18 +382,21 @@ export default function CreatePage() {
                 const sel = o.id === selectedId;
                 const common = {
                   fill: "var(--color-accent)",
-                  fillOpacity: sel ? 0.13 : 0.06,
+                  fillOpacity: sel ? 0.08 : 0.04,
                   stroke: sel
                     ? "var(--color-accent)"
-                    : "color-mix(in srgb, var(--color-accent) 45%, white)",
-                  strokeWidth: sel ? 1.5 : 1,
+                    : "color-mix(in srgb, var(--color-accent) 50%, white)",
+                  strokeWidth: sel ? 1.75 : 1.25,
                   vectorEffect: "non-scaling-stroke" as const,
                 };
-                return o.polygon && o.polygon.length >= 3 ? (
+                const rings = o.polygons ?? (o.polygon && o.polygon.length >= 3 ? [o.polygon] : null);
+                return rings ? (
                   <path
                     key={o.id}
-                    d={`M ${o.polygon.map(([px, py]) => `${(px * 100).toFixed(2)} ${(py * 100).toFixed(2)}`).join(" L ")} Z`}
+                    d={ringsToPath(rings)}
+                    fillRule="evenodd"
                     strokeLinejoin="round"
+                    strokeLinecap="round"
                     {...common}
                   />
                 ) : (
@@ -395,6 +429,12 @@ export default function CreatePage() {
               : "화면 속 물건을 탭해서 직접 추가해보세요"}
             {aiSource === "device" && " · 온디바이스 AI 탐지"}
             {aiSource !== "gemini" && aiSource !== "device" && aiSource && " · 데모 탐지 모드"}
+            {retrieving && (
+              <span className="ml-1.5 inline-flex items-center gap-1 text-accent">
+                <span className="h-1 w-1 animate-pulse rounded-full bg-accent" />
+                실제 상품 검색 중...
+              </span>
+            )}
           </p>
 
           {/* Detected objects 목록 — PRD §15 2단 구조 */}
@@ -447,6 +487,35 @@ export default function CreatePage() {
               );
             })}
           </div>
+
+          {/* Debug view — dev 전용 (?debugFashion=true) */}
+          {debugFashion && (
+            <div className="mx-4 mt-4 rounded-(--radius-card) border border-line bg-surface p-3 font-mono text-[10px] leading-relaxed">
+              <p className="mb-1.5 text-[11px] font-bold">🔬 debugFashion</p>
+              {objects.map((o, i) => (
+                <details key={o.id} className="mb-1.5">
+                  <summary className="cursor-pointer">
+                    #{i + 1} {o.labelKo} [{o.canonicalClass}] conf={o.confidence} · bbox=
+                    {[o.x, o.y, o.w, o.h].map((v) => v.toFixed(3)).join(",")} · rings=
+                    {o.polygons?.length ?? (o.polygon ? 1 : 0)} · verts=
+                    {(o.polygons ?? (o.polygon ? [o.polygon] : [])).reduce((s, r) => s + r.length, 0)}
+                    {" · "}tone={o.tone ?? "-"}
+                  </summary>
+                  <div className="mt-1 pl-3 text-ink-2">
+                    <p>attrs: {JSON.stringify(o.attributes ?? {})}</p>
+                    <p>queries: {JSON.stringify(o.retrievalQuery?.queries ?? [])}</p>
+                    {(o.candidates ?? []).slice(0, 5).map((c) => (
+                      <p key={c.id}>
+                        [{c.tier}] {c.brand ?? "?"} {c.productName.slice(0, 30)} · f={c.scores.final} (v=
+                        {c.scores.visual} b={c.scores.brand} l={c.scores.logo} c={c.scores.color} t=
+                        {c.scores.text})
+                      </p>
+                    ))}
+                  </div>
+                </details>
+              ))}
+            </div>
+          )}
 
           {/* caption + publish */}
           <div className="mt-5 px-4">
@@ -547,6 +616,77 @@ function ObjectStatus({ obj }: { obj: DraftObject }) {
     </p>
   ) : (
     <p className="mt-0.5 text-[12px] text-accent">상품 후보 보기 →</p>
+  );
+}
+
+/** Exact / Likely / Similar tier 배지 */
+function TierBadge({ tier }: { tier: ProductCandidate["tier"] }) {
+  if (tier === "exact")
+    return (
+      <span className="shrink-0 rounded-[4px] bg-primary px-1 py-px text-[9px] font-semibold text-white">
+        정확 일치 유력
+      </span>
+    );
+  if (tier === "likely")
+    return (
+      <span className="shrink-0 rounded-[4px] bg-primary-soft px-1 py-px text-[9px] font-semibold text-primary">
+        동일 제품 가능성
+      </span>
+    );
+  return (
+    <span className="shrink-0 rounded-[4px] bg-surface-2 px-1 py-px text-[9px] font-semibold text-ink-2">
+      유사 상품
+    </span>
+  );
+}
+
+/** retrieval 후보 행 — tier·근거·score 포함 */
+function CandidateRow({
+  c,
+  picked,
+  onPick,
+}: {
+  c: ProductCandidate;
+  picked: boolean;
+  onPick: () => void;
+}) {
+  return (
+    <button
+      onClick={onPick}
+      className={`flex w-full items-start gap-2.5 rounded-(--radius-btn) border p-2 text-left transition-colors ${
+        picked ? "border-accent bg-surface-2/60" : "border-line"
+      }`}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={c.imageUrls[0] ?? "/looks/_custom-link.svg"}
+        alt=""
+        className="h-11 w-11 shrink-0 rounded-[7px] border border-line object-cover"
+      />
+      <div className="min-w-0 flex-1">
+        <p className="flex items-center gap-1 truncate text-[12px] text-ink-2">
+          {c.brand ?? "브랜드 미상"}
+          <TierBadge tier={c.tier} />
+          {c.affiliate && (
+            <span className="shrink-0 rounded-[4px] bg-primary-soft px-1 py-px text-[9px] font-semibold text-primary">
+              제휴 {Math.round((c.commissionRate ?? 0.05) * 100)}%
+            </span>
+          )}
+        </p>
+        <p className="truncate text-[13px] font-medium">{c.productName}</p>
+        {c.matchReason.length > 0 && (
+          <p className="truncate text-[10.5px] text-ink-2">{c.matchReason[0]}</p>
+        )}
+      </div>
+      <div className="flex shrink-0 flex-col items-end gap-1">
+        {c.price.value != null && c.price.value > 0 && (
+          <span className="text-[12px] font-semibold text-ink-2">
+            ₩{c.price.value.toLocaleString("ko-KR")}
+          </span>
+        )}
+        {picked && <CheckIcon size={16} className="text-primary" />}
+      </div>
+    </button>
   );
 }
 
@@ -659,7 +799,41 @@ function CandidatePanel({
       </div>
 
       {mode === "candidates" &&
-        (candidates.length ? (
+        (obj.candidates?.length ? (
+          <div className="flex flex-col gap-1.5">
+            {(obj.attributes?.brandCandidates?.length ?? 0) === 0 && (
+              <p className="pb-0.5 text-[11px] text-ink-2">
+                브랜드 근거를 찾지 못했어요 — 시각적으로 유사한 상품 후보입니다
+              </p>
+            )}
+            {obj.candidates.slice(0, 5).map((c) => (
+              <CandidateRow
+                key={c.id}
+                c={c}
+                picked={obj.productId === (c.catalogProductId ?? c.id)}
+                onPick={() => {
+                  if (c.catalogProductId) {
+                    onPick(c.catalogProductId, c.tier === "exact" ? "exact" : "similar");
+                  } else {
+                    onCustom({
+                      id: `custom-${c.id}`,
+                      brand: c.brand ?? c.retailer,
+                      name: c.productName,
+                      price: c.price.value ?? 0,
+                      currency: "KRW",
+                      retailer: c.retailer,
+                      url: c.url,
+                      image: c.imageUrls[0] ?? "/looks/_custom-link.svg",
+                      category: obj.category,
+                      affiliate: false,
+                      similarIds: [],
+                    });
+                  }
+                }}
+              />
+            ))}
+          </div>
+        ) : candidates.length ? (
           <div className="flex flex-col gap-1.5">
             {candidates.map((p, i) => (
               <Row key={p.id} p={p} top={i === 0} />
