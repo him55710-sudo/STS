@@ -63,6 +63,20 @@ export const ShareIcon = ({ size = 24, strokeWidth = 1.5, className }: IconProps
   </svg>
 );
 
+export const MoreIcon = ({ size = 24, strokeWidth = 1.5, className }: IconProps) => (
+  <svg {...base(size)} strokeWidth={strokeWidth} className={className}>
+    <circle cx="12" cy="5" r="1.4" />
+    <circle cx="12" cy="12" r="1.4" />
+    <circle cx="12" cy="19" r="1.4" />
+  </svg>
+);
+
+export const CommentIcon = ({ size = 24, strokeWidth = 1.5, className }: IconProps) => (
+  <svg {...base(size)} strokeWidth={strokeWidth} className={className}>
+    <path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.9-.9L3 20.5l1.6-4.6A8.4 8.4 0 0 1 3.6 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z" />
+  </svg>
+);
+
 export const BagIcon = ({ size = 24, strokeWidth = 1.5, className }: IconProps) => (
   <svg {...base(size)} strokeWidth={strokeWidth} className={className}>
     <path d="M6 8h12l1 13H5L6 8z" />

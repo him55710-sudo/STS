@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { sharePost } from "@/lib/backend/social-actions";
 import type { SourceSurface } from "@/lib/commerce/click";
 import { compact, timeAgo } from "@/lib/format";
 import { useApp, useCreatorLookup } from "@/lib/store";
 import type { ObjectTag, Post } from "@/lib/types";
 import Avatar from "./Avatar";
-import { BagIcon, BookmarkIcon, HeartIcon, ShareIcon } from "./Icons";
+import { BagIcon, BookmarkIcon, HeartIcon, MoreIcon, ShareIcon } from "./Icons";
 import ObjectLayer from "./ObjectLayer";
 import ProductSheet from "./ProductSheet";
 
@@ -20,11 +21,27 @@ export default function PostCard({
 }) {
   const creator = useCreatorLookup()(post.creatorId);
   const [selected, setSelected] = useState<ObjectTag | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [shareNotice, setShareNotice] = useState<string | null>(null);
   const { likedPosts, savedPosts, following, toggleLike, toggleSavePost, toggleFollow, track } =
     useApp();
+  const session = useApp((s) => s.session);
+  const hidePost = useApp((s) => s.hidePost);
+  const engagement = useApp((s) => s.engagement);
   const liked = likedPosts.includes(post.id);
   const saved = savedPosts.includes(post.id);
   const follows = following.includes(post.creatorId);
+  const shareCount = engagement[post.id]?.share_count ?? 0;
+
+  /** 공유 — navigator.share 우선, 없으면 링크 복사. 취소는 기록하지 않는다 */
+  const onShare = async () => {
+    const result = await sharePost(post.id, post.caption, surface, session?.userId ?? null);
+    if (result.shared) track("post_share", { postId: post.id });
+    if (result.notice) {
+      setShareNotice(result.notice);
+      setTimeout(() => setShareNotice(null), 2000);
+    }
+  };
 
   // asset_view — 카드가 50% 이상 보였을 때 1회 기록
   const viewRef = useRef<HTMLDivElement>(null);
@@ -108,11 +125,54 @@ export default function PostCard({
           >
             <BookmarkIcon size={24} filled={saved} strokeWidth={1.75} />
           </button>
-          <button aria-label="공유" className="press rail-shadow pointer-events-auto">
+          <button
+            onClick={onShare}
+            aria-label="공유"
+            className="press rail-shadow pointer-events-auto flex flex-col items-center gap-0.5"
+          >
             <ShareIcon size={23} strokeWidth={1.75} />
+            {shareCount > 0 && <span className="text-[11px] font-semibold">{compact(shareCount)}</span>}
+          </button>
+          <button
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-label="더보기"
+            className="press rail-shadow pointer-events-auto"
+          >
+            <MoreIcon size={22} strokeWidth={1.75} />
           </button>
         </div>
+
+        {/* 관심 없음 / 숨기기 — 부정 신호가 있어야 추천이 학습한다 */}
+        {menuOpen && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} aria-hidden />
+            <div className="absolute bottom-14 right-2.5 z-50 w-44 overflow-hidden rounded-(--radius-card) border border-line bg-surface shadow-lg">
+              <button
+                onClick={() => {
+                  setMenuOpen(false);
+                  void hidePost(post.id, "not_interested");
+                }}
+                className="block w-full px-3.5 py-2.5 text-left text-[13px] hover:bg-surface-2"
+              >
+                관심 없음
+              </button>
+              <button
+                onClick={() => {
+                  setMenuOpen(false);
+                  void hidePost(post.id, "hide");
+                }}
+                className="block w-full border-t border-line px-3.5 py-2.5 text-left text-[13px] hover:bg-surface-2"
+              >
+                이 게시물 숨기기
+              </button>
+            </div>
+          </>
+        )}
       </div>
+
+      {shareNotice && (
+        <p className="px-4 pt-2 text-[12px] font-medium text-primary">{shareNotice}</p>
+      )}
 
       <p className="px-4 pt-2.5 text-[14px] leading-relaxed">
         <Link href={`/creator/${creator.id}`} className="mr-1.5 font-semibold">

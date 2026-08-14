@@ -119,8 +119,13 @@ export default function CreatorPage({ params }: { params: Promise<{ id: string }
           >
             {follows ? "팔로잉" : "팔로우"}
           </button>
-          <button className="press flex-1 rounded-(--radius-btn) bg-surface-2 py-2.5 text-[14px] font-semibold text-ink">
-            메시지
+          {/* DM은 이번 범위 밖 — 죽은 컨트롤 대신 비활성 상태를 명시한다 */}
+          <button
+            disabled
+            title="메시지 기능은 준비 중이에요"
+            className="flex-1 cursor-not-allowed rounded-(--radius-btn) bg-surface-2 py-2.5 text-[14px] font-semibold text-ink-2 opacity-60"
+          >
+            메시지 · 준비 중
           </button>
         </div>
       </div>

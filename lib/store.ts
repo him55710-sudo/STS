@@ -3,9 +3,18 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { fetchRemoteFeed } from "./backend/posts";
+import { fetchEngagement, fetchUserSignals, type EngagementRow } from "./backend/signals";
 import { fetchSocialState, setFollow, setPostLike, setPostSave, setProductSave } from "./backend/social";
+import {
+  clearFeedback,
+  recordInteraction,
+  setFeedback,
+  type FeedbackKind,
+  type InteractionType,
+} from "./backend/social-actions";
 import { CREATORS, productById } from "./catalog";
 import { isUuid } from "./config";
+import { buildTasteProfile, EMPTY_PROFILE, type TasteProfile } from "./recommendation/taste-profile";
 import type { Creator, EventType, Post, Product, SessionUser, TrackedEvent } from "./types";
 
 /**
@@ -46,12 +55,24 @@ interface AppState {
   remoteProducts: Product[];
   remoteLoaded: boolean;
 
+  // ── 추천 (서버 신호 기반, 비영속) ──
+  /** 숨김/관심없음 처리한 게시물 */
+  hiddenPosts: string[];
+  /** 이미 본 게시물 (novelty 감점용) */
+  seenPosts: string[];
+  tasteProfile: TasteProfile;
+  engagement: Record<string, EngagementRow>;
+  signalsLoaded: boolean;
+
   // actions
   signIn: (user: SessionUser) => void;
   signOut: () => void;
   setSession: (s: RemoteSession | null) => void;
   loadRemoteFeed: () => Promise<void>;
   hydrateSocial: (userId: string) => Promise<void>;
+  loadSignals: () => Promise<void>;
+  hidePost: (postId: string, kind: FeedbackKind) => Promise<void>;
+  unhidePost: (postId: string) => Promise<void>;
   addCustomProduct: (p: Product) => void;
   toggleSaveProduct: (id: string) => void;
   toggleSavePost: (id: string) => void;
@@ -112,6 +133,12 @@ export const useApp = create<AppState>()(
         remoteProducts: [],
         remoteLoaded: false,
 
+        hiddenPosts: [],
+        seenPosts: [],
+        tasteProfile: EMPTY_PROFILE,
+        engagement: {},
+        signalsLoaded: false,
+
         signIn: (user) => set({ user }),
         signOut: () => set({ user: null }),
 
@@ -140,6 +167,55 @@ export const useApp = create<AppState>()(
           } else {
             set({ remoteLoaded: true });
           }
+        },
+
+        /**
+         * 취향 신호 로드 — 서버 권위 데이터로 프로필을 만든다.
+         * 참여 지표는 로그인 여부와 무관하게 (공개 집계) 가져온다.
+         */
+        loadSignals: async () => {
+          const engagementMap = await fetchEngagement();
+          const engagement: Record<string, EngagementRow> = {};
+          for (const [k, v] of engagementMap) engagement[k] = v;
+
+          const session = get().session;
+          if (!session) {
+            set({ engagement, tasteProfile: EMPTY_PROFILE, signalsLoaded: true });
+            return;
+          }
+
+          const postsById = new Map<string, Post>();
+          for (const p of [...get().remotePosts, ...get().userPosts]) postsById.set(p.id, p);
+          const { POSTS } = await import("./catalog");
+          for (const p of POSTS) postsById.set(p.id, p);
+
+          const bundle = await fetchUserSignals(session.userId, postsById);
+          set({
+            engagement,
+            tasteProfile: buildTasteProfile(bundle.signals),
+            hiddenPosts: [...bundle.hidden],
+            seenPosts: [...bundle.seen],
+            signalsLoaded: true,
+          });
+        },
+
+        hidePost: async (postId, kind) => {
+          // 낙관적 반영 — 사용자가 아니라고 했으면 즉시 사라져야 한다
+          set((s) => ({ hiddenPosts: [...new Set([...s.hiddenPosts, postId])] }));
+          const session = get().session;
+          if (!session) return;
+          try {
+            await setFeedback(session.userId, postId, kind);
+          } catch (e) {
+            console.warn(`[social] hide failed, reverting: ${(e as Error).message}`);
+            set((s) => ({ hiddenPosts: s.hiddenPosts.filter((id) => id !== postId) }));
+          }
+        },
+
+        unhidePost: async (postId) => {
+          set((s) => ({ hiddenPosts: s.hiddenPosts.filter((id) => id !== postId) }));
+          const session = get().session;
+          if (session) await clearFeedback(session.userId, postId).catch(() => {});
         },
 
         hydrateSocial: async (userId) => {
@@ -177,11 +253,36 @@ export const useApp = create<AppState>()(
           syncToggle("following", id, setFollow, isUuid);
         },
 
-        track: (type, ref) =>
+        track: (type, ref) => {
           set((s) => ({
-            // 이벤트는 최근 500개만 유지 (이벤트 파이프라인 단계에서 서버 수집으로 대체)
+            // 로컬 이벤트는 데모 애널리틱스용 — 취향 프로필의 진실은 서버다
             events: [...s.events.slice(-499), { id: eid(), type, ts: Date.now(), ...ref }],
-          })),
+          }));
+          // 서버 취향 신호 기록 (로그인 상태에서만, 실패해도 UX를 막지 않는다)
+          const session = get().session;
+          if (!session) return;
+          const mapped: InteractionType | null =
+            type === "asset_view"
+              ? "asset_view"
+              : type === "object_tap"
+                ? "object_tap"
+                : type === "card_open"
+                  ? "card_open"
+                  : type === "post_like"
+                    ? "post_like"
+                    : type === "post_save"
+                      ? "post_save"
+                      : null;
+          if (!mapped) return;
+          if (mapped === "asset_view" && ref?.postId) {
+            set((s) => ({ seenPosts: [...new Set([...s.seenPosts, ref.postId!])] }));
+          }
+          void recordInteraction(session.userId, mapped, {
+            postId: ref?.postId,
+            objectId: ref?.objectId,
+            productId: ref?.productId,
+          });
+        },
 
         addUserPost: (post) => {
           set((s) => ({ userPosts: [post, ...s.userPosts] }));

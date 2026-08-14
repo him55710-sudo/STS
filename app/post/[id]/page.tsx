@@ -5,6 +5,7 @@ import { use } from "react";
 import { POSTS } from "@/lib/catalog";
 import { isBackendConfigured, isDemoMode } from "@/lib/config";
 import { useApp, useHydrated } from "@/lib/store";
+import Comments from "@/components/Comments";
 import PostCard from "@/components/PostCard";
 import { ChevronLeftIcon } from "@/components/Icons";
 
@@ -46,6 +47,8 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
       </header>
 
       <PostCard post={post} surface="post" />
+
+      <Comments postId={post.id} />
 
       {related.length > 0 && (
         <div className="px-4 pb-6 pt-5">

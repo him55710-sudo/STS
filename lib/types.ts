@@ -97,6 +97,7 @@ export type EventType =
   | "product_save"
   | "post_save"
   | "post_like"
+  | "post_share"
   | "publish";
 
 export interface TrackedEvent {
