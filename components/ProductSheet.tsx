@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect } from "react";
-import { buildGoUrl, type SourceSurface } from "@/lib/commerce/click";
+import { bestOfferIdFor, buildGoUrl, type SourceSurface } from "@/lib/commerce/click";
 import { productOutboundUrl } from "@/lib/commerce/outbound";
-import { creatorSharePercent } from "@/lib/commerce/revenue";
-import { buildProductSheetModel } from "@/lib/commerce/sheet-model";
+import { buildProductSheetModel, type CanonicalSheetModel } from "@/lib/commerce/sheet-model";
 import type { RankedOffer } from "@/lib/commerce/offer-resolver";
 import { won } from "@/lib/format";
 import { useApp, useProductLookup } from "@/lib/store";
@@ -76,6 +75,10 @@ export default function ProductSheet({
               onSave={() => toggleSaveProduct(model.canonical.id)}
               onOpenOffer={(r) => openUrl(buildGoUrl(r.offer.id, goCtx), model.canonical.id)}
               onOpenSimilar={(p) => openUrl(productOutboundUrl(p.id, p.url, goCtx), p.id)}
+              onOpenSponsored={(s) => {
+                const offerId = bestOfferIdFor(s.product.id);
+                openUrl(offerId ? buildGoUrl(offerId, goCtx) : "#", s.product.id);
+              }}
             />
           ) : model?.kind === "legacy" ? (
             <LegacySheet
@@ -116,12 +119,14 @@ function CanonicalSheet({
   onSave,
   onOpenOffer,
   onOpenSimilar,
+  onOpenSponsored,
 }: {
   model: Extract<ReturnType<typeof buildProductSheetModel>, { kind: "canonical" }>;
   saved: boolean;
   onSave: () => void;
   onOpenOffer: (r: RankedOffer) => void;
   onOpenSimilar: (p: Product) => void;
+  onOpenSponsored: (s: NonNullable<CanonicalSheetModel["sponsoredSimilar"]>) => void;
 }) {
   const { canonical, bestOffer, otherOffers, unavailableOffers, exactness } = model;
 
@@ -151,11 +156,6 @@ function CanonicalSheet({
               <p className="mt-0.5 text-xs text-ink-2">
                 {bestOffer.merchant.name}
                 {bestOffer.offer.shippingLabel && ` · ${bestOffer.offer.shippingLabel}`}
-                {(bestOffer.offer.commissionRate ?? 0) > 0 && (
-                  <span className="ml-1.5 rounded-[5px] bg-primary-soft px-1.5 py-0.5 text-[10px] font-semibold text-primary">
-                    제휴 {Math.round((bestOffer.offer.commissionRate ?? 0) * 100)}%
-                  </span>
-                )}
               </p>
             </>
           ) : (
@@ -243,10 +243,45 @@ function CanonicalSheet({
       )}
 
       {/* 4. 비슷한 스타일 — similar 상품 전용 영역 (exact 오퍼와 절대 혼합 금지) */}
-      {model.similarStyles.length > 0 && (
+      {(model.similarStyles.length > 0 || model.sponsoredSimilar) && (
         <div className="mt-4">
           <p className="mb-2 text-xs font-medium text-ink-2">비슷한 스타일</p>
-          <SimilarRow products={model.similarStyles} onOpen={onOpenSimilar} />
+          {model.similarStyles.length > 0 && (
+            <SimilarRow products={model.similarStyles} onOpen={onOpenSimilar} />
+          )}
+          {/*
+           * 광고 슬롯 — 별도 상태로 명시 분리한다. 착용 상품(exact)은 절대 여기 올 수 없고,
+           * "Sponsored" 라벨 없이 노출되는 경로도 없다 (docs/COMMERCE_INTEGRITY.md).
+           */}
+          {model.sponsoredSimilar && (
+            <button
+              onClick={() => onOpenSponsored(model.sponsoredSimilar!)}
+              className="mt-2.5 flex w-full items-center gap-2.5 rounded-(--radius-card) border border-dashed border-line bg-surface-2/40 p-2.5 text-left"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={model.sponsoredSimilar.product.primaryImage}
+                alt=""
+                className="h-11 w-11 shrink-0 rounded-[7px] border border-line object-cover"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="flex items-center gap-1.5 text-[11px] text-ink-2">
+                  {model.sponsoredSimilar.product.brand}
+                  <span className="shrink-0 rounded-[4px] border border-line bg-surface px-1 py-px text-[9px] font-semibold uppercase tracking-wide text-ink-2">
+                    {model.sponsoredSimilar.label}
+                  </span>
+                </p>
+                <p className="truncate text-[12.5px] font-medium">
+                  {model.sponsoredSimilar.product.modelName}
+                </p>
+              </div>
+              {model.sponsoredSimilar.price != null && (
+                <span className="shrink-0 text-[12px] font-semibold text-ink-2">
+                  {won(model.sponsoredSimilar.price)}
+                </span>
+              )}
+            </button>
+          )}
         </div>
       )}
 
@@ -345,13 +380,18 @@ function SimilarRow({ products, onOpen }: { products: Product[]; onOpen: (p: Pro
   );
 }
 
+/**
+ * 5. 제휴 고지 — 절제된 한 줄.
+ * 경제적 이해관계는 공개하되(표시광고법), 수수료율·수익 배분율은 노출하지 않는다.
+ * 그 숫자는 크리에이터의 비공개 Studio에 속한다 (docs/COMMERCE_INTEGRITY.md).
+ */
 function SheetFooter({ exactness, affiliate }: { exactness: "exact" | "similar"; affiliate: boolean }) {
   return (
     <p className="mt-3 text-center text-[10.5px] leading-relaxed text-ink-2">
       {exactness === "similar" && "크리에이터가 확인한 유사 상품이에요. "}
       {affiliate
-        ? `제휴 파트너 상품 — 구매 시 수수료의 ${creatorSharePercent()}%가 크리에이터에게 돌아가요.`
-        : "가격·재고는 판매처 기준이에요. 상품 페이지로 바로 연결됩니다."}
+        ? "일부 링크는 제휴 링크예요. 구매 가격은 동일합니다."
+        : "가격·재고는 판매처 기준이에요."}
     </p>
   );
 }

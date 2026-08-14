@@ -22,7 +22,7 @@ const NAV = [
   { href: "/admin", label: "운영", Icon: SettingsIcon },
 ];
 
-/** 데스크톱 웹 좌측 내비게이션 — SEEIT web layout */
+/** 데스크톱 웹 좌측 내비게이션 — STS web layout */
 export default function Sidebar() {
   const pathname = usePathname();
   const hydrated = useHydrated();

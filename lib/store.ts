@@ -293,7 +293,9 @@ export const useApp = create<AppState>()(
       };
     },
     {
-      name: "objet-store-v1",
+      // 브랜드 통일: 레거시 키(objet-store-v1)에서 이관.
+      // 데모 전용 로컬 데이터라 마이그레이션 없이 새 키를 쓴다 (서버가 진실).
+      name: "sts-store-v1",
       storage: createJSONStorage(() => localStorage),
       // 서버 상태는 절대 localStorage로 가지 않는다 — 진실은 DB
       partialize: (s) => ({

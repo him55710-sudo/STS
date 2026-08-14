@@ -466,7 +466,7 @@ function CreateBody() {
             </button>
           )}
         </div>
-        {/* 스텝 인디케이터 — SEEIT creator flow */}
+        {/* 스텝 인디케이터 — 크리에이터 플로우 */}
         <div className="flex items-center gap-1.5 px-4 pb-3 pt-2">
           {["업로드", "AI 태깅", "상품 매칭", "발행"].map((label, i) => {
             const current = { select: 0, analyzing: 1, review: 2, done: 3 }[step];

@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { POSTS } from "@/lib/catalog";
-import { demoEstimatedEarnings, pct, statsForPosts, totals } from "@/lib/analytics";
+import { pct, statsForPosts, totals } from "@/lib/analytics";
 import { isDemoMode } from "@/lib/config";
-import { compact, won } from "@/lib/format";
+import { compact } from "@/lib/format";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useApp, useHydrated } from "@/lib/store";
 import {
@@ -16,8 +16,8 @@ import {
 } from "@/components/Icons";
 
 /**
- * Creator Console Home — 사업계획서 §17.
- * 이번 달 views / taps / outbound / earnings + 내 콘텐츠.
+ * Creator Console Home — 내 콘텐츠와 콘텐츠 지표.
+ * 금액(GMV·수익·지급)은 비공개 스튜디오(/studio)에만 존재한다.
  */
 export default function ProfilePage() {
   const hydrated = useHydrated();
@@ -34,7 +34,6 @@ export default function ProfilePage() {
   const stats = statsForPosts(myPosts, hydrated ? events : []);
   const t = totals(stats.values());
   const otr = pct(t.taps, t.views);
-  const earnings = demoEstimatedEarnings(t.outbound);
 
   return (
     <div>
@@ -62,7 +61,7 @@ export default function ProfilePage() {
             </p>
           ) : (
             <Link href="/login" className="mt-0.5 inline-block text-[12px] font-semibold text-primary">
-              3초 로그인하고 수익 받기 →
+              로그인하고 내 스타일 남기기 →
             </Link>
           )}
         </div>
@@ -99,34 +98,29 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      <div className="mx-4 mt-2.5 grid grid-cols-2 gap-2.5">
+      {/* 콘텐츠 지표만 — 금액은 비공개 스튜디오에 산다 (커머스 무결성) */}
+      <div className="mx-4 mt-2.5 grid grid-cols-3 gap-2.5">
         <Metric label="이번 달 조회" value={compact(t.views)} />
         <Metric label="오브젝트 탭" value={compact(t.taps)} />
         <Metric label="구매처 이동" value={compact(t.outbound)} />
-        <Metric label="수익 (데모 추정치)" value={won(earnings)} accent />
       </div>
 
       <Link
-        href="/creator/earnings"
-        className="mx-4 mt-2.5 flex items-center gap-2.5 rounded-(--radius-card) border border-line bg-surface px-4 py-3.5"
+        href="/studio"
+        className="press mx-4 mt-2.5 flex items-center gap-2.5 rounded-(--radius-card) border border-line bg-surface px-4 py-3.5"
       >
         <BarChartIcon size={18} className="text-primary" />
-        <span className="flex-1 text-[14px] font-medium">수익 정산 (실데이터)</span>
-        <ChevronRightIcon size={16} className="text-ink-2" />
-      </Link>
-      <Link
-        href="/analytics"
-        className="mx-4 mt-2 flex items-center gap-2.5 rounded-(--radius-card) border border-line bg-surface px-4 py-3.5"
-      >
-        <BarChartIcon size={18} className="text-accent" />
-        <span className="flex-1 text-[14px] font-medium">상세 애널리틱스</span>
+        <span className="flex-1">
+          <span className="block text-[14px] font-medium">크리에이터 스튜디오</span>
+          <span className="block text-[11.5px] text-ink-2">GMV · 전환 · 수익 · 지급 (나만 보임)</span>
+        </span>
         <ChevronRightIcon size={16} className="text-ink-2" />
       </Link>
 
       <div className="mt-6 flex items-center justify-between px-4">
         <p className="text-[14px] font-semibold">내 콘텐츠 {myPosts.length}</p>
         <Link href="/create" className="flex items-center gap-1 text-[13px] font-medium text-accent">
-          <TagIcon size={14} />새 shoppable 콘텐츠
+          <TagIcon size={14} />새 콘텐츠
         </Link>
       </div>
       <div className="mt-2.5 grid grid-cols-3 gap-0.5">
@@ -149,13 +143,11 @@ export default function ProfilePage() {
   );
 }
 
-function Metric({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-(--radius-card) border border-line bg-surface p-4">
-      <p className="text-[12px] text-ink-2">{label}</p>
-      <p className={`mt-1 text-[20px] font-bold tracking-tight ${accent ? "text-accent" : ""}`}>
-        {value}
-      </p>
+    <div className="rounded-(--radius-card) border border-line bg-surface p-3.5">
+      <p className="text-[11.5px] text-ink-2">{label}</p>
+      <p className="mt-1 text-[18px] font-bold tracking-tight">{value}</p>
     </div>
   );
 }

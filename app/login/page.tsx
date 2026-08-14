@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import { creatorSharePercent } from "@/lib/commerce/revenue";
 import { isBackendConfigured, isDemoLoginAllowed } from "@/lib/config";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useApp } from "@/lib/store";
@@ -103,16 +102,25 @@ function LoginBody() {
   return (
     <div className="flex min-h-[calc(100dvh-76px)] flex-col px-6">
       <div className="flex-1 pt-16">
-        <p className="card-in text-[15px] font-medium text-primary">See it. Tap it. Shop it.</p>
+        {/*
+         * 온보딩 위계 (docs/COMMERCE_INTEGRITY.md):
+         *   1순위 — 비주얼 라이프스타일 콘텐츠를 공유하고 발견하는 곳
+         *   2순위 — 올린 콘텐츠가 수익으로 이어질 수도 있다 (부차적, 절제된 한 줄)
+         * 수수료율은 어디에도 광고하지 않는다.
+         */}
+        <p className="card-in text-[15px] font-medium text-primary">STS</p>
         <h1 className="card-in mt-2 text-[30px] font-extrabold leading-snug tracking-tight" style={{ animationDelay: "60ms" }}>
-          사진 속 그 물건,
+          매일의 스타일을
           <br />
-          탭 한 번이면 내 것
+          공유하고 발견하세요
         </h1>
         <p className="card-in mt-3 text-[14px] leading-relaxed text-ink-2" style={{ animationDelay: "120ms" }}>
-          3초 만에 시작하고, 내가 올린 착장으로
+          좋아하는 사람들의 착장을 보고, 내 하루를 남기고,
           <br />
-          판매 수수료의 {creatorSharePercent()}%를 받아보세요.
+          마음에 드는 물건은 사진 속에서 바로 찾아보세요.
+        </p>
+        <p className="card-in mt-4 text-[12.5px] leading-relaxed text-ink-2" style={{ animationDelay: "160ms" }}>
+          크리에이터라면, 올린 콘텐츠가 수익으로 이어질 수도 있어요.
         </p>
       </div>
 

@@ -5,6 +5,7 @@ import { POSTS, PRODUCTS } from "@/lib/catalog";
 import { isDemoMode } from "@/lib/config";
 import { useApp, useCreatorLookup, useHydrated } from "@/lib/store";
 import AdminCommerce from "@/components/AdminCommerce";
+import IntegrityPanel from "@/components/IntegrityPanel";
 import { ChevronLeftIcon } from "@/components/Icons";
 
 const EVENT_LABEL: Record<string, string> = {
@@ -89,6 +90,9 @@ export default function AdminPage() {
           </p>
         )}
       </Section>
+
+      {/* 커머스 무결성 — 제품이 카탈로그로 변질되는지 감시하는 지표 */}
+      <IntegrityPanel posts={allPosts} events={hydrated ? events : []} />
 
       {/* 커머스 운영 — 클릭/전환/원장/반전/실패 postback (관리자 RLS) */}
       <AdminCommerce />

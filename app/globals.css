@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* ── OBJET Design Tokens — PRD §36–45 Quiet Luxury ───────────────── */
+/* ── STS Design Tokens — PRD §36–45 Quiet Luxury ───────────────── */
 @theme {
   --color-bg: #f7f7f6;          /* Primary Background */
   --color-surface: #ffffff;     /* Bottom Sheet / Modal / Card */

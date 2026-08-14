@@ -1,6 +1,7 @@
 import type { ObjectTag, Product } from "../types";
 import { canonicalById, resolveOffersFor } from "./index";
 import type { RankedOffer } from "./offer-resolver";
+import { selectSponsoredSimilar, type SponsoredSimilar } from "./sponsored";
 import type { CanonicalProduct } from "./types";
 
 /**
@@ -28,6 +29,12 @@ export interface CanonicalSheetModel {
   /** 품절 판매처 — 목록 끝에 품절 표시로만 노출 */
   unavailableOffers: RankedOffer[];
   similarStyles: Product[];
+  /**
+   * 광고 슬롯 — similarStyles와 **별개의 명시적 상태**다.
+   * 착용 상품(canonical)이나 오퍼 섹션에는 절대 섞이지 않으며,
+   * UI는 반드시 label("Sponsored")을 함께 렌더해야 한다.
+   */
+  sponsoredSimilar: SponsoredSimilar | null;
 }
 
 export interface LegacySheetModel {
@@ -49,8 +56,10 @@ export function buildProductSheetModel(
   const canonical = canonicalById(object.productId);
   if (canonical) {
     const resolved = resolveOffersFor(canonical.id);
-    const similarStyles = (canonical.attributes.similarIds ?? [])
-      .filter((id) => id !== canonical.id) // 불변식: 착용 상품은 similar에 못 들어온다
+    const similarIds = (canonical.attributes.similarIds ?? []).filter(
+      (id) => id !== canonical.id // 불변식: 착용 상품은 similar에 못 들어온다
+    );
+    const similarStyles = similarIds
       .map((id) => lookupLegacy(id))
       .filter((p): p is Product => p != null);
     return {
@@ -61,6 +70,8 @@ export function buildProductSheetModel(
       otherOffers: resolved.alternatives,
       unavailableOffers: resolved.unavailable,
       similarStyles,
+      // 광고는 similar 대안에만 닿는다 — 착용 상품 id를 넘겨 자기 자신 노출을 차단한다
+      sponsoredSimilar: selectSponsoredSimilar(canonical.id, similarIds),
     };
   }
 

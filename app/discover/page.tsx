@@ -6,7 +6,7 @@ import { CATEGORY_LABEL, POSTS, PRODUCTS } from "@/lib/catalog";
 import { isDemoMode } from "@/lib/config";
 import { useApp, useCreatorLookup, useHydrated } from "@/lib/store";
 import { compact } from "@/lib/format";
-import { BagIcon, EyeIcon, HeartIcon, SearchIcon } from "@/components/Icons";
+import { EyeIcon, HeartIcon, SearchIcon } from "@/components/Icons";
 import type { Category } from "@/lib/types";
 
 /** 실제 콘텐츠가 있는 카테고리만 칩으로 노출 (빈 탭 방지) */
@@ -16,7 +16,7 @@ const CATS: (Category | "all")[] = [
 ];
 const TRENDING = ["프레피", "Quiet Luxury", "미니멀", "헤리티지", "아웃도어"];
 
-/** Explore by Style — SEEIT Discover */
+/** Explore by Style — 스타일 기반 탐색 */
 const STYLES = [
   { name: "미니멀", desc: "군더더기 없는 라인", q: "미니멀" },
   { name: "프레피", desc: "옥스포드와 연청", q: "옥스포드" },
@@ -125,7 +125,6 @@ export default function DiscoverPage() {
       <div className="masonry px-2 pt-3">
         {results.map((post) => {
           const creator = lookupCreator(post.creatorId);
-          const linked = post.objects.filter((o) => o.productId).length;
           return (
             <Link
               key={post.id}
@@ -141,13 +140,11 @@ export default function DiscoverPage() {
                   style={{ aspectRatio: `${post.ratio}` }}
                   loading="lazy"
                 />
-                {linked > 0 && (
-                  <span className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-surface/90 px-2 py-0.5 text-[11px] font-medium text-ink backdrop-blur-sm">
-                    <BagIcon size={11} />
-                    {linked}
-                  </span>
-                )}
-                {/* 조회·좋아요 오버레이 — SEEIT trending */}
+                {/*
+                 * 상품 개수 배지 없음 — 발견 그리드도 공개 표면이다.
+                 * 어떤 콘텐츠가 "쇼퍼블"인지 미리 표시하지 않는다 (커머스 무결성).
+                 */}
+                {/* 조회·좋아요 오버레이 */}
                 <span className="rail-shadow absolute bottom-1.5 left-2 flex items-center gap-2 text-[10.5px] font-semibold text-white">
                   <span className="flex items-center gap-0.5">
                     <EyeIcon size={12} strokeWidth={2} /> {compact(post.likes * 13)}

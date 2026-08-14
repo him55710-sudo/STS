@@ -8,7 +8,7 @@ import { compact, timeAgo } from "@/lib/format";
 import { useApp, useCreatorLookup } from "@/lib/store";
 import type { ObjectTag, Post } from "@/lib/types";
 import Avatar from "./Avatar";
-import { BagIcon, BookmarkIcon, HeartIcon, MoreIcon, ShareIcon } from "./Icons";
+import { BookmarkIcon, HeartIcon, MoreIcon, ShareIcon } from "./Icons";
 import ObjectLayer from "./ObjectLayer";
 import ProductSheet from "./ProductSheet";
 
@@ -64,8 +64,6 @@ export default function PostCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [post.id]);
 
-  const linkedCount = post.objects.filter((o) => o.productId).length;
-
   return (
     <article ref={viewRef} className="border-b border-line bg-surface pb-3">
       {/* creator row */}
@@ -89,7 +87,7 @@ export default function PostCard({
         )}
       </div>
 
-      {/* content — 객체 자체가 인터페이스 + 우측 액션 레일 (SEEIT) */}
+      {/* content — 객체 자체가 인터페이스 + 우측 액션 레일 */}
       <div className="relative">
         <ObjectLayer
           postId={post.id}
@@ -181,13 +179,12 @@ export default function PostCard({
         {post.caption}
       </p>
 
-      {/* 상품 chip — 탭하면 객체 힌트 유도 */}
-      {linkedCount > 0 && (
-        <p className="mt-1.5 flex items-center gap-1 px-4 text-xs text-ink-2">
-          <BagIcon size={13} />
-          이 콘텐츠에는 상품 {linkedCount}개가 있어요 · 화면 속 물건을 탭해보세요
-        </p>
-      )}
+      {/*
+       * 상거래 표면 없음 (커머스 무결성 — docs/COMMERCE_INTEGRITY.md).
+       * idle 상태의 피드는 평범한 라이프스타일 콘텐츠일 뿐이다:
+       * 가격·수수료·제휴율·구매 CTA·상품 개수·상시 쇼핑 배지를 절대 노출하지 않는다.
+       * 상거래는 사용자가 화면을 탭해 의도를 드러낸 뒤에야 등장한다.
+       */}
 
       {selected && (
         <ProductSheet

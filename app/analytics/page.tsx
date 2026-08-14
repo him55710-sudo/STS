@@ -78,7 +78,7 @@ export default function AnalyticsPage() {
         <span className="ml-auto pr-3 text-[12px] text-ink-2">이번 달</span>
       </header>
 
-      {/* 탭 스트립 — SEEIT dashboard */}
+      {/* 탭 스트립 — 대시보드 */}
       <div className="no-scrollbar flex gap-4 overflow-x-auto border-b border-line px-4 pt-3">
         {["오버뷰", "콘텐츠", "상품", "오디언스"].map((tab, i) => (
           <button

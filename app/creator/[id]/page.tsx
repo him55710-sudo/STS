@@ -5,7 +5,6 @@ import { use, useEffect, useState } from "react";
 import { fetchCreatorProfile } from "@/lib/backend/posts";
 import { CREATORS, POSTS } from "@/lib/catalog";
 import { productOutboundUrl } from "@/lib/commerce/outbound";
-import { creatorSharePercent } from "@/lib/commerce/revenue";
 import { isBackendConfigured, isDemoMode, isUuid } from "@/lib/config";
 import { compact, won } from "@/lib/format";
 import { useApp, useCreatorLookup, useHydrated, useProductLookup } from "@/lib/store";
@@ -105,11 +104,11 @@ export default function CreatorPage({ params }: { params: Promise<{ id: string }
           )}
         </p>
         <p className="mt-0.5 whitespace-pre-line text-[13px] leading-relaxed text-ink-2">{creator.bio}</p>
-        {creator.verified && (
-          <span className="mt-2 inline-block rounded-full bg-primary-soft px-2.5 py-1 text-[11px] font-semibold text-primary">
-            수익 공유 크리에이터 · 제휴 판매 수수료 {creatorSharePercent()}% 배분
-          </span>
-        )}
+        {/*
+         * 공개 프로필은 정체성·스타일·게시물·팔로워·숍만 보여준다.
+         * 수수료율·수익 배분은 크리에이터 본인의 Studio(비공개)에만 존재한다
+         * — 시청자에게 광고할 정보가 아니다 (커머스 무결성).
+         */}
         <div className="mt-3 flex gap-2">
           <button
             onClick={() => toggleFollow(id)}
@@ -178,7 +177,7 @@ export default function CreatorPage({ params }: { params: Promise<{ id: string }
         </div>
       ) : (
         <div className="p-3">
-          {/* Featured Picks — SEEIT creator shop */}
+          {/* Featured Picks — 크리에이터 숍 */}
           {shopProducts.length > 2 && (
             <>
               <p className="px-1 pb-2 text-[13px] font-bold">추천 픽</p>
