@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { extractJson, providerChain, textJson } from "@/lib/llm";
 import { isNaverConfigured } from "@/lib/naver/api-hub";
+import { searchNaverProducts } from "@/lib/naver/product-provider";
 import { colorSimilarity, productImageColor } from "@/lib/naver/visual-score";
 
 export const maxDuration = 30;
@@ -13,10 +14,13 @@ export const maxDuration = 30;
  *    "'Search API' 중 '쇼핑', '책', '학술정보' 데이터 제공 서비스는 2026년 7월 31일 24:00부로 종료"
  *    NAVER API HUB(이관처)에도 쇼핑 항목이 없다. 되살릴 경로가 없으므로 호출하지 않는다.
  *
- *  1) LLM 웹 조사 (Letsur → Gemini 그라운딩) — 실판매 상품명·브랜드·가격 추정
- *     + 네이버 **이미지 검색**으로 해당 상품의 실제 이미지 색을 얻어 visual 점수를 채운다
- *       (이미지는 제3자 저작물이라 노출하지 않고 점수 계산에만 사용)
- *  2) provider가 없으면 { candidates: [], provider: "none" } → 클라이언트는 카탈로그 검색만 사용
+ *  1) **네이버 webkr 웹문서 검색** — 스마트스토어·무신사·29CM 등 실제 쇼핑몰
+ *     상품 페이지 URL을 직접 얻는다. LLM이 전혀 없어도 동작한다 (주 provider).
+ *     webkr 미등록/무결과 시 이미지 검색 제목 기반 폴백.
+ *  2) LLM 웹 조사 (Gemini 그라운딩) — 브랜드·모델명 추정 보강 (보조, 병렬 실행)
+ *  3) 네이버 **이미지 검색**으로 상위 후보의 실제 이미지 색을 얻어 visual 점수를 채운다
+ *     (이미지는 제3자 저작물이라 노출하지 않고 점수 계산에만 사용)
+ *  4) 모두 없으면 { candidates: [], provider: "none" } → 클라이언트는 카탈로그 검색만 사용
  *
  * 모든 secret은 서버에서만 사용한다. 모델이 만든 상품 URL은 검증 불가하므로
  * 정확 상품명 검색 딥링크(항상 유효)로 대체한다.
@@ -54,15 +58,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "queries required" }, { status: 400 });
   }
 
-  // ── LLM 웹 조사 (Letsur → Gemini 그라운딩) ──
-  const chain = providerChain();
-  if (chain.length === 0) {
-    return NextResponse.json({ candidates: [], provider: "none" });
-  }
+  // ── 네이버 실상품 검색(주) + LLM 웹 조사(보조)를 병렬 실행 ──
+  // 네이버 provider는 LLM 없이 동작하므로, LLM 쿼터가 죽어도 실상품 후보가 나온다.
+  const [naver, llm] = await Promise.all([
+    isNaverConfigured() ? searchNaverProducts(queries).catch(() => []) : Promise.resolve([]),
+    providerChain().length > 0 ? searchViaLlm(queries) : Promise.resolve([]),
+  ]);
 
-  const candidates = await searchViaLlm(queries);
+  // 네이버(실 URL) 우선, LLM 후보는 상품명 중복 제거 후 뒤에 붙인다
+  const norm = (s: string) => s.toLowerCase().replace(/\s+/g, "");
+  const seenNames = new Set(naver.map((c) => norm(c.productName)));
+  const candidates: WebCandidate[] = [
+    ...naver,
+    ...llm.filter((c) => !seenNames.has(norm(c.productName))),
+  ].slice(0, 10);
+
   if (candidates.length === 0) {
-    return NextResponse.json({ candidates: [], provider: "llm-empty" });
+    return NextResponse.json({
+      candidates: [],
+      provider: isNaverConfigured() ? "empty" : "none",
+    });
   }
 
   // ── 시각 검증: 네이버 이미지 검색으로 후보 상품의 실제 색을 얻어 visual 점수 산출 ──
@@ -73,7 +88,13 @@ export async function POST(req: NextRequest) {
     const top = candidates.slice(0, 4);
     await Promise.all(
       top.map(async (c) => {
-        const q = [c.brand, c.productName, c.color].filter(Boolean).join(" ");
+        // 몰 페이지 제목은 길다 — 이미지 검색 쿼리는 앞 7토큰으로 자른다
+        const q = [c.brand, c.productName, c.color]
+          .filter(Boolean)
+          .join(" ")
+          .split(/\s+/)
+          .slice(0, 7)
+          .join(" ");
         const color = await productImageColor(q);
         const sim = colorSimilarity(tone, color);
         if (sim != null) {
@@ -87,7 +108,9 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     candidates,
-    provider: candidates[0].source,
+    provider: naver.length > 0 ? candidates[0].source : (llm[0]?.source ?? "none"),
+    naverCount: naver.length,
+    llmCount: llm.length,
     visualScored,
   });
 }

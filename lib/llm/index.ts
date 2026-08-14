@@ -7,12 +7,16 @@ export type { ProviderResult, ProviderStatus } from "./types";
 
 /**
  * Provider 체인 — 앞에서부터 시도하고, 사용 불가/쿼터/오류면 다음으로 넘어간다.
- * 기본 우선순위: Letsur → Gemini.
- * `LLM_PROVIDER=gemini|letsur` 로 강제 지정 가능(비교·롤백용).
+ *
+ * 기본 우선순위: **Gemini → Letsur**.
+ * Letsur는 프로덕션 실측에서 게이트웨이 앞단 차단(모든 요청 403)으로 판정되어
+ * 사용자 결정으로 보류됐다(2026-08, docs/VISION.md 판정 기록). 어댑터는 유지하되
+ * 매 호출마다 죽은 provider에 왕복을 낭비하지 않도록 후순위로 내린다.
+ * `LLM_PROVIDER=letsur` 로 강제 지정하면 다시 단독 1순위가 된다.
  */
 export function providerChain(): LlmProvider[] {
   const forced = process.env.LLM_PROVIDER?.trim().toLowerCase();
-  const all: LlmProvider[] = [letsurProvider, geminiProvider];
+  const all: LlmProvider[] = [geminiProvider, letsurProvider];
   if (forced === "gemini") return [geminiProvider];
   if (forced === "letsur") return [letsurProvider];
   return all.filter((p) => p.isConfigured());

@@ -46,13 +46,42 @@ export async function retrieveCandidates(obj: DetectedObject): Promise<{
     // 웹 검색 실패는 전체 흐름을 막지 않는다
   }
 
-  // 3) merge + rerank — 첫 번째 결과를 그대로 쓰지 않고 composite score로 재정렬
-  const merged = [...catalog, ...web]
-    .sort((a, b) => b.scores.final - a.scores.final)
-    .slice(0, 8);
+  // 3) merge + rerank — composite score로 재정렬하되 **웹 후보 노출을 보장**한다.
+  //    카탈로그 후보는 자기 키워드로 만들어져 텍스트 점수가 구조적으로 높다.
+  //    점수순만 쓰면 실제 인터넷 상품이 항상 밀려나므로, 상위 5칸 중 최소 2칸은
+  //    웹 후보 몫으로 예약한다 (웹 후보가 있을 때만).
+  const merged = mergeWithDiversity(catalog, web);
 
   cache.set(key, merged);
   return { query, candidates: merged };
+}
+
+/** 점수순 병합 + 상위 headSize칸에 웹 후보 최소 quota칸 보장 */
+function mergeWithDiversity(
+  catalog: ProductCandidate[],
+  web: ProductCandidate[],
+  total = 8,
+  headSize = 5,
+  minWebInHead = 2
+): ProductCandidate[] {
+  const byFinal = (a: ProductCandidate, b: ProductCandidate) => b.scores.final - a.scores.final;
+  const all = [...catalog, ...web].sort(byFinal);
+  if (web.length === 0) return all.slice(0, total);
+
+  const quota = Math.min(minWebInHead, web.length);
+  const head: ProductCandidate[] = [];
+  for (const c of all) {
+    if (head.length >= headSize) break;
+    const isWeb = c.source !== "catalog";
+    const webCount = head.filter((x) => x.source !== "catalog").length;
+    const slotsLeft = headSize - head.length;
+    const webNeeded = Math.max(0, quota - webCount);
+    // 남은 슬롯이 웹 몫만큼이면 카탈로그는 건너뛴다
+    if (!isWeb && slotsLeft <= webNeeded) continue;
+    head.push(c);
+  }
+  const tail = all.filter((c) => !head.includes(c)).slice(0, total - head.length);
+  return [...head, ...tail];
 }
 
 /**
