@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { contractConfigs, naverSearch, type SearchType, HUB_SEARCH_TYPES } from "@/lib/naver/api-hub";
-import { searchWebkrProducts, searchImageTitleProducts } from "@/lib/naver/product-provider";
+import {
+  searchWebkrProducts,
+  searchImageTitleProducts,
+  searchNaverProducts,
+} from "@/lib/naver/product-provider";
+
+interface WebkrRaw {
+  title: string;
+  link: string;
+  description?: string;
+}
 
 export const maxDuration = 20;
 
@@ -55,6 +65,41 @@ export async function GET(req: NextRequest) {
   if (type === "image") {
     const parsed = await searchImageTitleProducts([q]);
     return NextResponse.json({ q, parsed }, { headers: { "Cache-Control": "no-store" } });
+  }
+
+  if (type === "product") {
+    // 실제 상품 검색이 타는 경로 그대로 — webkr 등록 여부까지 한 번에 판정한다
+    const [webkrRaw, combined] = await Promise.all([
+      naverSearch<WebkrRaw>("webkr", q, { display: 5 }),
+      searchNaverProducts([q]),
+    ]);
+    const bySource = combined.reduce<Record<string, number>>((acc, c) => {
+      acc[c.source] = (acc[c.source] ?? 0) + 1;
+      return acc;
+    }, {});
+    const webkrOk = webkrRaw.ok;
+    return NextResponse.json(
+      {
+        q,
+        webkr: {
+          registered: webkrOk,
+          contract: webkrRaw.contract ?? null,
+          httpStatus: webkrRaw.httpStatus ?? null,
+          errorCode: webkrRaw.errorCode ?? null,
+          errorMessage: webkrRaw.errorMessage ?? null,
+          totalFromNaver: webkrRaw.total ?? null,
+          mallPagesFound: bySource["naver-web"] ?? 0,
+        },
+        verdict: !webkrOk
+          ? `webkr 미등록/오류 (${webkrRaw.errorCode ?? webkrRaw.httpStatus}) — 이미지 제목 폴백으로 동작 중입니다.`
+          : (bySource["naver-web"] ?? 0) > 0
+            ? `정상 — 웹문서 검색이 켜졌고 쇼핑몰 상품 페이지 ${bySource["naver-web"]}건을 직링크로 확보했습니다.`
+            : "웹문서 검색은 켜졌지만 이 질의에선 쇼핑몰 페이지가 잡히지 않아 이미지 제목 폴백으로 채웠습니다.",
+        candidatesBySource: bySource,
+        candidates: combined,
+      },
+      { headers: { "Cache-Control": "no-store" } }
+    );
   }
 
   if (!HUB_SEARCH_TYPES.includes(type as SearchType)) {

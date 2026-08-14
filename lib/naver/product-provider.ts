@@ -76,9 +76,23 @@ export function extractPriceKRW(text: string): number | null {
   return v >= 1000 && v <= 20_000_000 ? v : null;
 }
 
+/** 알려진 몰이 아니어도 **상품 상세 페이지 형태**의 URL은 낮은 신뢰도로 받는다 */
+const PRODUCT_PATH_RE = /\/(products?|goods|item|detail|pd)\/[\w-]/i;
+/** 명백히 상품이 아닌 곳 — 허용목록 밖 URL을 받을 때의 안전장치 */
+const NON_SHOP_RE = /(blog|cafe|news|namu\.wiki|wikipedia|youtube|tistory|brunch|velog|dcinside|fmkorea|instagram|facebook|twitter|x\.com)/i;
+
 function mallOf(url: string): { name: string; trust: number } | null {
   for (const m of MALLS) if (m.re.test(url)) return { name: m.name, trust: m.trust };
-  return null;
+  // 허용목록 밖: 상품 상세 URL 패턴이면 도메인명을 판매처로 써서 받아준다.
+  // (몰 허용목록만으로는 중소 브랜드 자사몰을 전부 놓친다)
+  if (NON_SHOP_RE.test(url)) return null;
+  if (!PRODUCT_PATH_RE.test(url)) return null;
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, "");
+    return { name: host, trust: 0.55 };
+  } catch {
+    return null;
+  }
 }
 
 /** 몰 페이지 제목 정리 — " : 무신사" / " - 29CM" 같은 몰 접미어 제거 */
@@ -197,9 +211,21 @@ export async function searchImageTitleProducts(queries: string[]): Promise<Naver
     .map((s) => s.cand);
 }
 
-/** webkr → 이미지 제목 순으로 시도하는 통합 진입점 */
+/**
+ * 통합 진입점 — webkr(상품 페이지 직링크)을 우선하되, 결과가 얇으면 이미지 제목
+ * 후보로 **채운다**(대체가 아니라 보충).
+ *
+ * webkr은 웹문서 인덱스라 질의에 따라 쇼핑몰 페이지가 거의 안 걸릴 수 있다.
+ * 그때 후보를 1~2개만 보여주면 사용자 입장에선 "안 되는 것"과 같으므로,
+ * 부족한 만큼 이미지 제목 후보로 메운다.
+ */
 export async function searchNaverProducts(queries: string[]): Promise<NaverWebCandidate[]> {
+  const MIN_WEB = 4;
   const webkr = await searchWebkrProducts(queries);
-  if (webkr.length > 0) return webkr;
-  return searchImageTitleProducts(queries);
+  if (webkr.length >= MIN_WEB) return webkr;
+
+  const fallback = await searchImageTitleProducts(queries);
+  const seen = new Set(webkr.map((c) => c.productName.toLowerCase().replace(/\s+/g, "")));
+  const fill = fallback.filter((c) => !seen.has(c.productName.toLowerCase().replace(/\s+/g, "")));
+  return [...webkr, ...fill].slice(0, 8);
 }
