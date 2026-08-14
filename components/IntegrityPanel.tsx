@@ -43,20 +43,25 @@ export default function IntegrityPanel({
           <div
             key={m.key}
             className={`rounded-(--radius-card) border bg-surface p-3.5 ${
-              m.healthy ? "border-line" : "border-[#e6b98a]"
+              m.status === "warn" ? "border-[#e6b98a]" : "border-line"
             }`}
           >
             <p className="flex items-center gap-1.5 text-[11px] text-ink-2">
               {m.label}
-              {!m.healthy && (
+              {m.status === "warn" && (
                 <span className="rounded-[4px] bg-[#fdf3e7] px-1 py-px text-[9px] font-semibold text-[#b3752e]">
                   주의
                 </span>
               )}
             </p>
-            <p className="mt-0.5 text-[18px] font-bold tracking-tight">
-              {Math.round(m.value * 100)}%
-            </p>
+            {/* 표본이 없으면 0%가 아니라 "데이터 없음" — 없는 걸 나쁜 걸로 그리지 않는다 */}
+            {m.value == null ? (
+              <p className="mt-0.5 text-[14px] font-semibold text-ink-2">데이터 없음</p>
+            ) : (
+              <p className="mt-0.5 text-[18px] font-bold tracking-tight">
+                {Math.round(m.value * 100)}%
+              </p>
+            )}
             <p className="mt-1 text-[10px] leading-relaxed text-ink-2">{m.guide}</p>
           </div>
         ))}

@@ -61,15 +61,14 @@ export default function CreatorPage({ params }: { params: Promise<{ id: string }
     .filter((p) => p != null);
   const follows = hydrated && following.includes(id);
 
-  // 크리에이터 숍 아웃바운드 — /go 경유 (creator_shop 어트리뷰션, 판매처 직행 금지)
-  const openShopProduct = (p: { id: string; url: string }) => {
-    track("outbound_click", { productId: p.id });
-    window.open(
-      productOutboundUrl(p.id, p.url, { creatorId: id, surface: "creator_shop" }),
-      "_blank",
-      "noopener,noreferrer"
-    );
-  };
+  // 크리에이터 숍 아웃바운드 — /go 경유 (creator_shop 어트리뷰션, 판매처 직행 금지).
+  // 진짜 링크로 렌더한다: 인앱 브라우저가 window.open을 막으면 구매 동선이 조용히 끊긴다.
+  const shopLink = (p: { id: string; url: string }) => ({
+    href: productOutboundUrl(p.id, p.url, { creatorId: id, surface: "creator_shop" }),
+    target: "_blank" as const,
+    rel: "noopener noreferrer",
+    onClick: () => track("outbound_click", { productId: p.id }),
+  });
 
   return (
     <div>
@@ -183,16 +182,16 @@ export default function CreatorPage({ params }: { params: Promise<{ id: string }
               <p className="px-1 pb-2 text-[13px] font-bold">추천 픽</p>
               <div className="no-scrollbar mb-4 flex gap-2.5 overflow-x-auto">
                 {shopProducts.slice(0, 4).map((p) => (
-                  <button
+                  <a
                     key={`feat-${p.id}`}
-                    onClick={() => openShopProduct(p)}
+                    {...shopLink(p)}
                     className="press w-[104px] shrink-0 text-left"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={p.image} alt={p.name} className="h-[104px] w-[104px] rounded-(--radius-prod) border border-line object-cover" />
                     <p className="mt-1 truncate text-[11px] text-ink-2">{p.brand}</p>
                     <p className="truncate text-[12px] font-semibold">{won(p.price)}</p>
-                  </button>
+                  </a>
                 ))}
               </div>
               <p className="px-1 pb-2 text-[13px] font-bold">룩으로 쇼핑</p>
@@ -200,9 +199,9 @@ export default function CreatorPage({ params }: { params: Promise<{ id: string }
           )}
           <div className="grid grid-cols-2 gap-2">
             {shopProducts.map((p) => (
-              <button
+              <a
                 key={p.id}
-                onClick={() => openShopProduct(p)}
+                {...shopLink(p)}
                 className="overflow-hidden rounded-(--radius-card) border border-line bg-surface text-left"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -212,7 +211,7 @@ export default function CreatorPage({ params }: { params: Promise<{ id: string }
                   <p className="truncate text-[12px] font-medium">{p.name}</p>
                   <p className="mt-0.5 text-[13px] font-semibold">{won(p.price)}</p>
                 </div>
-              </button>
+              </a>
             ))}
             {shopProducts.length === 0 && (
               <p className="col-span-2 py-12 text-center text-sm text-ink-2">아직 연결된 상품이 없어요.</p>

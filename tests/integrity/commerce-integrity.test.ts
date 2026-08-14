@@ -145,11 +145,25 @@ test("오가닉 콘텐츠 비율 — 상품 0~1개 게시물의 비중", () => {
   assert.equal(commerceHeavyRatio(posts), 0.5);
 });
 
-test("빈 입력에서도 지표는 안전하게 0을 반환한다", () => {
-  assert.equal(organicContentRatio([]), 0);
-  assert.equal(commerceHeavyRatio([]), 0);
-  assert.equal(hideRate(0, 0), 0);
-  assert.equal(creatorRetention([], Date.now()), 0);
+test("표본이 없으면 0%가 아니라 null이다 — 없는 걸 나쁜 걸로 계산하지 않는다", () => {
+  assert.equal(organicContentRatio([]), null);
+  assert.equal(commerceHeavyRatio([]), null);
+  assert.equal(hideRate(0, 0), null);
+  assert.equal(creatorRetention([], Date.now()), null);
+});
+
+test("표본 없는 지표에는 '주의'가 붙지 않는다 (빈 화면과 실제 신호를 구분)", () => {
+  const empty = assessIntegrity(computeIntegrityMetrics({ posts: [], hides: 0, impressions: 0 }));
+  assert.ok(empty.every((m) => m.status === "no_data"), JSON.stringify(empty.map((m) => m.status)));
+  assert.ok(empty.every((m) => m.value === null));
+});
+
+test("이전 기간 발행자가 없으면 유지율은 null (0%로 경고를 띄우지 않는다)", () => {
+  const now = Date.now();
+  const onlyRecent: PostShape[] = [
+    { postId: "p1", creatorId: "c1", linkedProductCount: 0, publishedAt: now - 3 * DAY },
+  ];
+  assert.equal(creatorRetention(onlyRecent, now), null);
 });
 
 // ── 지표 ─────────────────────────────────────────────────────────────────────
@@ -183,8 +197,8 @@ test("무결성 평가 — 임계를 벗어나면 unhealthy로 표시된다", ()
       impressions: 100,
     })
   );
-  assert.equal(healthy.find((m) => m.key === "organicContentRatio")?.healthy, true);
-  assert.equal(healthy.find((m) => m.key === "hideRate")?.healthy, true);
+  assert.equal(healthy.find((m) => m.key === "organicContentRatio")?.status, "healthy");
+  assert.equal(healthy.find((m) => m.key === "hideRate")?.status, "healthy");
 
   const unhealthy = assessIntegrity(
     computeIntegrityMetrics({
@@ -196,9 +210,9 @@ test("무결성 평가 — 임계를 벗어나면 unhealthy로 표시된다", ()
       impressions: 100,
     })
   );
-  assert.equal(unhealthy.find((m) => m.key === "organicContentRatio")?.healthy, false);
-  assert.equal(unhealthy.find((m) => m.key === "commerceHeavyRatio")?.healthy, false);
-  assert.equal(unhealthy.find((m) => m.key === "hideRate")?.healthy, false);
+  assert.equal(unhealthy.find((m) => m.key === "organicContentRatio")?.status, "warn");
+  assert.equal(unhealthy.find((m) => m.key === "commerceHeavyRatio")?.status, "warn");
+  assert.equal(unhealthy.find((m) => m.key === "hideRate")?.status, "warn");
 });
 
 test("네 가지 지표가 모두 노출된다", () => {

@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getProvider } from "@/lib/commerce/providers/registry";
 import { computeSplit, LEDGER_HOLD_DAYS } from "@/lib/commerce/revenue";
 import { isBackendConfigured } from "@/lib/config";
+import { evaluateConversionRisk, isImplausibleTimestamp } from "@/lib/integrity/fraud";
 import { createServerSupabase } from "@/lib/supabase/server";
 
 /**
@@ -62,6 +63,18 @@ export async function POST(
   }
 
   const c = parsed.conversion;
+
+  // 미래 시각으로 온 전환은 신뢰할 수 없다 — 스키마는 통과해도 거절한다
+  if (isImplausibleTimestamp(Date.parse(c.occurredAt), Date.now())) {
+    await supabase.rpc("record_postback_failure", {
+      p_provider: provider,
+      p_secret: secret,
+      p_reason: "occurred_at is in the future",
+      p_raw: payload,
+    });
+    return NextResponse.json({ error: "invalid payload", reason: "future timestamp" }, { status: 400 });
+  }
+
   const split = computeSplit(c.commissionAmount);
 
   const { data, error } = await supabase.rpc("ingest_conversion", {
@@ -90,5 +103,33 @@ export async function POST(
     return NextResponse.json({ error: "ingest failed" }, { status: 500 });
   }
 
-  return NextResponse.json(data);
+  // 결정적 사기 검사 — 중복 콜백·과거 전환 리플레이. 수익 계산에는 영향을 주지 않고
+  // 감사 기록만 남긴다 (중복 수익 차단은 DB 제약이 이미 보장한다).
+  const outcome = (data as { outcome?: string } | null)?.outcome;
+  const conversionId = (data as { conversion_id?: string } | null)?.conversion_id;
+  const flags = evaluateConversionRisk({
+    outcome: (outcome ?? "created") as Parameters<typeof evaluateConversionRisk>[0]["outcome"],
+    occurredAt: Date.parse(c.occurredAt),
+    now: Date.now(),
+    incomingCommission: c.commissionAmount,
+  });
+  for (const f of flags) {
+    await supabase
+      .rpc("record_fraud_flag", {
+        p_provider: provider,
+        p_secret: secret,
+        p_kind: f.kind,
+        p_severity: f.severity,
+        p_subject_type: "conversion",
+        p_subject_id: conversionId ?? c.externalConversionId,
+        p_creator_id: null,
+        p_reason: f.reason,
+        p_detail: { external_conversion_id: c.externalConversionId, outcome },
+      })
+      .then(({ error: flagError }) => {
+        if (flagError) console.warn(`[postback] flag failed: ${flagError.message}`);
+      });
+  }
+
+  return NextResponse.json({ ...(data as object), flags: flags.map((f) => f.kind) });
 }

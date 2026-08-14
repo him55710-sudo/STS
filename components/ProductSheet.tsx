@@ -17,6 +17,14 @@ import { ArrowUpRightIcon, BookmarkIcon, SearchIcon, XIcon } from "./Icons";
  * 모든 판매처 아웃바운드는 /go/[offerId]를 경유한다 (Phase 3 어트리뷰션) —
  * 분석 이벤트(track)와 별개로 서버가 권위 클릭 행을 남긴다.
  */
+/** <a>에 그대로 펼쳐 넣는 아웃바운드 링크 props */
+export interface OutboundLinkProps {
+  href: string;
+  target: "_blank";
+  rel: string;
+  onClick: () => void;
+}
+
 export default function ProductSheet({
   postId,
   creatorId,
@@ -44,10 +52,19 @@ export default function ProductSheet({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [object.id]);
 
-  const openUrl = (url: string, pid: string) => {
-    track("outbound_click", { postId, productId: pid, objectId: object.id });
-    window.open(url, "_blank", "noopener,noreferrer");
-  };
+  /**
+   * 아웃바운드는 전부 진짜 링크(<a href>)로 렌더한다.
+   * window.open은 카카오톡·인스타그램 같은 인앱 브라우저에서 차단될 수 있고,
+   * 그러면 사용자는 "구매하기를 눌렀는데 아무 일도 안 일어나는" 경험을 한다 —
+   * 매출 경로에서 가장 비싼 실패다. 앵커는 차단되지 않고, 길게 눌러 새 탭으로
+   * 열어도 /go 어트리뷰션이 그대로 유지된다.
+   */
+  const outbound = (url: string, pid: string): OutboundLinkProps => ({
+    href: url,
+    target: "_blank",
+    rel: "noopener noreferrer",
+    onClick: () => track("outbound_click", { postId, productId: pid, objectId: object.id }),
+  });
 
   return (
     <>
@@ -73,11 +90,16 @@ export default function ProductSheet({
               model={model}
               saved={savedProducts.includes(model.canonical.id)}
               onSave={() => toggleSaveProduct(model.canonical.id)}
-              onOpenOffer={(r) => openUrl(buildGoUrl(r.offer.id, goCtx), model.canonical.id)}
-              onOpenSimilar={(p) => openUrl(productOutboundUrl(p.id, p.url, goCtx), p.id)}
-              onOpenSponsored={(s) => {
+              offerLink={(r) => outbound(buildGoUrl(r.offer.id, goCtx), model.canonical.id)}
+              similarLink={(p) => outbound(productOutboundUrl(p.id, p.url, goCtx), p.id)}
+              /*
+               * 광고는 어트리뷰션 가능한 오퍼가 있을 때만 링크를 만든다.
+               * 오퍼가 없으면 null → 슬롯 자체를 렌더하지 않는다.
+               * (판매처로 직행하는 미귀속 아웃바운드를 만들지 않기 위함)
+               */
+              sponsoredLink={(s) => {
                 const offerId = bestOfferIdFor(s.product.id);
-                openUrl(offerId ? buildGoUrl(offerId, goCtx) : "#", s.product.id);
+                return offerId ? outbound(buildGoUrl(offerId, goCtx), s.product.id) : null;
               }}
             />
           ) : model?.kind === "legacy" ? (
@@ -85,8 +107,11 @@ export default function ProductSheet({
               model={model}
               saved={savedProducts.includes(model.product.id)}
               onSave={() => toggleSaveProduct(model.product.id)}
-              onOpen={() => openUrl(productOutboundUrl(model.product.id, model.product.url, goCtx), model.product.id)}
-              onOpenSimilar={(p) => openUrl(productOutboundUrl(p.id, p.url, goCtx), p.id)}
+              buyLink={outbound(
+                productOutboundUrl(model.product.id, model.product.url, goCtx),
+                model.product.id
+              )}
+              similarLink={(p) => outbound(productOutboundUrl(p.id, p.url, goCtx), p.id)}
             />
           ) : (
             /* Unlinked Object — 상품 미연결 (PRD §58) */
@@ -117,18 +142,22 @@ function CanonicalSheet({
   model,
   saved,
   onSave,
-  onOpenOffer,
-  onOpenSimilar,
-  onOpenSponsored,
+  offerLink,
+  similarLink,
+  sponsoredLink,
 }: {
   model: Extract<ReturnType<typeof buildProductSheetModel>, { kind: "canonical" }>;
   saved: boolean;
   onSave: () => void;
-  onOpenOffer: (r: RankedOffer) => void;
-  onOpenSimilar: (p: Product) => void;
-  onOpenSponsored: (s: NonNullable<CanonicalSheetModel["sponsoredSimilar"]>) => void;
+  offerLink: (r: RankedOffer) => OutboundLinkProps;
+  similarLink: (p: Product) => OutboundLinkProps;
+  sponsoredLink: (
+    s: NonNullable<CanonicalSheetModel["sponsoredSimilar"]>
+  ) => OutboundLinkProps | null;
 }) {
   const { canonical, bestOffer, otherOffers, unavailableOffers, exactness } = model;
+  const sponsored = model.sponsoredSimilar;
+  const sponsoredProps = sponsored ? sponsoredLink(sponsored) : null;
 
   return (
     <>
@@ -176,13 +205,13 @@ function CanonicalSheet({
       {/* 2. Primary CTA — best offer */}
       <div className="mt-4 flex flex-col gap-2">
         {bestOffer && (
-          <button
-            onClick={() => onOpenOffer(bestOffer)}
+          <a
+            {...offerLink(bestOffer)}
             className="press flex h-12 items-center justify-center gap-1.5 rounded-(--radius-btn) bg-primary text-[15px] font-bold text-white"
           >
             {bestOffer.merchant.name}에서 구매하기
             <ArrowUpRightIcon size={17} strokeWidth={2} />
-          </button>
+          </a>
         )}
         <button
           onClick={onSave}
@@ -201,9 +230,9 @@ function CanonicalSheet({
           <p className="mb-2 text-xs font-medium text-ink-2">다른 판매처</p>
           <div className="overflow-hidden rounded-(--radius-card) border border-line">
             {otherOffers.map((r) => (
-              <button
+              <a
                 key={r.offer.id}
-                onClick={() => onOpenOffer(r)}
+                {...offerLink(r)}
                 className="flex w-full items-center gap-2.5 border-b border-line bg-surface px-3 py-2.5 text-left last:border-b-0"
               >
                 <div className="min-w-0 flex-1">
@@ -222,7 +251,7 @@ function CanonicalSheet({
                 </div>
                 <span className="shrink-0 text-[13px] font-semibold">{won(r.offer.price)}</span>
                 <ArrowUpRightIcon size={14} className="shrink-0 text-ink-2" />
-              </button>
+              </a>
             ))}
             {unavailableOffers.map((r) => (
               <div
@@ -243,44 +272,42 @@ function CanonicalSheet({
       )}
 
       {/* 4. 비슷한 스타일 — similar 상품 전용 영역 (exact 오퍼와 절대 혼합 금지) */}
-      {(model.similarStyles.length > 0 || model.sponsoredSimilar) && (
+      {(model.similarStyles.length > 0 || (sponsored && sponsoredProps)) && (
         <div className="mt-4">
           <p className="mb-2 text-xs font-medium text-ink-2">비슷한 스타일</p>
           {model.similarStyles.length > 0 && (
-            <SimilarRow products={model.similarStyles} onOpen={onOpenSimilar} />
+            <SimilarRow products={model.similarStyles} linkFor={similarLink} />
           )}
           {/*
            * 광고 슬롯 — 별도 상태로 명시 분리한다. 착용 상품(exact)은 절대 여기 올 수 없고,
            * "Sponsored" 라벨 없이 노출되는 경로도 없다 (docs/COMMERCE_INTEGRITY.md).
            */}
-          {model.sponsoredSimilar && (
-            <button
-              onClick={() => onOpenSponsored(model.sponsoredSimilar!)}
+          {sponsored && sponsoredProps && (
+            <a
+              {...sponsoredProps}
               className="mt-2.5 flex w-full items-center gap-2.5 rounded-(--radius-card) border border-dashed border-line bg-surface-2/40 p-2.5 text-left"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={model.sponsoredSimilar.product.primaryImage}
+                src={sponsored.product.primaryImage}
                 alt=""
                 className="h-11 w-11 shrink-0 rounded-[7px] border border-line object-cover"
               />
               <div className="min-w-0 flex-1">
                 <p className="flex items-center gap-1.5 text-[11px] text-ink-2">
-                  {model.sponsoredSimilar.product.brand}
+                  {sponsored.product.brand}
                   <span className="shrink-0 rounded-[4px] border border-line bg-surface px-1 py-px text-[9px] font-semibold uppercase tracking-wide text-ink-2">
-                    {model.sponsoredSimilar.label}
+                    {sponsored.label}
                   </span>
                 </p>
-                <p className="truncate text-[12.5px] font-medium">
-                  {model.sponsoredSimilar.product.modelName}
-                </p>
+                <p className="truncate text-[12.5px] font-medium">{sponsored.product.modelName}</p>
               </div>
-              {model.sponsoredSimilar.price != null && (
+              {sponsored.price != null && (
                 <span className="shrink-0 text-[12px] font-semibold text-ink-2">
-                  {won(model.sponsoredSimilar.price)}
+                  {won(sponsored.price)}
                 </span>
               )}
-            </button>
+            </a>
           )}
         </div>
       )}
@@ -296,14 +323,14 @@ function LegacySheet({
   model,
   saved,
   onSave,
-  onOpen,
-  onOpenSimilar,
+  buyLink,
+  similarLink,
 }: {
   model: Extract<ReturnType<typeof buildProductSheetModel>, { kind: "legacy" }>;
   saved: boolean;
   onSave: () => void;
-  onOpen: () => void;
-  onOpenSimilar: (p: Product) => void;
+  buyLink: OutboundLinkProps;
+  similarLink: (p: Product) => OutboundLinkProps;
 }) {
   const { product, exactness } = model;
   return (
@@ -329,13 +356,13 @@ function LegacySheet({
       </div>
 
       <div className="mt-4 flex flex-col gap-2">
-        <button
-          onClick={onOpen}
+        <a
+          {...buyLink}
           className="press flex h-12 items-center justify-center gap-1.5 rounded-(--radius-btn) bg-primary text-[15px] font-bold text-white"
         >
           구매하러 가기
           <ArrowUpRightIcon size={17} strokeWidth={2} />
-        </button>
+        </a>
         <button
           onClick={onSave}
           className={`press flex h-11 items-center justify-center gap-1.5 rounded-(--radius-btn) border text-[14px] font-semibold transition-colors ${
@@ -350,7 +377,7 @@ function LegacySheet({
       {model.similarStyles.length > 0 && (
         <div className="mt-4">
           <p className="mb-2 text-xs font-medium text-ink-2">비슷한 스타일</p>
-          <SimilarRow products={model.similarStyles} onOpen={onOpenSimilar} />
+          <SimilarRow products={model.similarStyles} linkFor={similarLink} />
         </div>
       )}
 
@@ -361,11 +388,17 @@ function LegacySheet({
 
 // ── 공용 조각 ────────────────────────────────────────────────────────────────
 
-function SimilarRow({ products, onOpen }: { products: Product[]; onOpen: (p: Product) => void }) {
+function SimilarRow({
+  products,
+  linkFor,
+}: {
+  products: Product[];
+  linkFor: (p: Product) => OutboundLinkProps;
+}) {
   return (
     <div className="no-scrollbar flex gap-2.5 overflow-x-auto">
       {products.map((sp) => (
-        <button key={sp.id} onClick={() => onOpen(sp)} className="w-[76px] shrink-0 text-left">
+        <a key={sp.id} {...linkFor(sp)} className="w-[76px] shrink-0 text-left">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={sp.image}
@@ -374,7 +407,7 @@ function SimilarRow({ products, onOpen }: { products: Product[]; onOpen: (p: Pro
           />
           <p className="mt-1 truncate text-[11px] text-ink-2">{sp.brand}</p>
           <p className="truncate text-xs font-medium">{won(sp.price)}</p>
-        </button>
+        </a>
       ))}
     </div>
   );

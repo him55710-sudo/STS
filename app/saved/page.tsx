@@ -62,21 +62,18 @@ export default function SavedPage() {
                   <p className="truncate text-[14px] font-medium">{p.name}</p>
                   <p className="mt-0.5 text-[15px] font-semibold">{won(p.price)}</p>
                 </div>
-                <button
-                  onClick={() => {
-                    track("outbound_click", { productId: p.id });
-                    // 저장 목록 아웃바운드도 /go 경유 (saved 어트리뷰션)
-                    window.open(
-                      productOutboundUrl(p.id, p.url, { surface: "saved" }),
-                      "_blank",
-                      "noopener,noreferrer"
-                    );
-                  }}
+                {/* 저장 목록 아웃바운드도 /go 경유 (saved 어트리뷰션).
+                    인앱 브라우저에서 막히지 않도록 진짜 링크로 렌더한다. */}
+                <a
+                  href={productOutboundUrl(p.id, p.url, { surface: "saved" })}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => track("outbound_click", { productId: p.id })}
                   aria-label="구매하러 가기"
                   className="flex h-9 w-9 items-center justify-center rounded-(--radius-btn) bg-ink text-surface"
                 >
                   <ArrowUpRightIcon size={16} />
-                </button>
+                </a>
                 <button
                   onClick={() => toggleSaveProduct(p.id)}
                   aria-label="저장 해제"

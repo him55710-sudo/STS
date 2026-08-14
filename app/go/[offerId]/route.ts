@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
 import { parseSurface, prepareClick } from "@/lib/commerce/click";
 import { isBackendConfigured } from "@/lib/config";
+import { FRAUD_RULES } from "@/lib/integrity/fraud";
 import { createServerSupabase } from "@/lib/supabase/server";
 
 /**
@@ -67,9 +68,26 @@ export async function GET(
     );
   }
 
-  // 권위 클릭 기록 — 백엔드 미설정(순수 데모)에서는 기록 없이 이동만 한다
+  // 권위 클릭 기록 + 결정적 사기 검사 (1회 왕복) —
+  // 백엔드 미설정(순수 데모)에서는 기록 없이 이동만 한다.
+  // 플래그는 클릭을 막지 않는다: 기록하고 정산 검토 대상으로 표시할 뿐이다.
   if (supabase && isBackendConfigured()) {
-    const { error } = await supabase.from("commerce_clicks").insert(result.click.row);
+    const row = result.click.row;
+    const { error } = await supabase.rpc("record_commerce_click", {
+      p_id: row.id,
+      p_viewer_id: row.viewer_id,
+      p_anonymous_id: row.anonymous_id,
+      p_creator_id: row.creator_id,
+      p_post_id: row.post_id,
+      p_object_id: row.object_id,
+      p_canonical_product_id: row.canonical_product_id,
+      p_offer_id: row.offer_id,
+      p_merchant_id: row.merchant_id,
+      p_provider: row.provider,
+      p_source_surface: row.source_surface,
+      p_burst_window_seconds: FRAUD_RULES.burstWindowSeconds,
+      p_burst_threshold: FRAUD_RULES.burstThreshold,
+    });
     if (error) {
       console.warn(`[go] click insert failed (redirect proceeds): ${error.message}`);
     }
