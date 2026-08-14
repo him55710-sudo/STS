@@ -219,3 +219,30 @@
   (관리 키 포함). 네이버는 계속 정상(apihub, 200).
 - **Act**: Letsur 추가 probe 중단. 필요한 것은 코드가 아니라 Letsur의 4가지 정보다.
   앱은 Gemini 폴백으로 정상 동작하므로 서비스 영향 없음.
+
+## Cycle 15 — v3.4: LLM 없이 동작하는 네이버 실상품 후보 + 정확도 개선
+- **Plan**: 사용자 보고 2건 — (1) 만들기 AI 추천 정확도 낮음, (2) 후보군에 네이버
+  쇼핑몰 상품이 안 뜨고 카탈로그만 뜸. 원인 진단: /api/product-search 가 100% LLM
+  의존 → Letsur 차단 + Gemini 무료 쿼터 소진 구간에서 웹 후보 0개.
+- **Do**:
+  - `lib/naver/product-provider.ts`: ① webkr 웹문서 검색으로 쇼핑몰 상품 페이지
+    URL 직접 획득(17몰 허용목록·가격 추출) ② 미등록 시 이미지 검색 제목 폴백
+    (링크는 네이버쇼핑 딥링크). LLM 불필요.
+  - product-search: 네이버(주)+LLM(보조) 병렬, 상품명 dedupe 병합.
+  - retrieval `mergeWithDiversity`: 상위 5칸 중 최소 2칸 웹 후보 보장
+    (카탈로그가 자기 키워드로 텍스트 점수를 독식해 웹이 항상 밀리던 구조 수정).
+  - LLM 체인 gemini→letsur 로 (Letsur 보류는 사용자 결정).
+  - `/api/naver-probe` 진단 라우트 — 프로덕션 실데이터로 파싱 검증·튜닝.
+- **Check (프로덕션 실측, Vercel MCP로 직접 조회)**:
+  - **쇼핑 API 생사 라이브 증거**: API HUB `/search/v1/shop` → **404 "URL not found"**
+    (errorCode 300). legacy shop.json → 401/024. 문서 근거에 이어 실측 확정.
+  - **webkr은 사용자 앱에 미등록** (apihub 실패→legacy 401/024 폴스루) → 콘솔에서
+    '웹문서' 검색 신청 필요. 등록 전까지 이미지 제목 폴백이 대신 동작.
+  - **이미지 제목 폴백 실측 성공**: "크림 니트 남자" → 실상품 6개(LOOKMARK·숀핑·
+    센트마켓 등). 잡음 1건("무신사 스냅" 슬로건) 발견 → 쿼리 토큰 겹침 필터 +
+    NON_PRODUCT_RE 로 튜닝 (실데이터 기반).
+  - **Gemini 비전 실호출 OK** (visionTest 2.4s, provider gemini) — 탐지 정확도
+    문제의 주원인이던 쿼터 소진이 현재는 아님. 정확도는 쿼터 상태에 종속.
+  - 회귀: tsc 무오류, build 성공, 카탈로그 벤치마크 96/100/100 · MRR 0.981 유지.
+- **Act**: webkr 등록되면 상품 페이지 직링크로 자동 승격(코드 변경 불필요).
+  Supabase 세션 커밋(별도 작업) 리베이스 통합, 패키지 설치로 빌드 복구.

@@ -139,40 +139,62 @@ export async function searchWebkrProducts(
   return out.slice(0, 8);
 }
 
+/** 상품이 아닌 제목(사이트 슬로건·카테고리 홍보문 등) — 프로덕션 실측으로 발견된 패턴 */
+const NON_PRODUCT_RE = /(모이는 곳|바로가기|공식 ?홈|스냅$|쇼핑몰$|추천 ?모음|랭킹|기획전|이벤트|카테고리)/;
+
 /**
  * 2차 폴백: 이미지 검색 제목으로 후보 생성.
  * 이미지 검색 응답엔 페이지 URL이 없으므로 링크는 네이버쇼핑 검색 딥링크로 연결한다.
  * (이미지 자체는 제3자 저작물 — 노출하지 않고 제목 텍스트만 사용)
+ *
+ * 필터(실측 튜닝): 검색어 토큰과 하나도 겹치지 않는 제목은 상품이 아니라
+ * 슬로건/홍보문일 확률이 높아 버린다. 겹치는 토큰 수가 많은 순으로 정렬한다.
  */
 export async function searchImageTitleProducts(queries: string[]): Promise<NaverWebCandidate[]> {
-  const q = queries[0];
-  if (!q) return [];
-  const res = await searchImages(q, 8);
-  if (!res.ok) return [];
+  const qs = queries.slice(0, 2).filter(Boolean);
+  if (qs.length === 0) return [];
+  const results = await Promise.all(qs.map((q) => searchImages(q, 8)));
 
+  const tokens = [
+    ...new Set(qs.join(" ").toLowerCase().split(/\s+/).filter((t) => t.length >= 2)),
+  ];
   const seen = new Set<string>();
-  const out: NaverWebCandidate[] = [];
-  for (const item of res.items) {
-    // 몰 상품 이미지 제목 관례: "상품명 : 몰이름" / "상품명 - 몰이름"
-    const [rawName, mallName] = stripTags(item.title).split(/\s+[:|\-–]\s+/);
-    const name = (rawName ?? "").trim();
-    if (name.length < 5 || seen.has(name)) continue;
-    seen.add(name);
-    out.push({
-      id: `nvimg-${out.length}`,
-      brand: null,
-      productName: name,
-      category: null,
-      color: null,
-      price: { value: null, currency: null },
-      retailer: mallName?.trim() || "네이버쇼핑",
-      url: nvDeeplink(name),
-      imageUrls: [],
-      source: "naver-image-title",
-      pageTrust: 0.6,
-    });
+  const scored: { cand: NaverWebCandidate; overlap: number }[] = [];
+
+  for (const res of results) {
+    if (!res.ok) continue;
+    for (const item of res.items) {
+      // 몰 상품 이미지 제목 관례: "상품명 : 몰이름" / "상품명 - 몰이름"
+      const [rawName, mallName] = stripTags(item.title).split(/\s+[:|\-–]\s+/);
+      const name = (rawName ?? "").trim();
+      if (name.length < 5 || seen.has(name)) continue;
+      if (NON_PRODUCT_RE.test(name)) continue;
+      const hay = name.toLowerCase();
+      const overlap = tokens.filter((t) => hay.includes(t)).length;
+      if (overlap === 0) continue; // 검색어와 무관한 제목 = 상품 아님
+      seen.add(name);
+      scored.push({
+        overlap,
+        cand: {
+          id: `nvimg-${scored.length}`,
+          brand: null,
+          productName: name,
+          category: null,
+          color: null,
+          price: { value: null, currency: null },
+          retailer: mallName?.trim() || "네이버쇼핑",
+          url: nvDeeplink(name),
+          imageUrls: [],
+          source: "naver-image-title",
+          pageTrust: 0.6,
+        },
+      });
+    }
   }
-  return out.slice(0, 6);
+  return scored
+    .sort((a, b) => b.overlap - a.overlap)
+    .slice(0, 6)
+    .map((s) => s.cand);
 }
 
 /** webkr → 이미지 제목 순으로 시도하는 통합 진입점 */
