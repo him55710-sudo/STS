@@ -89,6 +89,11 @@ export async function GET(req: NextRequest) {
           errorMessage: webkrRaw.errorMessage ?? null,
           totalFromNaver: webkrRaw.total ?? null,
           mallPagesFound: bySource["naver-web"] ?? 0,
+          // 원본을 함께 보여준다 — 필터가 무엇을 왜 걸렀는지 한 URL로 판정하기 위함
+          rawTop: webkrRaw.items.slice(0, 5).map((i) => ({
+            title: (i.title ?? "").replace(/<[^>]+>/g, ""),
+            link: i.link,
+          })),
         },
         verdict: !webkrOk
           ? `webkr 미등록/오류 (${webkrRaw.errorCode ?? webkrRaw.httpStatus}) — 이미지 제목 폴백으로 동작 중입니다.`

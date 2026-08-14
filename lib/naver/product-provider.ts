@@ -107,6 +107,41 @@ const nvDeeplink = (q: string) =>
   `https://search.shopping.naver.com/search/all?query=${encodeURIComponent(q)}`;
 
 /**
+ * 검색·목록·카테고리 페이지 판별 (프로덕션 실측으로 발견).
+ * 예: musinsa.com/search/goods?keyword=크림색+남자+니트 → 상품이 아니라 검색 결과 페이지.
+ * 이런 링크를 "상품"으로 제시하면 크리에이터가 특정 상품을 태그할 수 없다.
+ */
+const LISTING_URL_RE =
+  /(\/search|\/list|\/categor|\/ranking|\/best|\/event|\/plan\b|\/brand\/?$|[?&](keyword|query|q|search|searchWord)=)/i;
+
+/**
+ * 상품명으로 쓸 만한 제목인지 (프로덕션 실측으로 발견).
+ * 예: "( 개월 기준) - 바이모노" → 할부 안내 문구가 제목으로 잡힌 것. 상품명이 아니다.
+ *
+ * 규칙: ① 의미 있는 글자수 ② 검색어 토큰과 최소 1개 겹침.
+ * 이미지 제목 필터에서 효과가 검증된 겹침 규칙을 webkr에도 동일 적용한다.
+ */
+function isUsableProductName(name: string, tokens: string[]): boolean {
+  const compact = name.replace(/[^0-9A-Za-z가-힣]/g, "");
+  if (compact.length < 6) return false;
+  const hay = name.toLowerCase();
+  return tokens.some((t) => hay.includes(t));
+}
+
+/** 질의 문자열들에서 비교용 토큰 추출 */
+function queryTokens(queries: string[]): string[] {
+  return [
+    ...new Set(
+      queries
+        .join(" ")
+        .toLowerCase()
+        .split(/\s+/)
+        .filter((t) => t.length >= 2)
+    ),
+  ];
+}
+
+/**
  * 1차: webkr 웹문서 검색으로 쇼핑몰 상품 페이지를 찾는다.
  * 반환이 비면(미등록·무결과) 빈 배열 — 호출측에서 이미지 검색 폴백을 쓴다.
  */
@@ -118,6 +153,7 @@ export async function searchWebkrProducts(
   const results = await Promise.all(
     qs.map((q) => naverSearch<WebkrItem>("webkr", q, { display: perQuery, start: 1 }))
   );
+  const tokens = queryTokens(qs);
 
   const seen = new Set<string>();
   const out: NaverWebCandidate[] = [];
@@ -126,13 +162,14 @@ export async function searchWebkrProducts(
     for (const item of res.items) {
       const mall = mallOf(item.link);
       if (!mall) continue; // 쇼핑몰 페이지만
+      if (LISTING_URL_RE.test(item.link)) continue; // 검색·목록 페이지는 상품이 아니다
       const url = item.link.split("#")[0];
       const key = url.replace(/\?.*$/, "");
       if (seen.has(key)) continue;
       seen.add(key);
 
       const name = cleanTitle(item.title);
-      if (name.length < 5) continue;
+      if (!isUsableProductName(name, tokens)) continue;
       const desc = stripTags(item.description ?? "");
       out.push({
         id: `nvweb-${out.length}`,
