@@ -1,8 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
+import {
+  deleteDraft,
+  fetchDraft,
+  fetchMyDrafts,
+  imageUrlToDataUrl,
+  publishDraft,
+  type DraftPost,
+} from "@/lib/backend/drafts";
 import { publishRemotePost } from "@/lib/backend/posts";
 import type { ProductSnapshot, PublishObjectPayload } from "@/lib/backend/types";
 import { productById } from "@/lib/catalog";
@@ -12,7 +20,15 @@ import { candidatesFor, searchProducts } from "@/lib/match";
 import { retrieveAll, type ProductCandidate, type RetrievalQuery } from "@/lib/retrieval";
 import { useApp, useProductLookup } from "@/lib/store";
 import type { Category, DetectedObject, Exactness, Post, Product } from "@/lib/types";
-import { CheckIcon, ImageIcon, LinkIcon, SearchIcon, TrashIcon, XIcon } from "@/components/Icons";
+import {
+  CheckIcon,
+  ChevronRightIcon,
+  ImageIcon,
+  LinkIcon,
+  SearchIcon,
+  TrashIcon,
+  XIcon,
+} from "@/components/Icons";
 import { ExactBadge } from "@/components/ProductSheet";
 import { ringsToPath } from "@/components/ObjectLayer";
 
@@ -40,7 +56,16 @@ const SAMPLES = [
 ];
 
 export default function CreatePage() {
+  return (
+    <Suspense>
+      <CreateBody />
+    </Suspense>
+  );
+}
+
+function CreateBody() {
   const router = useRouter();
+  const params = useSearchParams();
   const { addUserPost, addCustomProduct, track, session, loadRemoteFeed } = useApp();
   const lookupProduct = useProductLookup();
 
@@ -58,6 +83,10 @@ export default function CreatePage() {
   const [retrieving, setRetrieving] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
+  /** TikTok 등에서 가져온 드래프트를 확정 중이면 그 게시물 id */
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<DraftPost[]>([]);
+  const [draftsLoading, setDraftsLoading] = useState(false);
   const [debugFashion, setDebugFashion] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const imgRef = useRef<HTMLDivElement>(null);
@@ -68,6 +97,59 @@ export default function CreatePage() {
     if (process.env.NODE_ENV !== "development") return;
     setDebugFashion(new URLSearchParams(window.location.search).get("debugFashion") === "true");
   }, []);
+
+  // 내 드래프트 (TikTok 가져오기 결과 등) — 발행 전 상태
+  const reloadDrafts = () => {
+    if (!session) return;
+    setDraftsLoading(true);
+    fetchMyDrafts(session.userId)
+      .then(setDrafts)
+      .finally(() => setDraftsLoading(false));
+  };
+
+  useEffect(() => {
+    if (!session) {
+      setDrafts([]);
+      return;
+    }
+    let cancelled = false;
+    setDraftsLoading(true);
+    fetchMyDrafts(session.userId)
+      .then((d) => {
+        if (!cancelled) setDrafts(d);
+      })
+      .finally(() => {
+        if (!cancelled) setDraftsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [session]);
+
+  // ?draft=<postId> 로 진입하면 해당 드래프트의 커버를 바로 분석한다
+  useEffect(() => {
+    const id = params.get("draft");
+    if (!id || !session || draftId === id) return;
+    fetchDraft(id).then((d) => {
+      if (d) void openDraft(d);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params, session]);
+
+  /** 드래프트 → 기존 분석 파이프라인(커버 이미지 dataURL) 태우기 */
+  const openDraft = async (draft: DraftPost) => {
+    setDraftId(draft.id);
+    setCaption(draft.caption);
+    setStep("analyzing");
+    try {
+      const dataUrl = await imageUrlToDataUrl(draft.imageUrl);
+      await startAnalysis(dataUrl, draft.ratio);
+    } catch (e) {
+      setPublishError(`드래프트를 불러오지 못했어요: ${(e as Error).message}`);
+      setStep("select");
+      setDraftId(null);
+    }
+  };
 
   // ── Step 1: 이미지 선택 ────────────────────────────────
   const onFile = (file: File) => {
@@ -291,14 +373,22 @@ export default function CreatePage() {
               : null,
           };
         });
-        const remoteId = await publishRemotePost({
-          imageDataUrl: image,
-          caption: caption.trim(),
-          category: objects[0]?.category ?? "lifestyle",
-          objects: payload,
-        });
+        const category = objects[0]?.category ?? "lifestyle";
+        // 드래프트 확정이면 기존 게시물을 발행 상태로 전환한다 (미디어 재업로드 없음)
+        const remoteId = draftId
+          ? await publishDraft(draftId, caption.trim(), category, payload)
+          : await publishRemotePost({
+              imageDataUrl: image,
+              caption: caption.trim(),
+              category,
+              objects: payload,
+            });
         track("publish", { postId: remoteId });
         await loadRemoteFeed();
+        if (draftId) {
+          setDraftId(null);
+          reloadDrafts();
+        }
         setElapsed(Math.round((Date.now() - startedAt) / 1000));
         setPublishedId(remoteId);
         setStep("done");
@@ -354,13 +444,22 @@ export default function CreatePage() {
     setObjects([]);
     setSelectedId(null);
     setCaption("");
+    setDraftId(null);
+    setPublishError(null);
   };
 
   return (
     <div>
       <header className="sticky top-0 z-30 border-b border-line bg-bg/95 backdrop-blur-sm">
         <div className="flex items-center justify-between px-4 pt-3">
-          <h1 className="text-[17px] font-bold">새 콘텐츠</h1>
+          <h1 className="flex items-center gap-1.5 text-[17px] font-bold">
+            {draftId ? "드래프트 확정" : "새 콘텐츠"}
+            {draftId && (
+              <span className="rounded-[5px] bg-surface-2 px-1.5 py-0.5 text-[10px] font-semibold text-ink-2">
+                TikTok
+              </span>
+            )}
+          </h1>
           {step === "review" && (
             <button onClick={reset} aria-label="다시 시작" className="text-[13px] text-ink-2">
               다시 시작
@@ -394,16 +493,43 @@ export default function CreatePage() {
 
       {step === "select" && (
         <div className="px-4 pt-5">
-          <button
-            onClick={() => fileRef.current?.click()}
-            className="flex w-full flex-col items-center gap-2.5 rounded-(--radius-card) border border-dashed border-line bg-surface py-14"
-          >
-            <ImageIcon size={30} strokeWidth={1.25} className="text-ink-2" />
-            <span className="text-[14px] font-medium">사진 업로드</span>
-            <span className="text-[12px] text-ink-2">
-              올리기만 하면 AI가 상품을 찾아드려요
-            </span>
-          </button>
+          {publishError && (
+            <p className="mb-3 rounded-(--radius-btn) bg-[#fdecec] px-3 py-2.5 text-[12.5px] leading-relaxed text-[#c0392b]">
+              {publishError}
+            </p>
+          )}
+
+          {/* 시작 지점 2종 — TikTok에서 가져오거나, 직접 업로드하거나 */}
+          <div className="flex flex-col gap-2">
+            <Link
+              href="/create/tiktok"
+              className="press flex items-center gap-3 rounded-(--radius-card) border border-line bg-surface px-4 py-3.5"
+            >
+              <TikTokMark />
+              <span className="flex-1 text-left">
+                <span className="block text-[14px] font-semibold">TikTok 연결하기</span>
+                <span className="block text-[11.5px] text-ink-2">
+                  올려둔 영상을 불러와 shoppable 콘텐츠로
+                </span>
+              </span>
+              <ChevronRightIcon size={16} className="text-ink-2" />
+            </Link>
+            <button
+              onClick={() => fileRef.current?.click()}
+              className="press flex items-center gap-3 rounded-(--radius-card) border border-line bg-surface px-4 py-3.5 text-left"
+            >
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-2">
+                <ImageIcon size={18} strokeWidth={1.5} className="text-ink" />
+              </span>
+              <span className="flex-1">
+                <span className="block text-[14px] font-semibold">직접 업로드</span>
+                <span className="block text-[11.5px] text-ink-2">
+                  올리기만 하면 AI가 상품을 찾아드려요
+                </span>
+              </span>
+              <ChevronRightIcon size={16} className="text-ink-2" />
+            </button>
+          </div>
           <input
             ref={fileRef}
             type="file"
@@ -411,6 +537,55 @@ export default function CreatePage() {
             hidden
             onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])}
           />
+
+          {/* 가져온 드래프트 — 상품 확정 전이라 아직 발행되지 않은 콘텐츠 */}
+          {session && (drafts.length > 0 || draftsLoading) && (
+            <div className="mt-7">
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-[13px] font-semibold">
+                  확정 대기 중인 드래프트 {drafts.length > 0 && drafts.length}
+                </p>
+                <span className="text-[11px] text-ink-2">상품을 확정해야 발행돼요</span>
+              </div>
+              {draftsLoading && drafts.length === 0 ? (
+                <p className="py-4 text-center text-[12px] text-ink-2">불러오는 중...</p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {drafts.map((d) => (
+                    <div
+                      key={d.id}
+                      className="flex items-center gap-3 rounded-(--radius-card) border border-line bg-surface p-2.5"
+                    >
+                      <button onClick={() => openDraft(d)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={d.imageUrl}
+                          alt=""
+                          className="h-14 w-14 shrink-0 rounded-[8px] border border-line object-cover"
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[13px] font-medium">{d.caption}</span>
+                          <span className="block text-[11px] text-ink-2">
+                            {d.source === "import_tiktok" ? "TikTok 가져오기" : "드래프트"} · 커버 분석 대기
+                          </span>
+                        </span>
+                      </button>
+                      <button
+                        onClick={async () => {
+                          await deleteDraft(d.id).catch(() => {});
+                          reloadDrafts();
+                        }}
+                        aria-label="드래프트 삭제"
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-(--radius-btn) text-ink-2 hover:bg-surface-2"
+                      >
+                        <TrashIcon size={15} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           <p className="mb-2 mt-7 text-[13px] font-semibold text-ink-2">샘플로 체험하기</p>
           <div className="grid grid-cols-3 gap-2">
@@ -669,6 +844,17 @@ export default function CreatePage() {
         </div>
       )}
     </div>
+  );
+}
+
+/** TikTok 음표 마크 (연결 진입점 아이콘) */
+function TikTokMark() {
+  return (
+    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-ink">
+      <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="#fff" aria-hidden>
+        <path d="M16.6 5.82A4.28 4.28 0 0 1 15.54 3h-3.09v12.4a2.59 2.59 0 0 1-2.59 2.5 2.59 2.59 0 1 1 .77-5.06V9.7a5.68 5.68 0 0 0-.77-.05 5.68 5.68 0 1 0 5.68 5.68V9.01a7.35 7.35 0 0 0 4.29 1.38V7.3a4.28 4.28 0 0 1-3.23-1.48z" />
+      </svg>
+    </span>
   );
 }
 

@@ -1,6 +1,23 @@
 # STS Production Implementation Report
 
-> 최신 단계가 위에 온다. Phase 2(상품 그래프)는 [`COMMERCE_GRAPH.md`](./COMMERCE_GRAPH.md) 참조.
+> 최신 단계가 위에 온다. Phase 2(상품 그래프)는 [`COMMERCE_GRAPH.md`](./COMMERCE_GRAPH.md),
+> Phase 4(TikTok 온보딩)는 [`TIKTOK_INTEGRATION.md`](./TIKTOK_INTEGRATION.md) 참조.
+
+---
+
+# Phase 4: TikTok 크리에이터 온보딩 가속기
+
+공식 API(Login Kit for Web + Display API v2)만으로 크리에이터가 이미 올려둔 TikTok 영상을
+STS 드래프트로 가져온다. 스크래핑 없음, 핵심 피드 재설계 없음, 자동 발행 없음.
+
+- 흐름: 연결 → OAuth → 영상 목록 → 다중 선택 → 드래프트 생성 → 커버 AI 분석 → **크리에이터 상품 확정** → 발행
+- Display API가 원본 영상 파일을 주지 않으므로 Phase-1은 **커버 스틸**을 분석하고,
+  만료되는 커버 URL은 `/v2/video/query/`로 최신화한 뒤 우리 스토리지에 복사해 보존한다.
+- 토큰은 RLS 정책이 0개인 `external_connections`에 AES-256-GCM 암호문으로 저장되고,
+  서버 시크릿을 요구하는 SECURITY DEFINER RPC로만 접근된다. 클라이언트는 연결 여부만 볼 수 있다.
+- **블로커**: TikTok 앱 자격증명·심사 미확보 → mock 모드로 아키텍처만 검증됨(프로덕션에서는 자동 비활성).
+
+상세 스펙 근거·검증 결과·한계는 [`TIKTOK_INTEGRATION.md`](./TIKTOK_INTEGRATION.md)에 있다.
 
 ---
 
