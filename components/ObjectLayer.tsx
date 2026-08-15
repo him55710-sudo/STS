@@ -8,7 +8,7 @@ import { canonicalClass, INTERACTION_PRIORITY, type FashionClass } from "@/lib/v
 
 /**
  * Object Interaction UX — PRD §12
- * Idle: 아무 표시 없음 → First tap: 600~900ms 은은한 하이라이트 → Object tap: 선택 + Bottom Sheet
+ * Idle: 아무 표시 없음 → First tap: 약 2초 은은한 하이라이트 → Object tap: 선택 + Bottom Sheet
  * fashion_v2: polygon(실루엣)이 있으면 실제 object shape로 하이라이트/히트테스트,
  * 없으면 bbox mask + 1~1.5px outline로 강등 (PRD §39 — detection box 금지)
  */
@@ -73,10 +73,10 @@ export default function ObjectLayer({
     }
   };
 
-  // hint 종료 후 상태 정리
+  // hint 종료 후 상태 정리 — CSS 애니메이션(2000ms)이 끝난 뒤 언마운트
   useEffect(() => {
     if (!hintAt) return;
-    const t = setTimeout(() => setHintAt(0), 900);
+    const t = setTimeout(() => setHintAt(0), 2050);
     return () => clearTimeout(t);
   }, [hintAt]);
 
@@ -84,7 +84,7 @@ export default function ObjectLayer({
     <div ref={ref} className="relative cursor-pointer select-none" onClick={handleTap}>
       {children}
 
-      {/* Hint highlight — 850ms 후 자동 소멸 */}
+      {/* Hint highlight — 2초 후 자동 소멸 */}
       {hintAt > 0 && (
         <ShapeOverlay key={`hint-${hintAt}`} objects={objects} variant="hint" />
       )}
