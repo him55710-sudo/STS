@@ -63,7 +63,7 @@ Content view → Object tap → Product card → Outbound purchase → Creator r
 ## 5. Object Tap UX 스펙 (PRD §12)
 
 1. **Idle**: 아무 표시 없음 (깨끗한 콘텐츠)
-2. **First tap(콘텐츠)**: shoppable object들이 약 2초간 은은하게 하이라이트 + 작은 dot indicator
+2. **First tap(콘텐츠)**: shoppable object들이 약 3초간 은은하게 하이라이트 + 작은 dot indicator
 3. **Object tap**: 좌표(x,y 정규화)가 어느 object 영역 내부인지 판정 → outline 강조 + Bottom Sheet(화면 30–38%)
 4. **Bottom Sheet**: 브랜드/상품명/가격/판매처/Affiliate 표시/유사상품/저장/Buy CTA 1개
 5. AI 실패는 정상 상황: "AI Detection Failed" 금지 → "We found N products" / 수동 추가 유도

@@ -59,13 +59,13 @@ body {
 /* ── Object Highlight — bounding box 금지, mask + 1px outline ────── */
 @keyframes hint-in {
   0% { opacity: 0; }
-  10% { opacity: 1; }
-  85% { opacity: 1; }
+  7% { opacity: 1; }
+  90% { opacity: 1; }
   100% { opacity: 0; }
 }
 
 .object-hint {
-  animation: hint-in 2000ms ease-in-out forwards;
+  animation: hint-in 3000ms ease-in-out forwards;
 }
 
 @keyframes dot-in {
