@@ -1,0 +1,507 @@
+{
+  "version": 1,
+  "generatedAt": "deterministic",
+  "isDemo": true,
+  "assets": [
+    {
+      "id": "asset_9ac8bbbd1dbe2813",
+      "source": "../STS image/assets/deskterior_banner.jpg",
+      "publicUrl": null,
+      "importedUrl": "/imported/asset_9ac8bbbd1dbe2813-deskterior_banner.jpg",
+      "sha256": "9ac8bbbd1dbe281345a203e1e5f01c0b211fb58e8eb783e269eb6cc14b0beb66",
+      "isDemo": true
+    },
+    {
+      "id": "asset_04732a7191913467",
+      "source": "../STS image/assets/dining_banner.jpg",
+      "publicUrl": null,
+      "importedUrl": "/imported/asset_04732a7191913467-dining_banner.jpg",
+      "sha256": "04732a7191913467df41e9d1362ea3b380945d7605a7ef6d7398c2f333eb3117",
+      "isDemo": true
+    },
+    {
+      "id": "asset_49696e2fd3beff3a",
+      "source": "../STS image/assets/fitness_banner.jpg",
+      "publicUrl": null,
+      "importedUrl": "/imported/asset_49696e2fd3beff3a-fitness_banner.jpg",
+      "sha256": "49696e2fd3beff3a3ebbc4917e15f4a6c6b7bcfdd56649799b7737d5a5f94f52",
+      "isDemo": true
+    },
+    {
+      "id": "asset_943d1003d847bb01",
+      "source": "../STS image/assets/insta_ootd_1.jpg",
+      "publicUrl": null,
+      "importedUrl": "/imported/asset_943d1003d847bb01-insta_ootd_1.jpg",
+      "sha256": "943d1003d847bb0106a985ac2c652b4a121b4b698b601a7807cb6d48d9ddda63",
+      "isDemo": true
+    },
+    {
+      "id": "asset_20e358cab2c3e704",
+      "source": "../STS image/assets/insta_ootd_2.jpg",
+      "publicUrl": null,
+      "importedUrl": "/imported/asset_20e358cab2c3e704-insta_ootd_2.jpg",
+      "sha256": "20e358cab2c3e704a10301bfe352ceeadc15a4d103322c6a739285cb6cf3bd55",
+      "isDemo": true
+    },
+    {
+      "id": "asset_d99e8deff6d3b3a0",
+      "source": "../STS image/assets/insta_ootd_3.jpg",
+      "publicUrl": null,
+      "importedUrl": "/imported/asset_d99e8deff6d3b3a0-insta_ootd_3.jpg",
+      "sha256": "d99e8deff6d3b3a0377f83765709067ba2142d236bb185aada334f66ecc45619",
+      "isDemo": true
+    },
+    {
+      "id": "asset_74a10c566fd66eb7",
+      "source": "../STS image/assets/insta_ootd_4.jpg",
+      "publicUrl": null,
+      "importedUrl": "/imported/asset_74a10c566fd66eb7-insta_ootd_4.jpg",
+      "sha256": "74a10c566fd66eb7b6428846367824a54fbfc02979e72d9d2b438c92976e5406",
+      "isDemo": true
+    },
+    {
+      "id": "asset_6f3b6c524b8421af",
+      "source": "../STS image/assets/ootd_banner.jpg",
+      "publicUrl": null,
+      "importedUrl": "/imported/asset_6f3b6c524b8421af-ootd_banner.jpg",
+      "sha256": "6f3b6c524b8421afdbbf74d959f9b6d05fe4a70c7c5f2911cf00d5e722afeb28",
+      "isDemo": true
+    },
+    {
+      "id": "asset_0858cc05f8f9d94e",
+      "source": "../STS image/assets/real_fashion_01.jpg",
+      "publicUrl": null,
+      "importedUrl": "/imported/asset_0858cc05f8f9d94e-real_fashion_01.jpg",
+      "sha256": "0858cc05f8f9d94ea18e64e82537f45baae43c9f5a1f89ca7c35b0c039d4cb72",
+      "isDemo": true
+    },
+    {
+      "id": "asset_d3a85e7aaf658755",
+      "source": "../STS image/assets/real_fashion_02.jpg",
+      "publicUrl": null,
+      "importedUrl": "/imported/asset_d3a85e7aaf658755-real_fashion_02.jpg",
+      "sha256": "d3a85e7aaf658755a51c1c38a2accce5280737c781b4818043aafa059512ad0b",
+      "isDemo": true
+    },
+    {
+      "id": "asset_1be01c06c5ba9c9e",
+      "source": "../STS image/assets/real_fashion_03.jpg",
+      "publicUrl": null,
+      "importedUrl": "/imported/asset_1be01c06c5ba9c9e-real_fashion_03.jpg",
+      "sha256": "1be01c06c5ba9c9ea4298bfd9517cc8dcb80ea67fe89b10d3a6ff5ef67dd2392",
+      "isDemo": true
+    },
+    {
+      "id": "asset_b9c24706a0511b84",
+      "source": "../STS image/assets/real_fashion_04.jpg",
+      "publicUrl": null,
+      "importedUrl": "/imported/asset_b9c24706a0511b84-real_fashion_04.jpg",
+      "sha256": "b9c24706a0511b8473b565a7dda3e02a3ef0afdef5559987af4b20d8f55d02f0",
+      "isDemo": true
+    },
+    {
+      "id": "asset_efbe44f786385a32",
+      "source": "../STS image/assets/travel_banner.jpg",
+      "publicUrl": null,
+      "importedUrl": "/imported/asset_efbe44f786385a32-travel_banner.jpg",
+      "sha256": "efbe44f786385a329195c45e01605c6f2ff7a4dc9b3023bd12a5791f5815599b",
+      "isDemo": true
+    },
+    {
+      "id": "asset_3bf6248fddf6b7b7",
+      "source": "public/looks/look1.jpg",
+      "publicUrl": "/looks/look1.jpg",
+      "importedUrl": "/imported/asset_3bf6248fddf6b7b7-look1.jpg",
+      "sha256": "3bf6248fddf6b7b7a46128d71a1bca74e850dc55bde6fd85d257a97346395591",
+      "isDemo": true
+    },
+    {
+      "id": "asset_37b42aadc131d790",
+      "source": "public/looks/look10.jpg",
+      "publicUrl": "/looks/look10.jpg",
+      "importedUrl": "/imported/asset_37b42aadc131d790-look10.jpg",
+      "sha256": "37b42aadc131d790628365ad0dda24c88110a2324cc4e9a7d3c797d3979109b6",
+      "isDemo": true
+    },
+    {
+      "id": "asset_f8492b1f484d2c0c",
+      "source": "public/looks/look2.jpg",
+      "publicUrl": "/looks/look2.jpg",
+      "importedUrl": "/imported/asset_f8492b1f484d2c0c-look2.jpg",
+      "sha256": "f8492b1f484d2c0c210c4680ccbc5e82bc832ecfe1b357aedb13cb7450210b70",
+      "isDemo": true
+    },
+    {
+      "id": "asset_36657f9147022705",
+      "source": "public/looks/look3.jpg",
+      "publicUrl": "/looks/look3.jpg",
+      "importedUrl": "/imported/asset_36657f9147022705-look3.jpg",
+      "sha256": "36657f914702270509eb2e42cb8f206e0fad263065f84795bbb1f3c376d893c9",
+      "isDemo": true
+    },
+    {
+      "id": "asset_71f97dac3e7c69e6",
+      "source": "public/looks/look4.jpg",
+      "publicUrl": "/looks/look4.jpg",
+      "importedUrl": "/imported/asset_71f97dac3e7c69e6-look4.jpg",
+      "sha256": "71f97dac3e7c69e6e07a071595f9c47f27c4cbf35e39a9a279e8ed4c36f901dc",
+      "isDemo": true
+    },
+    {
+      "id": "asset_750b19d51198d76e",
+      "source": "public/looks/look5.jpg",
+      "publicUrl": "/looks/look5.jpg",
+      "importedUrl": "/imported/asset_750b19d51198d76e-look5.jpg",
+      "sha256": "750b19d51198d76e9b21096d870ed2f0f1a825fbcacbcb138c8b42e2631d3741",
+      "isDemo": true
+    },
+    {
+      "id": "asset_368934c35cf75bba",
+      "source": "public/looks/look6.jpg",
+      "publicUrl": "/looks/look6.jpg",
+      "importedUrl": "/imported/asset_368934c35cf75bba-look6.jpg",
+      "sha256": "368934c35cf75bbae1ad0ed506c4135c00bd8cc4fbba9fe2fe3c05e131e818cb",
+      "isDemo": true
+    },
+    {
+      "id": "asset_23125d8e202bf8bf",
+      "source": "public/looks/look7.jpg",
+      "publicUrl": "/looks/look7.jpg",
+      "importedUrl": "/imported/asset_23125d8e202bf8bf-look7.jpg",
+      "sha256": "23125d8e202bf8bf12c0aa4ca39f6f3c4b8c9901a040fe64a2fee39e95151718",
+      "isDemo": true
+    },
+    {
+      "id": "asset_18e224b9fc2d4eb3",
+      "source": "public/looks/look8.jpg",
+      "publicUrl": "/looks/look8.jpg",
+      "importedUrl": "/imported/asset_18e224b9fc2d4eb3-look8.jpg",
+      "sha256": "18e224b9fc2d4eb3f500fa1ecc1072d316e68378b5cffad4c3d714b92a1992de",
+      "isDemo": true
+    },
+    {
+      "id": "asset_dd18577576bca02b",
+      "source": "public/looks/look9.jpg",
+      "publicUrl": "/looks/look9.jpg",
+      "importedUrl": "/imported/asset_dd18577576bca02b-look9.jpg",
+      "sha256": "dd18577576bca02b4c890314d5ba96396f37bd8845636a51c0d49a776e34028e",
+      "isDemo": true
+    },
+    {
+      "id": "asset_fbc7ff2a601b5059",
+      "source": "public/looks/pl-acne-scarf.jpg",
+      "publicUrl": "/looks/pl-acne-scarf.jpg",
+      "importedUrl": "/imported/asset_fbc7ff2a601b5059-pl-acne-scarf.jpg",
+      "sha256": "fbc7ff2a601b50592c7d676a136c744d8843fda2e4670f065df5d688b6f86d64",
+      "isDemo": true
+    },
+    {
+      "id": "asset_cf3307c2ceda41ca",
+      "source": "public/looks/pl-acne-sweat.jpg",
+      "publicUrl": "/looks/pl-acne-sweat.jpg",
+      "importedUrl": "/imported/asset_cf3307c2ceda41ca-pl-acne-sweat.jpg",
+      "sha256": "cf3307c2ceda41cae762468084e9d7824aba73c8ce8889627b0d44b675e44754",
+      "isDemo": true
+    },
+    {
+      "id": "asset_12b79348ae3851e5",
+      "source": "public/looks/pl-ami-knit.jpg",
+      "publicUrl": "/looks/pl-ami-knit.jpg",
+      "importedUrl": "/imported/asset_12b79348ae3851e5-pl-ami-knit.jpg",
+      "sha256": "12b79348ae3851e5286372a8e3c5db6da1082a25928c77a66c6d99578b856a41",
+      "isDemo": true
+    },
+    {
+      "id": "asset_8dfe120b3bbbf41c",
+      "source": "public/looks/pl-apc-jeans.jpg",
+      "publicUrl": "/looks/pl-apc-jeans.jpg",
+      "importedUrl": "/imported/asset_8dfe120b3bbbf41c-pl-apc-jeans.jpg",
+      "sha256": "8dfe120b3bbbf41c1406913b0adec76491c2390f49b2f68949858ab4a7f3bef1",
+      "isDemo": true
+    },
+    {
+      "id": "asset_e2b0c5a2905a7f47",
+      "source": "public/looks/pl-arc-heliad.jpg",
+      "publicUrl": "/looks/pl-arc-heliad.jpg",
+      "importedUrl": "/imported/asset_e2b0c5a2905a7f47-pl-arc-heliad.jpg",
+      "sha256": "e2b0c5a2905a7f47bfa822e33ac30eac266ee3a3ad834a37bd9545f03a2e0509",
+      "isDemo": true
+    },
+    {
+      "id": "asset_1c0fe7cc5d131319",
+      "source": "public/looks/pl-barbour-bedale.jpg",
+      "publicUrl": "/looks/pl-barbour-bedale.jpg",
+      "importedUrl": "/imported/asset_1c0fe7cc5d131319-pl-barbour-bedale.jpg",
+      "sha256": "1c0fe7cc5d1313192ab8245e498a558e81c23076acda5dc217485ddc9833f22d",
+      "isDemo": true
+    },
+    {
+      "id": "asset_d4c47d6ba76566c2",
+      "source": "public/looks/pl-birken-boston.jpg",
+      "publicUrl": "/looks/pl-birken-boston.jpg",
+      "importedUrl": "/imported/asset_d4c47d6ba76566c2-pl-birken-boston.jpg",
+      "sha256": "d4c47d6ba76566c2d81f73f3d3cd555c073c735d2630aa07293869eddbf6331b",
+      "isDemo": true
+    },
+    {
+      "id": "asset_da84686c232abc33",
+      "source": "public/looks/pl-cartier-tank.jpg",
+      "publicUrl": "/looks/pl-cartier-tank.jpg",
+      "importedUrl": "/imported/asset_da84686c232abc33-pl-cartier-tank.jpg",
+      "sha256": "da84686c232abc3373da00654919d797f0dc959a22de5c5ca98dec2fb8325eeb",
+      "isDemo": true
+    },
+    {
+      "id": "asset_2fe86328c14efe89",
+      "source": "public/looks/pl-clarks-wallabee.jpg",
+      "publicUrl": "/looks/pl-clarks-wallabee.jpg",
+      "importedUrl": "/imported/asset_2fe86328c14efe89-pl-clarks-wallabee.jpg",
+      "sha256": "2fe86328c14efe89c89fe35144f51fabb65532e491e31a9742a9878a55f56c09",
+      "isDemo": true
+    },
+    {
+      "id": "asset_bd0a6e036aa219bc",
+      "source": "public/looks/pl-cos-pants.jpg",
+      "publicUrl": "/looks/pl-cos-pants.jpg",
+      "importedUrl": "/imported/asset_bd0a6e036aa219bc-pl-cos-pants.jpg",
+      "sha256": "bd0a6e036aa219bcaea34078acfa1ac7257610bea7f7ea9181398a13a6123a67",
+      "isDemo": true
+    },
+    {
+      "id": "asset_d064609b565783dd",
+      "source": "public/looks/pl-dm-1461.jpg",
+      "publicUrl": "/looks/pl-dm-1461.jpg",
+      "importedUrl": "/imported/asset_d064609b565783dd-pl-dm-1461.jpg",
+      "sha256": "d064609b565783ddd26413397659053467392090a791094a54916f9447b1803a",
+      "isDemo": true
+    },
+    {
+      "id": "asset_cd27a39558245982",
+      "source": "public/looks/pl-levis-501.jpg",
+      "publicUrl": "/looks/pl-levis-501.jpg",
+      "importedUrl": "/imported/asset_cd27a39558245982-pl-levis-501.jpg",
+      "sha256": "cd27a39558245982264bc36998f5a32f6ae8692159c6e597c20061ae5dd2c445",
+      "isDemo": true
+    },
+    {
+      "id": "asset_a86d4317dc2c85c8",
+      "source": "public/looks/pl-margiela-replica.jpg",
+      "publicUrl": "/looks/pl-margiela-replica.jpg",
+      "importedUrl": "/imported/asset_a86d4317dc2c85c8-pl-margiela-replica.jpg",
+      "sha256": "a86d4317dc2c85c856a81c28e709553a361dd20503344d9efa332ed0a1f1057a",
+      "isDemo": true
+    },
+    {
+      "id": "asset_412740dfcaaf81bb",
+      "source": "public/looks/pl-omega-speedmaster.jpg",
+      "publicUrl": "/looks/pl-omega-speedmaster.jpg",
+      "importedUrl": "/imported/asset_412740dfcaaf81bb-pl-omega-speedmaster.jpg",
+      "sha256": "412740dfcaaf81bb2be6e8fe29dc2177243b5be47889e43daf382806bcab2472",
+      "isDemo": true
+    },
+    {
+      "id": "asset_0ab74407ebfa76b9",
+      "source": "public/looks/pl-patagonia-retrox.jpg",
+      "publicUrl": "/looks/pl-patagonia-retrox.jpg",
+      "importedUrl": "/imported/asset_0ab74407ebfa76b9-pl-patagonia-retrox.jpg",
+      "sha256": "0ab74407ebfa76b935eeb0bfe17b67e6f30c71d622c35ad9a6581e313b797eea",
+      "isDemo": true
+    },
+    {
+      "id": "asset_87b7ade0ae6cea19",
+      "source": "public/looks/pl-polo-oxford.jpg",
+      "publicUrl": "/looks/pl-polo-oxford.jpg",
+      "importedUrl": "/imported/asset_87b7ade0ae6cea19-pl-polo-oxford.jpg",
+      "sha256": "87b7ade0ae6cea19ca6a76ea8a642c6bb328472a570b5fd22c693b641f3c3aff",
+      "isDemo": true
+    },
+    {
+      "id": "asset_841df629fe53d8f2",
+      "source": "public/looks/pl-prada-bag.jpg",
+      "publicUrl": "/looks/pl-prada-bag.jpg",
+      "importedUrl": "/imported/asset_841df629fe53d8f2-pl-prada-bag.jpg",
+      "sha256": "841df629fe53d8f26b8d7a4e2a7ac768eb4e5135471c6b04a67e8fb5d122dd67",
+      "isDemo": true
+    },
+    {
+      "id": "asset_58638cf9db52a2e3",
+      "source": "public/looks/pl-samba.jpg",
+      "publicUrl": "/looks/pl-samba.jpg",
+      "importedUrl": "/imported/asset_58638cf9db52a2e3-pl-samba.jpg",
+      "sha256": "58638cf9db52a2e3ef7602e7383ad6a8e929bf68a2a144f8501d0500e06b033c",
+      "isDemo": true
+    },
+    {
+      "id": "asset_daf4b66fdfd0702b",
+      "source": "public/looks/pl-tnf-pants.jpg",
+      "publicUrl": "/looks/pl-tnf-pants.jpg",
+      "importedUrl": "/imported/asset_daf4b66fdfd0702b-pl-tnf-pants.jpg",
+      "sha256": "daf4b66fdfd0702b13528bec6c04218bcc5a7ea6c646e02d1a70aa1be60b491e",
+      "isDemo": true
+    },
+    {
+      "id": "asset_921e3292cfd162f0",
+      "source": "public/looks/pl-uniqlo-tee.jpg",
+      "publicUrl": "/looks/pl-uniqlo-tee.jpg",
+      "importedUrl": "/imported/asset_921e3292cfd162f0-pl-uniqlo-tee.jpg",
+      "sha256": "921e3292cfd162f078bb30c18a1e2b57b53824a32f95feac32b3a9cd1afac07c",
+      "isDemo": true
+    },
+    {
+      "id": "asset_7756ec025a5d390d",
+      "source": "public/looks/pl-ysl-jeans.jpg",
+      "publicUrl": "/looks/pl-ysl-jeans.jpg",
+      "importedUrl": "/imported/asset_7756ec025a5d390d-pl-ysl-jeans.jpg",
+      "sha256": "7756ec025a5d390d4f52bf41cffe8d8a961c92cc9feb6327c82d5213326bc26e",
+      "isDemo": true
+    },
+    {
+      "id": "asset_f28756cca38147f4",
+      "source": "public/looks/plw-acne-sweat-oat.jpg",
+      "publicUrl": "/looks/plw-acne-sweat-oat.jpg",
+      "importedUrl": "/imported/asset_f28756cca38147f4-plw-acne-sweat-oat.jpg",
+      "sha256": "f28756cca38147f4e2a16e700afab160ffe1556d53f2fa123327640577c9e892",
+      "isDemo": true
+    },
+    {
+      "id": "asset_df2e8c3ad572c77a",
+      "source": "public/looks/plw-barbour-beadnell.jpg",
+      "publicUrl": "/looks/plw-barbour-beadnell.jpg",
+      "importedUrl": "/imported/asset_df2e8c3ad572c77a-plw-barbour-beadnell.jpg",
+      "sha256": "df2e8c3ad572c77aa97051226e5944bd0b4d4fe7dd5f0f1db68b38a51b02f479",
+      "isDemo": true
+    },
+    {
+      "id": "asset_bede043d515438ff",
+      "source": "public/looks/plw-celine-bag.jpg",
+      "publicUrl": "/looks/plw-celine-bag.jpg",
+      "importedUrl": "/imported/asset_bede043d515438ff-plw-celine-bag.jpg",
+      "sha256": "bede043d515438ff54edfdc848252dfb62a7bcb5f40e4df687f1e439c53db0a8",
+      "isDemo": true
+    },
+    {
+      "id": "asset_893ce0c3ec1d9516",
+      "source": "public/looks/plw-cos-dark-jeans.jpg",
+      "publicUrl": "/looks/plw-cos-dark-jeans.jpg",
+      "importedUrl": "/imported/asset_893ce0c3ec1d9516-plw-cos-dark-jeans.jpg",
+      "sha256": "893ce0c3ec1d95164692bd2386713525744f8846a7083d5908950ca63d495434",
+      "isDemo": true
+    },
+    {
+      "id": "asset_c02186da5e9179df",
+      "source": "public/looks/plw-gold-bracelet.jpg",
+      "publicUrl": "/looks/plw-gold-bracelet.jpg",
+      "importedUrl": "/imported/asset_c02186da5e9179df-plw-gold-bracelet.jpg",
+      "sha256": "c02186da5e9179dfc10d879231d1833d5ee1c4f11dc3e7a3ce82223d0cf79145",
+      "isDemo": true
+    },
+    {
+      "id": "asset_c335475107546a48",
+      "source": "public/looks/plw-gold-chain.jpg",
+      "publicUrl": "/looks/plw-gold-chain.jpg",
+      "importedUrl": "/imported/asset_c335475107546a48-plw-gold-chain.jpg",
+      "sha256": "c335475107546a48a6930d90b17d66edfbacf28153d33e65a83f002dad470519",
+      "isDemo": true
+    },
+    {
+      "id": "asset_ebd52255322344a8",
+      "source": "public/looks/plw-gold-hoop.jpg",
+      "publicUrl": "/looks/plw-gold-hoop.jpg",
+      "importedUrl": "/imported/asset_ebd52255322344a8-plw-gold-hoop.jpg",
+      "sha256": "ebd52255322344a8e8d5b040b98bab35fcefe13e7d76a72167c0766aa2e4c981",
+      "isDemo": true
+    },
+    {
+      "id": "asset_805edaadf1b7e565",
+      "source": "public/looks/plw-levis-ribcage.jpg",
+      "publicUrl": "/looks/plw-levis-ribcage.jpg",
+      "importedUrl": "/imported/asset_805edaadf1b7e565-plw-levis-ribcage.jpg",
+      "sha256": "805edaadf1b7e5651bb90d528bd1d6f18df6386b834f1be9eab8a67fbcc45781",
+      "isDemo": true
+    },
+    {
+      "id": "asset_48b025e8743286ff",
+      "source": "public/looks/plw-longchamp.jpg",
+      "publicUrl": "/looks/plw-longchamp.jpg",
+      "importedUrl": "/imported/asset_48b025e8743286ff-plw-longchamp.jpg",
+      "sha256": "48b025e8743286ff8e5d15ebf40c9624740bceb54e6f6fcc630ae69f180d1d0d",
+      "isDemo": true
+    },
+    {
+      "id": "asset_d7fa680b8af9fcaa",
+      "source": "public/looks/plw-polene-bag.jpg",
+      "publicUrl": "/looks/plw-polene-bag.jpg",
+      "importedUrl": "/imported/asset_d7fa680b8af9fcaa-plw-polene-bag.jpg",
+      "sha256": "d7fa680b8af9fcaa0d6f00a68eecae0c55a64b94cae3f983d27cac8ef778dae3",
+      "isDemo": true
+    },
+    {
+      "id": "asset_e4b37f3b1e90aeb6",
+      "source": "public/looks/plw-polo-oxford.jpg",
+      "publicUrl": "/looks/plw-polo-oxford.jpg",
+      "importedUrl": "/imported/asset_e4b37f3b1e90aeb6-plw-polo-oxford.jpg",
+      "sha256": "e4b37f3b1e90aeb6cacc295658da2ec2c577f6765d548e53857e1818c0823186",
+      "isDemo": true
+    },
+    {
+      "id": "asset_54622c555bc238b1",
+      "source": "public/looks/plw-prada-re2005.jpg",
+      "publicUrl": "/looks/plw-prada-re2005.jpg",
+      "importedUrl": "/imported/asset_54622c555bc238b1-plw-prada-re2005.jpg",
+      "sha256": "54622c555bc238b16ed52b9d0e64e6049d626ffe9b1e36e753e4d4c3c5b2b477",
+      "isDemo": true
+    },
+    {
+      "id": "asset_dbf3daf0deddef56",
+      "source": "public/looks/plw-samba-white.jpg",
+      "publicUrl": "/looks/plw-samba-white.jpg",
+      "importedUrl": "/imported/asset_dbf3daf0deddef56-plw-samba-white.jpg",
+      "sha256": "dbf3daf0deddef5616512d0c7921e9b043d8628cf17db05dc8e483924974038e",
+      "isDemo": true
+    },
+    {
+      "id": "asset_6944867fe786b11e",
+      "source": "public/looks/plw-silver-hoop.jpg",
+      "publicUrl": "/looks/plw-silver-hoop.jpg",
+      "importedUrl": "/imported/asset_6944867fe786b11e-plw-silver-hoop.jpg",
+      "sha256": "6944867fe786b11e61868e6f0246918e4942ed88b1e353e89ac766b547beb4ca",
+      "isDemo": true
+    },
+    {
+      "id": "asset_b4ee5cc553dbb305",
+      "source": "public/looks/plw-silver-rings.jpg",
+      "publicUrl": "/looks/plw-silver-rings.jpg",
+      "importedUrl": "/imported/asset_b4ee5cc553dbb305-plw-silver-rings.jpg",
+      "sha256": "b4ee5cc553dbb305be36c9ab7d5bf4b045fcd60c9123ea081a0bcd09b793019f",
+      "isDemo": true
+    },
+    {
+      "id": "asset_0aa14f236f7c23fd",
+      "source": "public/looks/plw-silver-stud.jpg",
+      "publicUrl": "/looks/plw-silver-stud.jpg",
+      "importedUrl": "/imported/asset_0aa14f236f7c23fd-plw-silver-stud.jpg",
+      "sha256": "0aa14f236f7c23fdde098927c7d57024498e731ff099d3c9d5de1884365854a7",
+      "isDemo": true
+    },
+    {
+      "id": "asset_afc5b70bd3d65ea3",
+      "source": "public/looks/plw-socks.jpg",
+      "publicUrl": "/looks/plw-socks.jpg",
+      "importedUrl": "/imported/asset_afc5b70bd3d65ea3-plw-socks.jpg",
+      "sha256": "afc5b70bd3d65ea3e43ab7514020319239f235ade23480f07acdafb0fd84ed8b",
+      "isDemo": true
+    },
+    {
+      "id": "asset_6983d7db968e897d",
+      "source": "public/looks/plw-tiffany-heart.jpg",
+      "publicUrl": "/looks/plw-tiffany-heart.jpg",
+      "importedUrl": "/imported/asset_6983d7db968e897d-plw-tiffany-heart.jpg",
+      "sha256": "6983d7db968e897dbc24df36b4eb9acceb99d96ba5afe3a29ae8636bd4fef326",
+      "isDemo": true
+    }
+  ],
+  "counts": {
+    "discovered": 62,
+    "unique": 62
+  }
+}

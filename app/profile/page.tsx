@@ -1,0 +1,206 @@
+"use client";
+
+import Link from "next/link";
+import { POSTS } from "@/lib/catalog";
+import { estimatedEarnings, pct, statsForPosts, totals } from "@/lib/analytics";
+import { compact, won } from "@/lib/format";
+import { useApp, useHydrated } from "@/lib/store";
+import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import {
+  BarChartIcon,
+  ChevronRightIcon,
+  PlusIcon,
+  SettingsIcon,
+  TagIcon,
+} from "@/components/Icons";
+
+/**
+ * Creator Console Home — 사업계획서 §17.
+ * 이번 달 views / taps / outbound / earnings + 내 콘텐츠.
+ */
+export default function ProfilePage() {
+  const hydrated = useHydrated();
+  const { userPosts, events, user, signOut } = useApp();
+
+  // Google(Supabase) 세션이면 Supabase 로그아웃까지 수행한다.
+  // (SupabaseAuthProvider 가 SIGNED_OUT 을 받아 store 도 비우지만,
+  //  데모 세션까지 커버하려고 store.signOut 도 함께 호출한다 — idempotent.)
+  const handleSignOut = async () => {
+    if (isSupabaseConfigured()) {
+      try {
+        await getSupabaseBrowserClient().auth.signOut();
+      } catch {
+        // 네트워크 실패 등은 무시하고 로컬 세션은 확실히 정리
+      }
+    }
+    signOut();
+  };
+
+  // 데모 계정은 시드 크리에이터 콘텐츠 전체를 "내 콘텐츠"로 보여준다
+  const myPosts = hydrated ? [...userPosts, ...POSTS] : POSTS;
+  const stats = statsForPosts(myPosts, hydrated ? events : []);
+  const t = totals(stats.values());
+  const otr = pct(t.taps, t.views);
+  const earnings = estimatedEarnings(t.outbound);
+
+  const loggedIn = hydrated && !!user;
+  const handle = user?.username;
+  const needsSetup = loggedIn && user?.provider === "google" && user?.handleIsDefault;
+
+  return (
+    <div>
+      {/* 상단 바: 아이디 + 빠른 액션 */}
+      <header className="flex items-center justify-between px-4 pt-4">
+        <h1 className="truncate text-[18px] font-bold">
+          {loggedIn ? (handle && !needsSetup ? `@${handle}` : user!.name) : "@me.sts"}
+        </h1>
+        <div className="flex gap-1.5">
+          {loggedIn && (
+            <Link
+              href="/profile/edit"
+              aria-label="프로필 편집"
+              className="flex h-9 w-9 items-center justify-center rounded-(--radius-btn) border border-line text-ink-2"
+            >
+              <SettingsIcon size={17} />
+            </Link>
+          )}
+          <Link
+            href="/create"
+            aria-label="새 콘텐츠"
+            className="flex h-9 w-9 items-center justify-center rounded-(--radius-btn) bg-ink text-surface"
+          >
+            <PlusIcon size={17} />
+          </Link>
+        </div>
+      </header>
+
+      {/* 인스타식 프로필 헤더: 아바타 + 이름 + @아이디 + 소개 */}
+      <div className="flex items-center gap-4 px-4 pt-3">
+        {loggedIn && user!.avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={user!.avatarUrl}
+            alt={user!.name}
+            className="h-[72px] w-[72px] shrink-0 rounded-full object-cover"
+            style={{ objectPosition: "50% 30%" }}
+          />
+        ) : (
+          <span className="flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-full bg-surface-2 text-[26px] font-bold text-ink-2">
+            {loggedIn ? (user!.name?.[0] ?? "@") : "@"}
+          </span>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[17px] font-bold">{loggedIn ? user!.name : "게스트"}</p>
+          {loggedIn ? (
+            <p className="truncate text-[13px] text-ink-2">
+              {handle && !needsSetup ? `@${handle}` : (user!.provider === "kakao" ? "카카오 계정" : "Google 계정")}
+            </p>
+          ) : (
+            <Link href="/login" className="inline-block text-[13px] font-semibold text-primary">
+              3초 로그인하고 수익 받기 →
+            </Link>
+          )}
+        </div>
+      </div>
+
+      {loggedIn && user!.bio ? (
+        <p className="mt-2.5 whitespace-pre-wrap px-4 text-[13.5px] leading-relaxed text-ink">{user!.bio}</p>
+      ) : null}
+
+      {loggedIn && (
+        <div className="mt-3 flex items-center gap-2 px-4">
+          <Link
+            href="/profile/edit"
+            className="press flex h-9 flex-1 items-center justify-center rounded-(--radius-btn) border border-line bg-surface text-[13px] font-semibold text-ink"
+          >
+            프로필 편집
+          </Link>
+          <button
+            onClick={handleSignOut}
+            className="press flex h-9 items-center justify-center rounded-(--radius-btn) border border-line bg-surface px-4 text-[13px] font-medium text-ink-2"
+          >
+            로그아웃
+          </button>
+        </div>
+      )}
+
+      {/* 온보딩: 아직 아이디를 직접 정하지 않은 신규 유저 유도 */}
+      {needsSetup && (
+        <Link
+          href="/profile/edit?onboarding=1"
+          className="press mx-4 mt-3 flex items-center gap-2.5 rounded-(--radius-card) border border-primary/30 bg-primary/5 px-4 py-3"
+        >
+          <span className="flex-1 text-[13px] font-medium text-ink">
+            프로필을 완성해보세요 — 나만의 <b className="text-primary">아이디</b>·사진·소개 설정하기
+          </span>
+          <ChevronRightIcon size={16} className="text-primary" />
+        </Link>
+      )}
+
+      {/* Product Tap Rate를 가장 위에 (PRD §55) */}
+      <div className="mx-4 mt-4 rounded-(--radius-card) border border-line bg-surface p-4">
+        <div className="flex items-baseline justify-between">
+          <p className="text-[12px] font-medium text-ink-2">Object Tap Rate</p>
+          <p className="text-[11px] text-ink-2">목표 ≥ 4%</p>
+        </div>
+        <p className="mt-1 text-[28px] font-bold tracking-tight">{otr}%</p>
+        <div className="mt-2 h-1 overflow-hidden rounded-full bg-surface-2">
+          <div
+            className="h-full rounded-full bg-accent"
+            style={{ width: `${Math.min(100, parseFloat(otr) * 10)}%` }}
+          />
+        </div>
+      </div>
+
+      <div className="mx-4 mt-2.5 grid grid-cols-2 gap-2.5">
+        <Metric label="이번 달 조회" value={compact(t.views)} />
+        <Metric label="오브젝트 탭" value={compact(t.taps)} />
+        <Metric label="구매처 이동" value={compact(t.outbound)} />
+        <Metric label="예상 수익" value={won(earnings)} accent />
+      </div>
+
+      <Link
+        href="/analytics"
+        className="mx-4 mt-2.5 flex items-center gap-2.5 rounded-(--radius-card) border border-line bg-surface px-4 py-3.5"
+      >
+        <BarChartIcon size={18} className="text-accent" />
+        <span className="flex-1 text-[14px] font-medium">상세 애널리틱스</span>
+        <ChevronRightIcon size={16} className="text-ink-2" />
+      </Link>
+
+      <div className="mt-6 flex items-center justify-between px-4">
+        <p className="text-[14px] font-semibold">내 콘텐츠 {myPosts.length}</p>
+        <Link href="/create" className="flex items-center gap-1 text-[13px] font-medium text-accent">
+          <TagIcon size={14} />새 shoppable 콘텐츠
+        </Link>
+      </div>
+      <div className="mt-2.5 grid grid-cols-3 gap-0.5">
+        {myPosts.map((p) => {
+          const s = stats.get(p.id);
+          return (
+            <Link key={p.id} href={`/post/${p.id}`} className="relative">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={p.image} alt={p.caption} className="aspect-square w-full object-cover" />
+              {s && s.views > 0 && (
+                <span className="absolute bottom-1 left-1 rounded bg-ink/70 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                  {compact(s.views)}
+                </span>
+              )}
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function Metric({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+  return (
+    <div className="rounded-(--radius-card) border border-line bg-surface p-4">
+      <p className="text-[12px] text-ink-2">{label}</p>
+      <p className={`mt-1 text-[20px] font-bold tracking-tight ${accent ? "text-accent" : ""}`}>
+        {value}
+      </p>
+    </div>
+  );
+}

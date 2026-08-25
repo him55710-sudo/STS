@@ -1,0 +1,8 @@
+{
+  "_comment": "벤치마크 ground truth — public/looks/lookN.jpg 기준 기대 canonical class. 시계는 실사진에 보이는 경우만.",
+  "look1": ["top", "pants", "shoes", "bag", "watch"],
+  "look2": ["outerwear", "top", "pants", "shoes", "watch"],
+  "look3": ["top", "scarf", "pants", "shoes"],
+  "look4": ["outerwear", "pants", "shoes", "bag"],
+  "look5": ["top", "pants", "shoes", "watch"]
+}

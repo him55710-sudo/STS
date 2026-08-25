@@ -1,0 +1,23 @@
+<!-- @dsCard group="Interaction" -->
+<!doctype html><meta charset="utf-8">
+<style>
+  body{margin:0;padding:24px;background:#f7f7f6;font-family:"Pretendard Variable",Pretendard,Inter,-apple-system,sans-serif;display:flex;gap:20px}
+  .tile{width:190px;border-radius:14px;overflow:hidden;border:1px solid #e7e9ec;background:#fff}
+  .ph{position:relative;height:150px;background:linear-gradient(150deg,#e3e0da,#cfccc5)}
+  .obj{position:absolute;left:52px;top:44px;width:86px;height:62px;border-radius:8px}
+  .good{background:rgba(91,85,110,.09);box-shadow:inset 0 0 0 1.5px rgba(91,85,110,.85),0 0 0 1px rgba(255,255,255,.35)}
+  .dot{position:absolute;left:50%;top:50%;width:18px;height:18px;border-radius:50%;background:rgba(255,255,255,.92);transform:translate(-50%,-50%);box-shadow:0 1px 6px rgba(17,18,20,.25);display:grid;place-items:center}
+  .dot i{width:7px;height:7px;border-radius:50%;background:#5b556e}
+  .bad{border:2px solid #7a5cff;background:transparent}
+  .badlbl{position:absolute;left:0;top:-16px;background:#7a5cff;color:#fff;font-size:8px;padding:1px 4px}
+  .cap{padding:10px 12px;font-size:11px;color:#6b6f76}
+  .cap b{display:block;font-size:12px;color:#111214}
+</style>
+<div class="tile">
+  <div class="ph"><div class="obj good"><span class="dot"><i></i></span></div></div>
+  <div class="cap"><b>✓ Object Tap (권장)</b>소프트 마스크 + 1.5px 아웃라인 + 도트. 콘텐츠를 가리지 않는다.</div>
+</div>
+<div class="tile">
+  <div class="ph"><div class="obj bad"><span class="badlbl">BAG 0.96</span></div></div>
+  <div class="cap"><b>✕ Detection Box (금지)</b>CV 디버그처럼 보이는 하드 박스·라벨·신뢰도 노출 금지.</div>
+</div>

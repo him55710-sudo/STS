@@ -1,0 +1,195 @@
+@import "tailwindcss";
+
+/* ── OBJET Design Tokens — PRD §36–45 Quiet Luxury ───────────────── */
+@theme {
+  --color-bg: #f7f7f6;          /* Primary Background */
+  --color-surface: #ffffff;     /* Bottom Sheet / Modal / Card */
+  --color-surface-2: #eeefed;   /* Filter / Hover / Selected */
+  --color-ink: #111214;         /* Main CTA / Typography */
+  --color-ink-2: #6b6f76;       /* Secondary Text */
+  --color-line: #e7e9ec;        /* Border */
+  --color-accent: #5b556e;      /* Muted Graphite Violet — object highlight 전용 */
+  --color-accent-2: #6d6680;
+  --color-primary: #5b556e;     /* Toss Blue — 핵심 CTA/인터랙션 */
+  --color-primary-soft: #efecf5;
+  --color-kakao: #fee500;
+
+  --font-sans: "Pretendard Variable", Pretendard, "Inter", -apple-system,
+    BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", Roboto, sans-serif;
+
+  --radius-btn: 11px;
+  --radius-card: 14px;
+  --radius-sheet: 22px;
+  --radius-prod: 10px;
+}
+
+html {
+  background: var(--color-bg);
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 링크는 콘텐츠 색을 따른다 — 파란 기본 링크색 금지 (무채색 원칙).
+   utilities 레이어가 이길 수 있도록 base 레이어에 배치 */
+@layer base {
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-accent) 22%, transparent);
+}
+
+/* 스크롤바 최소화 — 콘텐츠 우선 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line) transparent;
+}
+
+/* ── Object Highlight — bounding box 금지, mask + 1px outline ────── */
+@keyframes hint-in {
+  0% { opacity: 0; }
+  25% { opacity: 1; }
+  75% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.object-hint {
+  animation: hint-in 850ms ease-in-out forwards;
+}
+
+@keyframes dot-in {
+  from { transform: scale(0.4); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.object-dot {
+  animation: dot-in 160ms ease-out both;
+}
+
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+/* Toss식 스프링 — 살짝 오버슈트 후 안착 */
+.sheet-enter {
+  animation: sheet-up 320ms cubic-bezier(0.2, 0.9, 0.3, 1.04) both;
+}
+
+/* 누르는 맛 — 모든 인터랙티브 요소 공통 */
+.press {
+  transition: transform 130ms cubic-bezier(0.3, 0.7, 0.4, 1.2);
+}
+.press:active {
+  transform: scale(0.96);
+}
+
+/* 좋아요 하트 팝 */
+@keyframes heart-pop {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.4) rotate(-6deg); }
+  65% { transform: scale(0.88); }
+  100% { transform: scale(1); }
+}
+.heart-pop {
+  animation: heart-pop 380ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+/* 피드 카드 순차 등장 */
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.card-in {
+  animation: card-in 380ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+/* 스토리 링 회전 그라데이션 (프로필) */
+.story-ring {
+  background: conic-gradient(from 210deg, #5b556e, #8d87a0, #c9c2b8, #5b556e);
+}
+
+/* 콘텐츠 위 액션 레일 아이콘 가독성 */
+.rail-shadow {
+  filter: drop-shadow(0 1px 4px rgba(17, 18, 20, 0.45));
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.fade-in {
+  animation: fade-in 200ms ease-out both;
+}
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.rise-in {
+  animation: rise-in 220ms ease-out both;
+}
+
+/* AI 분석 완료 시 마스크가 순차적으로 짧게 나타나는 정도 (PRD §44) */
+.stagger > * {
+  animation: rise-in 200ms ease-out both;
+}
+.stagger > *:nth-child(2) { animation-delay: 50ms; }
+.stagger > *:nth-child(3) { animation-delay: 100ms; }
+
+.marketing-grid {
+  background-image: linear-gradient(rgba(91, 85, 110, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(91, 85, 110, 0.045) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+@keyframes marketing-hotspot-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(91, 85, 110, 0.28); }
+  50% { box-shadow: 0 0 0 8px rgba(91, 85, 110, 0); }
+}
+
+.marketing-hotspot span:first-child {
+  animation: marketing-hotspot-pulse 2.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marketing-hotspot span:first-child {
+    animation: none;
+  }
+}
+.stagger > *:nth-child(4) { animation-delay: 150ms; }
+.stagger > *:nth-child(5) { animation-delay: 200ms; }
+.stagger > *:nth-child(6) { animation-delay: 250ms; }
+
+/* 마소너리 (Discover) */
+.masonry {
+  columns: 2;
+  column-gap: 8px;
+}
+.masonry > * {
+  break-inside: avoid;
+  margin-bottom: 8px;
+}
+
+/* 데스크톱에서 디스커버 그리드 확장 */
+@media (min-width: 1024px) {
+  .masonry {
+    columns: 3;
+  }
+}
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
