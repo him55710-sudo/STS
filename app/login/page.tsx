@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { useApp } from "@/lib/store";
+import { DEFAULT_PLATFORM_PATH, safeInternalPath } from "@/lib/navigation";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 /**
@@ -30,13 +31,14 @@ function LoginInner() {
   const [error, setError] = useState<string | null>(searchParams.get("error"));
 
   const supabaseReady = isSupabaseConfigured();
+  const nextPath = safeInternalPath(searchParams.get("next"));
 
   const loginGoogle = async () => {
     setError(null);
     // Supabase 미설정 환경에서는 데모로 자연 강등 (게스트 데모와 동일 UX 유지)
     if (!supabaseReady) {
       signIn({ provider: "google", name: "Google 회원 (데모)" });
-      router.push("/profile");
+      router.push(nextPath);
       return;
     }
     setLoading("google");
@@ -45,7 +47,7 @@ function LoginInner() {
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback?next=/profile`,
+          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
         },
       });
       if (oauthError) {
@@ -62,7 +64,7 @@ function LoginInner() {
   const loginKakao = () => {
     // 카카오는 아직 데모 세션 (Supabase 카카오 provider 연동 시 loginGoogle 과 동일 패턴으로 교체)
     signIn({ provider: "kakao", name: "카카오 회원" });
-    router.push("/profile");
+    router.push(nextPath);
   };
 
   return (
@@ -110,8 +112,8 @@ function LoginInner() {
           </svg>
           {loading === "google" ? "Google로 이동 중…" : "Google로 계속하기"}
         </button>
-        <Link href="/" className="press py-3 text-center text-[13px] font-medium text-ink-2">
-          로그인 없이 둘러보기
+        <Link href={DEFAULT_PLATFORM_PATH} className="press py-3 text-center text-[13px] font-medium text-ink-2">
+          로그인 없이 플랫폼 둘러보기
         </Link>
         <p className="text-center text-[10.5px] leading-relaxed text-ink-2">
           {supabaseReady

@@ -2,8 +2,11 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { PRODUCTS } from "@/lib/catalog";
+import { KBEAUTY_PRODUCTS, PRODUCTS } from "@/lib/catalog";
 import type { Product } from "@/lib/types";
+import { DEFAULT_PLATFORM_PATH } from "@/lib/navigation";
+import { isMarketplaceDetailUrl } from "@/lib/marketplace-links";
+import { useApp, useHydrated } from "@/lib/store";
 import {
   ArrowUpRightIcon,
   BagIcon,
@@ -27,7 +30,7 @@ type DemoObject = {
 };
 
 const DEMO_OBJECTS: DemoObject[] = [
-  { id: "top", label: "스웨트셔츠", productId: "plw-acne-sweat-oat", left: 46, top: 34, confidence: 96, exactness: "exact" },
+  { id: "top", label: "스웨트셔츠", productId: "plw-acne-sweat-oat", left: 46, top: 34, confidence: 82, exactness: "similar" },
   { id: "bag", label: "숄더백", productId: "plw-celine-bag", left: 62, top: 42, confidence: 89, exactness: "similar" },
   { id: "pants", label: "와이드 팬츠", productId: "pl-cos-pants", left: 46, top: 65, confidence: 92, exactness: "exact" },
   { id: "shoes", label: "스니커즈", productId: "plw-samba-white", left: 51, top: 91, confidence: 94, exactness: "exact" },
@@ -45,6 +48,12 @@ const PLATFORM_POINTS = [
   { title: "STS가 연결합니다", body: "제휴 가능한 구매처와 클릭·전환 데이터를 한 흐름으로 관리합니다.", Icon: BarChartIcon },
 ];
 
+const KBEAUTY_HIGHLIGHTS = [
+  { productId: "kb-anua-heartleaf-toner", concern: "진정 · 수분", label: "어성초 77%" },
+  { productId: "kb-medicube-booster-pro", concern: "흡수 · 탄력", label: "AGE-R" },
+  { productId: "kb-cosrx-snail-96", concern: "장벽 · 보습", label: "스네일 96" },
+] as const;
+
 function productById(id: string): Product {
   const product = PRODUCTS.find((item) => item.id === id);
   if (!product) throw new Error(`Unknown demo product: ${id}`);
@@ -52,12 +61,16 @@ function productById(id: string): Product {
 }
 
 export default function MarketingLanding() {
+  const hydrated = useHydrated();
+  const user = useApp((state) => state.user);
   const [selectedId, setSelectedId] = useState("top");
   const selectedObject = useMemo(
     () => DEMO_OBJECTS.find((item) => item.id === selectedId) ?? DEMO_OBJECTS[0],
     [selectedId]
   );
   const selectedProduct = productById(selectedObject.productId);
+  const platformHref = hydrated && user ? DEFAULT_PLATFORM_PATH : `/login?next=${encodeURIComponent(DEFAULT_PLATFORM_PATH)}`;
+  const platformLabel = hydrated && user ? "플랫폼 열기" : "로그인";
 
   return (
     <div className="marketing-site min-h-dvh overflow-hidden bg-bg">
@@ -68,13 +81,13 @@ export default function MarketingLanding() {
           </Link>
           <nav className="hidden items-center gap-7 text-[13px] font-medium text-ink-2 md:flex">
             <a href="#experience" className="transition-colors hover:text-ink">제품 경험</a>
-            <a href="#how-it-works" className="transition-colors hover:text-ink">작동 방식</a>
+            <a href="#k-beauty" className="transition-colors hover:text-ink">K-뷰티</a>
             <a href="#creators" className="transition-colors hover:text-ink">크리에이터</a>
-            <a href="#platform" className="transition-colors hover:text-ink">플랫폼</a>
+            <a href="#partnerships" className="transition-colors hover:text-ink">브랜드 도입</a>
           </nav>
           <div className="flex items-center gap-2.5">
-            <Link href="/login" className="hidden px-3 py-2 text-[13px] font-semibold text-ink-2 transition-colors hover:text-ink sm:block">
-              로그인
+            <Link href={platformHref} className="press rounded-full border border-line bg-surface px-3.5 py-2.5 text-[12px] font-bold text-ink">
+              {platformLabel}
             </Link>
             <Link href="/creator" className="press rounded-full bg-ink px-4 py-2.5 text-[12px] font-bold text-surface">
               크리에이터 시작
@@ -86,11 +99,11 @@ export default function MarketingLanding() {
       <main>
         <section className="marketing-grid relative">
           <div className="pointer-events-none absolute -right-24 top-10 h-72 w-72 rounded-full bg-primary-soft/80 blur-3xl" />
-          <div className="mx-auto grid max-w-[1240px] gap-14 px-5 pb-24 pt-16 sm:px-8 lg:grid-cols-[0.84fr_1.16fr] lg:items-center lg:gap-20 lg:pb-32 lg:pt-24">
+          <div className="mx-auto grid max-w-[1240px] gap-14 px-5 pb-24 pt-16 sm:px-8 lg:grid-cols-[0.84fr_1.16fr] lg:items-center lg:gap-20 lg:pb-32 lg:pt-16">
             <div className="relative z-10">
               <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-line bg-surface/80 px-3 py-1.5 text-[11px] font-semibold tracking-[0.08em] text-primary">
                 <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                VISUAL COMMERCE, REIMAGINED
+                K-BEAUTY FIRST · CREATOR COMMERCE
               </div>
               <h1 className="max-w-[620px] text-[45px] font-bold leading-[1.08] tracking-[-0.055em] sm:text-[62px] lg:text-[70px]">
                 사진 속 모든 것이,
@@ -98,15 +111,19 @@ export default function MarketingLanding() {
                 <span className="text-primary">바로 쇼핑</span>이 된다.
               </h1>
               <p className="mt-7 max-w-[490px] text-[16px] leading-[1.75] text-ink-2 sm:text-[18px]">
-                STS는 이미지 속 상품 객체를 이해하고, 탭 한 번으로 구매와 크리에이터 수익을 연결합니다. 보는 경험을 쇼핑의 시작으로 바꿔보세요.
+                STS는 이미지 속 화장품과 패션 상품을 객체 단위로 이해하고, 탭 한 번으로 구매와 크리에이터 수익을 연결합니다. 오늘 올린 일상 포스트가 내일의 판매 채널이 됩니다.
+              </p>
+              <p className="mt-4 flex items-center gap-2 text-[13px] font-bold text-ink">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                누구나 시작하고, 구매가 발생하면 수익이 쌓입니다.
               </p>
               <div className="mt-9 flex flex-wrap gap-3">
                 <a href="#experience" className="press inline-flex items-center gap-2 rounded-full bg-ink px-5 py-3.5 text-[13px] font-bold text-surface">
                   인터랙티브 데모 보기
                   <ChevronRightIcon size={16} strokeWidth={2} />
                 </a>
-                <Link href="/feed" className="press inline-flex items-center gap-2 rounded-full border border-line bg-surface px-5 py-3.5 text-[13px] font-bold text-ink">
-                  실제 피드 열기
+                <Link href={platformHref} className="press inline-flex items-center gap-2 rounded-full border border-line bg-surface px-5 py-3.5 text-[13px] font-bold text-ink">
+                  {platformLabel}
                   <ArrowUpRightIcon size={16} strokeWidth={1.8} />
                 </Link>
               </div>
@@ -133,6 +150,8 @@ export default function MarketingLanding() {
             />
           </div>
         </section>
+
+        <KBeautySection />
 
         <section id="how-it-works" className="border-y border-line bg-surface">
           <div className="mx-auto max-w-[1240px] px-5 py-20 sm:px-8 lg:py-28">
@@ -165,18 +184,31 @@ export default function MarketingLanding() {
         <section id="creators" className="bg-ink text-surface">
           <div className="mx-auto grid max-w-[1240px] gap-14 px-5 py-20 sm:px-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:gap-24 lg:py-28">
             <div>
-              <p className="text-[11px] font-bold tracking-[0.18em] text-[#b8b1c9]">FOR CREATORS</p>
+              <p className="text-[11px] font-bold tracking-[0.18em] text-[#b8b1c9]">FOR EVERYDAY CREATORS</p>
               <h2 className="mt-4 text-[34px] font-bold leading-[1.15] tracking-[-0.05em] sm:text-[50px]">
-                취향은 콘텐츠로,
+                일상을 올리고,
                 <br />
-                콘텐츠는 수익으로.
+                추천을 수익으로.
               </h2>
               <p className="mt-6 max-w-[500px] text-[15px] leading-[1.75] text-white/60">
-                한 번 만든 게시물을 STS Shop, 소셜, 링크로 확장하세요. 크리에이터가 직접 상품을 확인하고 연결할수록 추천은 더 믿을 수 있고, 수익은 더 투명해집니다.
+                데일리 메이크업, 오늘의 파우치, 출근 준비처럼 이미 만들던 콘텐츠에 상품 객체를 태그하세요. STS는 AI가 후보를 찾고, 크리에이터가 확인한 추천을 구매까지 추적해 제휴 수익으로 연결합니다.
               </p>
               <div className="mt-8 flex flex-wrap gap-2 text-[11px] font-semibold text-white/75">
                 {['디지털 숍', '자동 제휴 링크', '성과 대시보드', '크리에이터 확정'].map((item) => (
                   <span key={item} className="rounded-full border border-white/15 bg-white/5 px-3 py-2">{item}</span>
+                ))}
+              </div>
+              <div className="mt-8 grid max-w-[500px] grid-cols-3 border-y border-white/10 py-4">
+                {[
+                  ["01", "일상 포스트", "그대로 올리기"],
+                  ["02", "AI 상품 인식", "객체로 태깅"],
+                  ["03", "구매 발생", "수익으로 적립"],
+                ].map(([no, title, body]) => (
+                  <div key={no} className="pr-3 last:pr-0">
+                    <p className="text-[10px] font-bold tracking-[0.14em] text-[#b8b1c9]">{no}</p>
+                    <p className="mt-2 text-[12px] font-bold text-white">{title}</p>
+                    <p className="mt-1 text-[10px] text-white/45">{body}</p>
+                  </div>
                 ))}
               </div>
               <div className="mt-9 flex flex-wrap gap-3">
@@ -240,8 +272,40 @@ export default function MarketingLanding() {
               <div className="rounded-[22px] bg-primary p-7 text-surface sm:p-8">
                 <p className="text-[11px] font-bold tracking-[0.16em] text-white/65">SEE IT. TAP IT. SHOP IT.</p>
                 <h3 className="mt-3 max-w-[330px] text-[24px] font-bold leading-[1.25] tracking-[-0.04em]">다음 쇼핑 경험을 STS와 함께 시작하세요.</h3>
-                <Link href="/login" className="press mt-12 inline-flex items-center gap-2 rounded-full bg-surface px-4 py-3 text-[12px] font-bold text-ink">
-                  STS 시작하기 <ArrowUpRightIcon size={15} strokeWidth={1.8} />
+                <Link href={platformHref} className="press mt-12 inline-flex items-center gap-2 rounded-full bg-surface px-4 py-3 text-[12px] font-bold text-ink">
+                  {platformLabel} <ArrowUpRightIcon size={15} strokeWidth={1.8} />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="partnerships" className="border-t border-line bg-surface">
+          <div className="mx-auto grid max-w-[1240px] gap-12 px-5 py-20 sm:px-8 lg:grid-cols-[1fr_0.85fr] lg:items-end lg:gap-24 lg:py-28">
+            <div>
+              <p className="text-[11px] font-bold tracking-[0.18em] text-primary">FOR BRANDS &amp; PLATFORMS</p>
+              <h2 className="mt-4 max-w-[680px] text-[34px] font-bold leading-[1.15] tracking-[-0.05em] sm:text-[52px]">
+                좋은 제품을,
+                <br />
+                좋은 취향 옆에 놓습니다.
+              </h2>
+              <p className="mt-6 max-w-[600px] text-[15px] leading-[1.75] text-ink-2">
+                K-뷰티 브랜드와 커머스 팀은 이미 만들어진 크리에이터 콘텐츠 안에서 제품을 발견하게 하세요. 쿠팡 판매 상품과 APR·medicube 같은 브랜드를 정확한 상품 후보, 신뢰도 높은 태깅, 구매 성과 데이터로 연결합니다.
+              </p>
+            </div>
+            <div className="rounded-[24px] bg-ink p-7 text-surface sm:p-8">
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] font-bold tracking-[0.16em] text-white/55">PARTNERSHIP INQUIRY</p>
+                <LinkIcon size={20} strokeWidth={1.45} className="text-[#b8b1c9]" />
+              </div>
+              <h3 className="mt-5 text-[24px] font-bold leading-[1.25] tracking-[-0.04em]">크리에이터 섭외부터<br />상품 도입까지 함께 설계합니다.</h3>
+              <p className="mt-4 text-[13px] leading-[1.7] text-white/55">브랜드·에이전시·플랫폼 팀이라면 STS의 K-뷰티 큐레이션과 도입 방식을 확인해 보세요.</p>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <Link href="/creator" className="press inline-flex items-center gap-2 rounded-full bg-surface px-4 py-3 text-[12px] font-bold text-ink">
+                  도입 문의 시작하기 <ArrowUpRightIcon size={15} strokeWidth={1.8} />
+                </Link>
+                <Link href="/create" className="press inline-flex items-center gap-2 rounded-full border border-white/20 px-4 py-3 text-[12px] font-bold text-surface">
+                  태깅 데모 보기
                 </Link>
               </div>
             </div>
@@ -258,10 +322,125 @@ export default function MarketingLanding() {
           <div className="flex flex-wrap gap-5 font-medium">
             <Link href="/feed" className="hover:text-ink">제품 보기</Link>
             <Link href="/creator" className="hover:text-ink">크리에이터</Link>
-            <Link href="/login" className="hover:text-ink">로그인</Link>
+            <Link href={platformHref} className="hover:text-ink">{platformLabel}</Link>
           </div>
         </div>
       </footer>
+    </div>
+  );
+}
+
+function KBeautySection() {
+  return (
+    <section id="k-beauty" className="border-b border-line bg-[#efeee9]">
+      <div className="mx-auto max-w-[1240px] px-5 py-20 sm:px-8 lg:py-28">
+        <div className="grid gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:items-end lg:gap-20">
+          <div>
+            <p className="text-[11px] font-bold tracking-[0.18em] text-primary">K-BEAUTY FIRST</p>
+            <h2 className="mt-4 text-[34px] font-bold leading-[1.15] tracking-[-0.05em] sm:text-[50px]">
+              일상 속 K-뷰티부터,
+              <br />
+              수익이 되는 발견으로.
+            </h2>
+          </div>
+          <div className="max-w-[540px] lg:justify-self-end">
+            <p className="text-[15px] leading-[1.75] text-ink-2">
+              데일리 스킨케어, 파우치 공개, 피부 고민 루틴처럼 이미 만들던 콘텐츠에 제품을 태그하세요. STS는 아누아·COSRX·메디큐브처럼 사람들이 찾는 K-뷰티 상품을 이미지 속 객체와 구매 흐름으로 연결합니다.
+            </p>
+            <div className="mt-5 flex flex-wrap gap-2 text-[11px] font-semibold text-primary">
+              <span className="rounded-full border border-primary/20 bg-white/60 px-3 py-2">쿠팡 상품 후보</span>
+              <span className="rounded-full border border-primary/20 bg-white/60 px-3 py-2">AI 객체 인식</span>
+              <span className="rounded-full border border-primary/20 bg-white/60 px-3 py-2">구매 성과 추적</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-12 grid gap-4 lg:grid-cols-3">
+          {KBEAUTY_HIGHLIGHTS.map((highlight, index) => {
+            const product = KBEAUTY_PRODUCTS.find((item) => item.id === highlight.productId);
+            if (!product) return null;
+            return <KBeautyProductCard key={product.id} product={product} highlight={highlight} index={index} />;
+          })}
+        </div>
+
+        <div className="mt-7 flex flex-col gap-4 border-t border-black/10 pt-5 text-[12px] text-ink-2 sm:flex-row sm:items-center sm:justify-between">
+          <p>상품 상세 페이지는 검증 후 연결하고, 검색 후보는 동일 상품으로 표시하지 않습니다.</p>
+          <Link href="/create" className="inline-flex items-center gap-2 font-bold text-primary">
+            내 K-뷰티 콘텐츠 태깅하기 <ArrowUpRightIcon size={15} strokeWidth={1.8} />
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function KBeautyProductCard({
+  product,
+  highlight,
+  index,
+}: {
+  product: Product;
+  highlight: (typeof KBEAUTY_HIGHLIGHTS)[number];
+  index: number;
+}) {
+  const artBackgrounds = ["bg-[#dfe8df]", "bg-[#24232a]", "bg-[#e8e1d4]"] as const;
+  const artBackground = artBackgrounds[index] ?? artBackgrounds[0];
+
+  return (
+    <article className="overflow-hidden rounded-[22px] border border-black/10 bg-surface">
+      <div className={`relative h-[270px] overflow-hidden ${artBackground}`}>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(255,255,255,0.7),transparent_48%)]" />
+        <span className={`absolute left-5 top-5 rounded-full px-2.5 py-1.5 text-[10px] font-bold ${index === 1 ? "bg-white/10 text-white/70" : "bg-white/70 text-primary"}`}>
+          {highlight.label}
+        </span>
+        <KBeautyArtwork index={index} product={product} />
+        <span className={`absolute bottom-5 right-5 rounded-full px-2.5 py-1.5 text-[10px] font-bold ${index === 1 ? "bg-white/10 text-white/70" : "bg-white/70 text-primary"}`}>
+          쿠팡 상품
+        </span>
+      </div>
+      <div className="p-5">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-[11px] font-bold tracking-[0.12em] text-primary">{product.brand}</p>
+          <span className="text-[11px] font-semibold text-ink-2">{highlight.concern}</span>
+        </div>
+        <h3 className="mt-3 min-h-[44px] text-[16px] font-bold leading-[1.4] tracking-[-0.03em]">{product.name}</h3>
+        <div className="mt-5 flex items-end justify-between border-t border-line pt-4">
+          <div>
+            <p className="text-[10px] text-ink-2">참고가</p>
+            <p className="mt-1 text-[17px] font-bold">₩{product.price.toLocaleString("ko-KR")}</p>
+          </div>
+          <a href={`/api/outbound?productId=${product.id}&source=marketing-kbeauty`} target="_blank" rel="noreferrer" className="press inline-flex items-center gap-1.5 rounded-full bg-ink px-3.5 py-2.5 text-[11px] font-bold text-surface">
+            상품 확인 <ArrowUpRightIcon size={14} strokeWidth={1.9} />
+          </a>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function KBeautyArtwork({ product, index }: { product: Product; index: number }) {
+  const bodyClasses = [
+    "h-[158px] w-[92px] rounded-[24px_24px_18px_18px] bg-white shadow-[0_18px_35px_rgba(42,57,46,0.2)]",
+    "h-[174px] w-[64px] rounded-[24px_24px_16px_16px] bg-[#111116] shadow-[0_18px_35px_rgba(0,0,0,0.45)]",
+    "h-[166px] w-[84px] rounded-[16px_16px_22px_22px] bg-[#f7f3ea] shadow-[0_18px_35px_rgba(74,62,42,0.18)]",
+  ] as const;
+  const labelClasses = ["text-primary", "text-white/80", "text-[#27231e]"] as const;
+  const productMarks = ["HEARTLEAF 77", "AGE-R", "SNAIL 96"] as const;
+  const bodyClass = bodyClasses[index] ?? bodyClasses[0];
+  const labelClass = labelClasses[index] ?? labelClasses[0];
+  const productMark = productMarks[index] ?? productMarks[0];
+
+  return (
+    <div className="absolute inset-0 flex items-center justify-center">
+      <div className="relative flex items-center justify-center">
+        <span className={`absolute -top-5 h-8 w-11 rounded-[9px_9px_4px_4px] ${index === 1 ? "bg-[#69656e]" : "bg-white/80"}`} />
+        <div className={`relative flex flex-col items-center justify-center ${bodyClass}`}>
+          <p className={`text-[9px] font-extrabold tracking-[0.12em] ${labelClass}`}>{product.brand}</p>
+          <p className={`mt-3 max-w-[62px] text-center text-[9px] font-bold leading-[1.3] tracking-[0.08em] ${labelClass}`}>{productMark}</p>
+          <span className={`mt-3 h-px w-8 ${index === 1 ? "bg-white/25" : "bg-black/15"}`} />
+          <p className={`mt-2 text-[8px] font-semibold ${labelClass}`}>{index === 1 ? "PRO" : "K-BEAUTY"}</p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -356,7 +535,8 @@ function InteractiveDemo({
                 rel="noreferrer"
                 className="press inline-flex items-center gap-1.5 rounded-full bg-primary px-3.5 py-2.5 text-[11px] font-bold text-white"
               >
-                구매처 확인 <ArrowUpRightIcon size={14} strokeWidth={1.9} />
+                {isMarketplaceDetailUrl(selectedProduct.url) ? "구매하러 가기" : "판매처 후보 확인"}
+                <ArrowUpRightIcon size={14} strokeWidth={1.9} />
               </a>
             </div>
           </div>

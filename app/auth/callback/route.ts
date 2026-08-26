@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { safeInternalPath } from "@/lib/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 /**
@@ -12,8 +13,7 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
   // 로그인 후 돌아갈 앱 내부 경로 (open redirect 방지를 위해 "/"로 시작하는 값만 허용)
-  const nextParam = searchParams.get("next");
-  const next = nextParam && nextParam.startsWith("/") ? nextParam : "/profile";
+  const next = safeInternalPath(searchParams.get("next"));
 
   const error = searchParams.get("error");
   const errorDescription = searchParams.get("error_description");
