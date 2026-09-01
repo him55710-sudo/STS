@@ -77,6 +77,11 @@ export function buildRetrievalQuery(obj: DetectedObject): RetrievalQuery {
 
   const queries: string[] = [];
 
+  const modelIdentifier = attrs?.modelIdentifiers?.[0];
+  if (modelIdentifier) {
+    queries.push([brand?.brand, modelIdentifier, nouns[0]].filter(Boolean).join(" "));
+  }
+
   // 1) 브랜드 확신 시: 브랜드 + 라벨 + 색상 (가장 구체적)
   if (brandConfident) {
     queries.push([brand.brand, color?.ko, obj.labelKo].filter(Boolean).join(" "));

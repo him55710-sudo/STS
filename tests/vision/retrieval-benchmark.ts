@@ -11,6 +11,8 @@ import { PRODUCT_TONES } from "../../lib/product-colors";
 import { searchCatalog } from "../../lib/retrieval/catalog-provider";
 import { buildRetrievalQuery } from "../../lib/retrieval/queries";
 import { canonicalClass } from "../../lib/vision-config";
+import { existsSync, readFileSync } from "node:fs";
+import { evaluateRankingCases, type RankingBenchmarkCase } from "../../lib/retrieval/benchmark-metrics";
 
 let r1 = 0, r3 = 0, r5 = 0, mrrSum = 0, total = 0;
 const misses: string[] = [];
@@ -45,3 +47,18 @@ console.log(`Recall@3        : ${((r3 / total) * 100).toFixed(0)}%`);
 console.log(`Recall@5        : ${((r5 / total) * 100).toFixed(0)}%`);
 console.log(`MRR             : ${(mrrSum / total).toFixed(3)}`);
 if (misses.length) console.log("misses:\n  " + misses.join("\n  "));
+
+const visualFixturePath = new URL("./fixtures/visual-ground-truth.json", import.meta.url);
+if (!existsSync(visualFixturePath)) {
+  console.log("visual rerank benchmark: SKIPPED (no image-level SKU ground truth fixture)");
+} else {
+  const cases = JSON.parse(readFileSync(visualFixturePath, "utf8")) as RankingBenchmarkCase[];
+  const baseline = evaluateRankingCases(cases, "baseline");
+  const visual = evaluateRankingCases(cases, "visual");
+  console.log(`visual rerank cases: ${cases.length}`);
+  console.log(`baseline Recall@1 / @3 / @5: ${(baseline.recallAt1 * 100).toFixed(1)}% / ${(baseline.recallAt3 * 100).toFixed(1)}% / ${(baseline.recallAt5 * 100).toFixed(1)}%`);
+  console.log(`visual   Recall@1 / @3 / @5: ${(visual.recallAt1 * 100).toFixed(1)}% / ${(visual.recallAt3 * 100).toFixed(1)}% / ${(visual.recallAt5 * 100).toFixed(1)}%`);
+  console.log(`baseline MRR / exact precision / false exact: ${baseline.mrr.toFixed(3)} / ${(baseline.exactSkuPrecision * 100).toFixed(1)}% / ${(baseline.falseExactRate * 100).toFixed(1)}%`);
+  console.log(`visual   MRR / exact precision / false exact: ${visual.mrr.toFixed(3)} / ${(visual.exactSkuPrecision * 100).toFixed(1)}% / ${(visual.falseExactRate * 100).toFixed(1)}%`);
+  console.log(`visual image coverage: ${(visual.visualImageCoverage * 100).toFixed(1)}%`);
+}

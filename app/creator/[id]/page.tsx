@@ -3,11 +3,18 @@
 import Link from "next/link";
 import { use, useState } from "react";
 import { CREATORS, POSTS, productById } from "@/lib/catalog";
+import { getCommerceOffersForLegacyId } from "@/lib/commerce/canonical-repository";
+import { isPurchaseEligibleOffer } from "@/lib/commerce/url-policy";
 import { compact, won } from "@/lib/format";
 import { useApp, useHydrated } from "@/lib/store";
-import { buildTrackedOutboundPath } from "@/lib/affiliate/outbound-url";
+import { buildTrackedOfferOutboundPath } from "@/lib/affiliate/outbound-url";
+import type { CommerceOffer } from "@/lib/commerce/types";
 import Avatar from "@/components/Avatar";
 import { ChevronLeftIcon } from "@/components/Icons";
+
+export function getCreatorPurchaseEligibleOffer(productId: string): CommerceOffer | null {
+  return getCommerceOffersForLegacyId(productId).find(isPurchaseEligibleOffer) ?? null;
+}
 
 /** Creator Profile — PRD §54. Posts / Shop 탭, Shop은 콘텐츠에 쓰인 상품 자동 정리 */
 export default function CreatorPage({ params }: { params: Promise<{ id: string }> }) {
@@ -22,7 +29,9 @@ export default function CreatorPage({ params }: { params: Promise<{ id: string }
   const posts = POSTS.filter((p) => p.creatorId === id);
   const shopProducts = [
     ...new Set(posts.flatMap((p) => p.objects.map((o) => o.productId)).filter((x) => x != null)),
-  ].map((pid) => productById(pid)!);
+  ]
+    .map((pid) => productById(pid))
+    .filter((product): product is NonNullable<ReturnType<typeof productById>> => product != null);
   const follows = hydrated && following.includes(id);
 
   return (
@@ -58,11 +67,6 @@ export default function CreatorPage({ params }: { params: Promise<{ id: string }
           )}
         </p>
         <p className="mt-0.5 whitespace-pre-line text-[13px] leading-relaxed text-ink-2">{creator.bio}</p>
-        {creator.verified && (
-          <span className="mt-2 inline-block rounded-full bg-primary-soft px-2.5 py-1 text-[11px] font-semibold text-primary">
-            수익 공유 크리에이터 · 제휴 판매 수수료 70% 배분
-          </span>
-        )}
         <div className="mt-3 flex gap-2">
           <button
             onClick={() => toggleFollow(id)}
@@ -128,44 +132,60 @@ export default function CreatorPage({ params }: { params: Promise<{ id: string }
             <>
               <p className="px-1 pb-2 text-[13px] font-bold">추천 픽</p>
               <div className="no-scrollbar mb-4 flex gap-2.5 overflow-x-auto">
-                {shopProducts.slice(0, 4).map((p) => (
-                  <button
-                    key={`feat-${p.id}`}
-                    onClick={() => {
-                      track("outbound_click", { productId: p.id });
-                      window.open(buildTrackedOutboundPath(p.id, { creatorId: id }), "_blank", "noopener,noreferrer");
-                    }}
-                    className="press w-[104px] shrink-0 text-left"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={p.image} alt={p.name} className="h-[104px] w-[104px] rounded-(--radius-prod) border border-line object-cover" />
-                    <p className="mt-1 truncate text-[11px] text-ink-2">{p.brand}</p>
-                    <p className="truncate text-[12px] font-semibold">{won(p.price)}</p>
-                  </button>
-                ))}
+                {shopProducts.slice(0, 4).map((p) => {
+                  const offer = getCreatorPurchaseEligibleOffer(p.id);
+                  const outboundPath = offer
+                    ? buildTrackedOfferOutboundPath(offer.id, { creatorId: id })
+                    : null;
+                  return (
+                    <button
+                      key={`feat-${p.id}`}
+                      disabled={!outboundPath}
+                      onClick={() => {
+                        if (!outboundPath) return;
+                        track("outbound_click", { productId: p.id });
+                        window.open(outboundPath, "_blank", "noopener,noreferrer");
+                      }}
+                      className="press w-[104px] shrink-0 text-left disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={p.image} alt={p.name} className="h-[104px] w-[104px] rounded-(--radius-prod) border border-line object-cover" />
+                      <p className="mt-1 truncate text-[11px] text-ink-2">{p.brand}</p>
+                      <p className="truncate text-[12px] font-semibold">{won(p.price)}</p>
+                    </button>
+                  );
+                })}
               </div>
               <p className="px-1 pb-2 text-[13px] font-bold">룩으로 쇼핑</p>
             </>
           )}
           <div className="grid grid-cols-2 gap-2">
-          {shopProducts.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => {
-                track("outbound_click", { productId: p.id });
-                window.open(buildTrackedOutboundPath(p.id, { creatorId: id }), "_blank", "noopener,noreferrer");
-              }}
-              className="overflow-hidden rounded-(--radius-card) border border-line bg-surface text-left"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={p.image} alt={p.name} className="aspect-square w-full object-cover" />
-              <div className="px-2.5 py-2">
-                <p className="text-[11px] text-ink-2">{p.brand}</p>
-                <p className="truncate text-[12px] font-medium">{p.name}</p>
-                <p className="mt-0.5 text-[13px] font-semibold">{won(p.price)}</p>
-              </div>
-            </button>
-          ))}
+          {shopProducts.map((p) => {
+            const offer = getCreatorPurchaseEligibleOffer(p.id);
+            const outboundPath = offer
+              ? buildTrackedOfferOutboundPath(offer.id, { creatorId: id })
+              : null;
+            return (
+              <button
+                key={p.id}
+                disabled={!outboundPath}
+                onClick={() => {
+                  if (!outboundPath) return;
+                  track("outbound_click", { productId: p.id });
+                  window.open(outboundPath, "_blank", "noopener,noreferrer");
+                }}
+                className="overflow-hidden rounded-(--radius-card) border border-line bg-surface text-left disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={p.image} alt={p.name} className="aspect-square w-full object-cover" />
+                <div className="px-2.5 py-2">
+                  <p className="text-[11px] text-ink-2">{p.brand}</p>
+                  <p className="truncate text-[12px] font-medium">{p.name}</p>
+                  <p className="mt-0.5 text-[13px] font-semibold">{won(p.price)}</p>
+                </div>
+              </button>
+            );
+          })}
           {shopProducts.length === 0 && (
             <p className="col-span-2 py-12 text-center text-sm text-ink-2">아직 연결된 상품이 없어요.</p>
           )}

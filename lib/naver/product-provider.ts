@@ -24,6 +24,10 @@ export interface NaverWebCandidate {
   price: { value: number | null; currency: string | null };
   retailer: string;
   url: string;
+  detailUrl: string | null;
+  discoveryUrl: string | null;
+  detailPageVerified: boolean;
+  purchaseEligible: boolean;
   imageUrls: string[];
   source: string;
   sourceUrl?: string;
@@ -180,6 +184,10 @@ export async function searchWebkrProducts(
         price: { value: extractPriceKRW(`${name} ${desc}`), currency: "KRW" },
         retailer: mall.name,
         url,
+        detailUrl: url,
+        discoveryUrl: null,
+        detailPageVerified: false,
+        purchaseEligible: false,
         imageUrls: [],
         source: "naver-web",
         sourceUrl: url,
@@ -235,6 +243,10 @@ export async function searchImageTitleProducts(queries: string[]): Promise<Naver
           price: { value: null, currency: null },
           retailer: mallName?.trim() || "네이버쇼핑",
           url: nvDeeplink(name),
+          detailUrl: null,
+          discoveryUrl: nvDeeplink(name),
+          detailPageVerified: false,
+          purchaseEligible: false,
           imageUrls: [],
           source: "naver-image-title",
           pageTrust: 0.6,

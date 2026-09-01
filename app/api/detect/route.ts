@@ -1,8 +1,114 @@
 import { NextRequest, NextResponse } from "next/server";
 import { extractJson, visionJson } from "@/lib/llm";
 import type { Category, DetectedObject } from "@/lib/types";
+import { z } from "zod";
 
 export const maxDuration = 40;
+export const runtime = "nodejs";
+
+export const MAX_IMAGE_BYTES = 100 * 1024;
+export const MAX_IMAGE_PIXELS = 4_000_000;
+const MAX_DATA_URL_LENGTH = 150_000;
+
+const requestSchema = z.strictObject({
+  image: z.string().min(1).max(MAX_DATA_URL_LENGTH),
+});
+
+const PNG_SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+const IMAGE_DATA_URL_PATTERN = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/]+={0,2})$/i;
+
+type ImageMimeType = "image/jpeg" | "image/png" | "image/webp";
+
+type ImageDimensions = { readonly width: number; readonly height: number };
+
+type ImageParseResult =
+  | { readonly kind: "valid" }
+  | { readonly kind: "invalid" }
+  | { readonly kind: "too-large" };
+
+const JPEG_SOF_MARKERS = new Set([0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf]);
+
+function imageDimensions(bytes: Buffer, mimeType: ImageMimeType): ImageDimensions | null {
+  switch (mimeType) {
+    case "image/png":
+      if (bytes.length < 24 || !bytes.subarray(0, 8).equals(PNG_SIGNATURE) || bytes.toString("ascii", 12, 16) !== "IHDR") return null;
+      return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
+    case "image/jpeg":
+      return jpegDimensions(bytes);
+    case "image/webp":
+      return webpDimensions(bytes);
+    default:
+      return null;
+  }
+}
+
+function jpegDimensions(bytes: Buffer): ImageDimensions | null {
+  if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8) return null;
+  let offset = 2;
+  while (offset + 3 < bytes.length) {
+    if (bytes[offset] !== 0xff) {
+      offset += 1;
+      continue;
+    }
+    while (offset < bytes.length && bytes[offset] === 0xff) offset += 1;
+    const marker = bytes[offset];
+    if (marker === undefined) return null;
+    offset += 1;
+    if (marker === 0xd9 || marker === 0xda) return null;
+    if ((marker >= 0xd0 && marker <= 0xd8) || marker === 0x01) continue;
+    if (offset + 1 >= bytes.length) return null;
+    const segmentLength = bytes.readUInt16BE(offset);
+    if (segmentLength < 2 || offset + segmentLength > bytes.length) return null;
+    if (JPEG_SOF_MARKERS.has(marker)) {
+      if (segmentLength < 7) return null;
+      return { height: bytes.readUInt16BE(offset + 3), width: bytes.readUInt16BE(offset + 5) };
+    }
+    offset += segmentLength;
+  }
+  return null;
+}
+
+function webpDimensions(bytes: Buffer): ImageDimensions | null {
+  if (bytes.length < 30 || bytes.toString("ascii", 0, 4) !== "RIFF" || bytes.toString("ascii", 8, 12) !== "WEBP") return null;
+  const chunk = bytes.toString("ascii", 12, 16);
+  if (chunk === "VP8X") {
+    return {
+      width: 1 + bytes.readUIntLE(24, 3),
+      height: 1 + bytes.readUIntLE(27, 3),
+    };
+  }
+  if (chunk === "VP8L") {
+    if (bytes.length < 27 || bytes[21] !== 0x2f) return null;
+    return {
+      width: 1 + (bytes[22] | (bytes[23] << 8) | ((bytes[24] & 0x3f) << 16)),
+      height: 1 + ((bytes[24] >> 6) | (bytes[25] << 2) | ((bytes[26] & 0xf) << 10)),
+    };
+  }
+  if (chunk === "VP8 ") {
+    for (let offset = 20; offset + 9 < bytes.length; offset += 1) {
+      if (bytes[offset] === 0x9d && bytes[offset + 1] === 0x01 && bytes[offset + 2] === 0x2a) {
+        return { width: bytes.readUInt16LE(offset + 3) & 0x3fff, height: bytes.readUInt16LE(offset + 5) & 0x3fff };
+      }
+    }
+  }
+  return null;
+}
+
+function parseImageDataUrl(dataUrl: string): ImageParseResult {
+  const match = IMAGE_DATA_URL_PATTERN.exec(dataUrl);
+  if (!match) return { kind: "invalid" };
+  const mimeType = match[1]?.toLowerCase();
+  const payload = match[2];
+  if (!payload || (payload.length & 3) !== 0 || (mimeType !== "image/jpeg" && mimeType !== "image/png" && mimeType !== "image/webp")) return { kind: "invalid" };
+  const padding = payload.endsWith("==") ? 2 : payload.endsWith("=") ? 1 : 0;
+  const decodedLength = (payload.length / 4) * 3 - padding;
+  if (decodedLength <= 0 || decodedLength > MAX_IMAGE_BYTES) return { kind: "too-large" };
+  const bytes = Buffer.from(payload, "base64");
+  const dimensions = imageDimensions(bytes, mimeType);
+  if (!dimensions || dimensions.width <= 0 || dimensions.height <= 0) return { kind: "invalid" };
+  if (dimensions.width * dimensions.height > MAX_IMAGE_PIXELS) return { kind: "too-large" };
+  return { kind: "valid" };
+}
 
 /**
  * AI Object Detection — 사업계획서 §09 "Detect" 단계.
@@ -40,6 +146,8 @@ Additionally, for each object extract structured retrieval attributes:
 - pattern: one of solid / stripe / check / graphic / logo / denim / other.
 - logo: detected true/false; if true add text (letters if readable), description (shape/placement, e.g. "black heart with letter A, left chest"), confidence.
 - visibleText: any readable text on the item.
+- modelIdentifiers: exact SKU, style code, model code, barcode or GTIN text only when readable; otherwise an empty array.
+- materials: visually supported material terms such as oxford cotton, denim, suede, leather, or knit; otherwise an empty array.
 - distinctiveFeatures: 1-3 short phrases a shopper would use (e.g. "ribbed crewneck", "gum sole", "flap pocket").
 - fit: short fit descriptor if apparent (e.g. "oversized", "slim", "wide leg").`;
 
@@ -58,6 +166,8 @@ const JSON_HINT = `Return ONLY JSON in this exact shape (no markdown fence, no p
   "pattern":"solid|stripe|check|graphic|logo|denim|other",
   "logo":{"detected":true|false,"text":"","description":"","confidence":0.0-1.0},
   "visibleText":[""],
+  "modelIdentifiers":[""],
+  "materials":[""],
   "distinctiveFeatures":["ribbed crewneck"],
   "fit":"oversized|slim|wide leg|..."
 }]}`;
@@ -69,15 +179,27 @@ const MOCK: DetectedObject[] = [
 ];
 
 export async function POST(req: NextRequest) {
-  let body: { image?: string };
+  let rawBody: unknown;
   try {
-    body = await req.json();
+    rawBody = await req.json();
   } catch {
     return NextResponse.json({ error: "invalid body" }, { status: 400 });
   }
-  const image = body.image;
-  if (!image?.startsWith("data:image/")) {
+  const parsedBody = requestSchema.safeParse(rawBody);
+  if (!parsedBody.success) {
     return NextResponse.json({ error: "image dataURL required" }, { status: 400 });
+  }
+  const image = parsedBody.data.image;
+  const parsedImage = parseImageDataUrl(image);
+  switch (parsedImage.kind) {
+    case "invalid":
+      return NextResponse.json({ error: "invalid image dataURL" }, { status: 400 });
+    case "too-large":
+      return NextResponse.json({ error: "image payload exceeds safety limits" }, { status: 413 });
+    case "valid":
+      break;
+    default:
+      return assertNever(parsedImage);
   }
 
   if (process.env.VISION_PIPELINE === "legacy") {
@@ -121,6 +243,8 @@ export async function POST(req: NextRequest) {
       pattern?: "solid" | "stripe" | "check" | "graphic" | "logo" | "denim" | "other";
       logo?: { detected: boolean; text?: string; description?: string; confidence: number };
       visibleText?: string[];
+      modelIdentifiers?: string[];
+      materials?: string[];
       distinctiveFeatures?: string[];
       fit?: string;
     }>;
@@ -146,6 +270,8 @@ export async function POST(req: NextRequest) {
             pattern: o.pattern,
             logo: o.logo,
             visibleText: o.visibleText?.slice(0, 3),
+            modelIdentifiers: o.modelIdentifiers?.filter(Boolean).slice(0, 3),
+            materials: o.materials?.filter(Boolean).slice(0, 3),
             distinctiveFeatures: o.distinctiveFeatures?.slice(0, 3) ?? [],
             fit: o.fit,
           },
@@ -175,3 +301,7 @@ export async function POST(req: NextRequest) {
 }
 
 const clamp = (n: number) => Math.min(1, Math.max(0, n));
+
+function assertNever(value: never): never {
+  throw new Error(`unexpected image validation result: ${JSON.stringify(value)}`);
+}

@@ -37,3 +37,21 @@ export async function createSupabaseServerClient() {
     },
   });
 }
+
+export async function isAdmin(): Promise<boolean> {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const { data, error } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", user.id)
+    .eq("role", "admin")
+    .maybeSingle();
+
+  if (error) throw error;
+  return Boolean(data);
+}

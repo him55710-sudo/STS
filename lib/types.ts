@@ -2,8 +2,51 @@
 
 export type Category = "fashion" | "beauty" | "interior" | "tech" | "lifestyle";
 
-/** exact / similar 구분은 UI·데이터 모두에서 필수 (PRD Principle 4, 사업계획서 §09) */
-export type Exactness = "exact" | "similar";
+export const CONTENT_KINDS = ["photo", "carousel", "reel", "video", "story", "lookbook"] as const;
+export type ContentKind = (typeof CONTENT_KINDS)[number];
+
+export const MEDIA_ASSET_KINDS = ["image", "video", "embed"] as const;
+export type MediaAssetKind = (typeof MEDIA_ASSET_KINDS)[number];
+
+export const SOCIAL_SOURCE_KINDS = ["demo_seed", "user_upload", "licensed_editorial", "brand_feed", "official_embed"] as const;
+export type SocialSourceKind = (typeof SOCIAL_SOURCE_KINDS)[number];
+
+export const SOCIAL_RIGHTS_STATUSES = ["approved", "pending", "expired", "revoked", "takedown", "blocked"] as const;
+export type SocialRightsStatus = (typeof SOCIAL_RIGHTS_STATUSES)[number];
+
+export const SOCIAL_DISCLOSURE_KINDS = ["none", "affiliate", "sponsored", "editorial", "official", "partner"] as const;
+export type SocialDisclosureKind = (typeof SOCIAL_DISCLOSURE_KINDS)[number];
+
+export const CANONICAL_MATCH_STATES = ["exact", "likely", "similar", "review", "unverified"] as const;
+export type CanonicalMatchState = (typeof CANONICAL_MATCH_STATES)[number];
+
+export const LEGACY_EXACTNESS_STATES = ["exact", "similar", "unresolved"] as const;
+export type LegacyExactness = (typeof LEGACY_EXACTNESS_STATES)[number];
+
+export const LEGACY_EXACTNESS_TO_MATCH_STATE = {
+  exact: "exact",
+  similar: "similar",
+  unresolved: "unverified",
+} as const satisfies Record<LegacyExactness, CanonicalMatchState>;
+
+export const POST_OBJECT_EXACTNESS_SQL_VALUES = CANONICAL_MATCH_STATES;
+
+export function mapLegacyExactnessToMatchState(value: LegacyExactness): CanonicalMatchState {
+  return LEGACY_EXACTNESS_TO_MATCH_STATE[value];
+}
+
+export type Exactness = CanonicalMatchState;
+
+export const CREATOR_ENTERED_PRODUCT_EXACTNESS = "review" as const satisfies Exactness;
+
+export const PRODUCT_SOURCES = [
+  "demo-seed",
+  "catalog-api",
+  "catalog-import",
+  "local-fixture",
+  "user-upload",
+] as const;
+export type ProductSource = (typeof PRODUCT_SOURCES)[number];
 
 export interface Product {
   id: string;
@@ -21,11 +64,33 @@ export interface Product {
   /** 제휴 수수료율 (0~1). 크리에이터는 이 중 70%를 배분받는다 */
   commissionRate?: number;
   similarIds: string[];
+  is_demo?: true;
+  source?: ProductSource;
+  sourceProductId?: string;
+  identityEvidence?: readonly string[];
+}
+
+export function isProvenanceBackedCatalogProduct(product: Product | null | undefined): boolean {
+  if (!product || product.is_demo === true || !product.sourceProductId?.trim()) return false;
+  if (
+    product.source !== "catalog-api" &&
+    product.source !== "catalog-import" &&
+    product.source !== "local-fixture"
+  ) {
+    return false;
+  }
+  return product.identityEvidence?.some((value) => value.trim().length > 0) ?? false;
+}
+
+export function resolveExactnessForProduct(product: Product | null | undefined, requested: Exactness): Exactness {
+  if (requested !== "exact") return requested;
+  return isProvenanceBackedCatalogProduct(product) ? "exact" : CREATOR_ENTERED_PRODUCT_EXACTNESS;
 }
 
 /** 콘텐츠 내 구매 가능 객체 (ObjectTag) — 좌표는 0~1 정규화 */
 export interface ObjectTag {
   id: string;
+  ownerAssetId?: string;
   label: string;
   /** bounding geometry (normalized) */
   x: number;
@@ -51,20 +116,77 @@ export interface ObjectTag {
   confidence: number;
 }
 
-export interface Post {
-  id: string;
-  creatorId: string;
-  image: string;
+export type MediaDimensions = { readonly width: number; readonly height: number };
+export type MediaPoster = { readonly url: string; readonly dimensions: MediaDimensions };
+export type MediaManifest = { readonly kind: "hls"; readonly url: string };
+export type MediaObjectTag = ObjectTag & { readonly ownerAssetId: string };
+
+export type SocialMediaAsset = {
+  readonly id: string;
+  readonly order: number;
+  readonly kind: MediaAssetKind;
+  readonly url: string;
+  readonly dimensions: MediaDimensions;
+  readonly poster: MediaPoster | null;
+  readonly durationMs: number | null;
+  readonly manifest: MediaManifest | null;
+  readonly objectTags: readonly MediaObjectTag[];
+};
+
+export type SocialSourceRecord = { readonly kind: SocialSourceKind; readonly provider: string; readonly identity: string; readonly canonicalUrl: string | null; readonly externalId?: string; readonly parentIdentity?: string };
+export type SocialDisclosure = { readonly kind: SocialDisclosureKind; readonly label: string | null };
+
+export type SocialRights = {
+  readonly kind: "user_owned" | "licensed" | "official_embed" | "demo";
+  readonly status: SocialRightsStatus;
+  readonly canDisplay: boolean;
+  readonly canUseForCommerceMatching: boolean;
+  readonly canRedistribute?: boolean;
+  readonly evidence: string | null;
+  readonly expiresAt: string | null;
+};
+
+export type ContentSourceLabel = "demo-seed" | "user-upload" | "licensed-editorial" | "brand-feed" | "official-embed";
+
+type BasePost = {
+  readonly id: string;
+  readonly creatorId: string;
+  readonly image: string;
   /** width/height 비율 (ex. 0.75 = 3:4) */
-  ratio: number;
-  caption: string;
-  category: Category;
-  likes: number;
-  objects: ObjectTag[];
-  createdAt: string;
+  readonly ratio: number;
+  readonly caption: string;
+  readonly category: Category;
+  readonly likes: number;
+  readonly objects: ObjectTag[];
+  readonly createdAt: string;
   /** 크리에이터 업로드 게시물 여부 (런타임 생성) */
-  isUserPost?: boolean;
-}
+  readonly isUserPost?: boolean;
+  readonly is_demo?: true;
+  readonly source?: ContentSourceLabel;
+};
+
+type SocialPostFields<TKind extends ContentKind> = {
+  readonly contentKind: TKind;
+  readonly assets: readonly SocialMediaAsset[];
+  readonly sourceRecord: SocialSourceRecord;
+  readonly disclosure: SocialDisclosure;
+  readonly rights: SocialRights;
+};
+
+export type LegacyPost = BasePost & {
+  readonly contentKind?: undefined;
+};
+
+export type PhotoPost = BasePost & SocialPostFields<"photo">;
+export type CarouselPost = BasePost & SocialPostFields<"carousel">;
+export type ReelPost = BasePost & SocialPostFields<"reel">;
+export type VideoPost = BasePost & SocialPostFields<"video">;
+export type StoryPost = BasePost & SocialPostFields<"story">;
+export type LookbookPost = BasePost & SocialPostFields<"lookbook">;
+
+export type SocialPost = PhotoPost | CarouselPost | ReelPost | VideoPost | StoryPost | LookbookPost;
+
+export type Post = LegacyPost | SocialPost;
 
 export interface Creator {
   id: string;
@@ -79,6 +201,8 @@ export interface Creator {
   avatarImage?: string;
   /** 수익 공유 파트너 크리에이터 (인증 배지) */
   verified?: boolean;
+  is_demo?: true;
+  source?: "demo-seed";
 }
 
 /** 로그인 세션 (Google=Supabase OAuth, kakao=데모) */
@@ -153,5 +277,7 @@ export interface FashionAttributes {
   fit?: string;
   logo?: { detected: boolean; text?: string; description?: string; confidence: number };
   visibleText?: string[];
+  modelIdentifiers?: string[];
+  materials?: string[];
   distinctiveFeatures: string[];
 }

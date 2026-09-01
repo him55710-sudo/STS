@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useState } from "react";
 import { POSTS } from "@/lib/catalog";
 import { won } from "@/lib/format";
+import { resolvePurchaseCtaDecision } from "@/lib/commerce/cta-policy";
 import { useApp, useHydrated, useProductLookup } from "@/lib/store";
-import { buildTrackedOutboundPath } from "@/lib/affiliate/outbound-url";
+import { buildTrackedProductOfferPath } from "@/lib/affiliate/outbound-url";
 import { ArrowUpRightIcon, BookmarkIcon } from "@/components/Icons";
 
 /** Saved — 상품/게시물 탭 (PRD §10) */
@@ -49,7 +50,35 @@ export default function SavedPage() {
       {tab === "products" ? (
         products.length ? (
           <ul className="divide-y divide-line">
-            {products.map((p) => (
+            {products.map((p) => {
+              const outboundPath = buildTrackedProductOfferPath(p.id);
+              const decision = resolvePurchaseCtaDecision(outboundPath ? {
+                id: p.id,
+                canonicalProductId: null,
+                provider: "direct",
+                sourceIdentity: null,
+                merchant: p.retailer,
+                title: p.name,
+                detailUrl: p.url,
+                discoveryUrl: null,
+                affiliateUrl: p.affiliate ? p.url : null,
+                imageUrl: p.image,
+                imageVariants: [],
+                price: p.price,
+                currency: p.currency,
+                shippingPrice: null,
+                availability: "unknown",
+                stock: { status: "unknown", quantity: null },
+                commissionRate: p.commissionRate ?? null,
+                matchState: "exact",
+                offerLifecycle: "active",
+                freshness: { observedAt: new Date().toISOString(), staleAfter: null },
+                identityScore: 1,
+                evidence: [],
+                verificationEvidence: [],
+                detailPageVerified: true,
+              } : null);
+              return (
               <li key={p.id} className="flex items-center gap-3.5 bg-surface px-4 py-3">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -63,12 +92,14 @@ export default function SavedPage() {
                   <p className="mt-0.5 text-[15px] font-semibold">{won(p.price)}</p>
                 </div>
                 <button
+                  disabled={!outboundPath || decision.kind !== "purchase"}
                   onClick={() => {
+                    if (!outboundPath || decision.kind !== "purchase") return;
                     track("outbound_click", { productId: p.id });
-                    window.open(buildTrackedOutboundPath(p.id), "_blank", "noopener,noreferrer");
+                    window.open(outboundPath, "_blank", "noopener,noreferrer");
                   }}
-                  aria-label="구매하러 가기"
-                  className="flex h-9 w-9 items-center justify-center rounded-(--radius-btn) bg-ink text-surface"
+                  aria-label={decision.kind === "purchase" ? "검증된 상품 구매하기" : "리뷰/유사 상품만 보기"}
+                  className="flex h-9 w-9 items-center justify-center rounded-(--radius-btn) bg-ink text-surface disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <ArrowUpRightIcon size={16} />
                 </button>
@@ -80,7 +111,8 @@ export default function SavedPage() {
                   <BookmarkIcon size={16} filled />
                 </button>
               </li>
-            ))}
+              );
+            })}
           </ul>
         ) : (
           <Empty text="콘텐츠 속 물건을 탭하고 저장해보세요." />
@@ -106,7 +138,7 @@ function Empty({ text }: { text: string }) {
     <div className="flex flex-col items-center gap-2 px-4 py-20 text-center">
       <BookmarkIcon size={28} className="text-line" strokeWidth={1.25} />
       <p className="text-sm text-ink-2">{text}</p>
-      <Link href="/" className="mt-2 rounded-(--radius-btn) bg-ink px-4 py-2 text-[13px] font-semibold text-surface">
+      <Link href="/home" className="mt-2 rounded-(--radius-btn) bg-ink px-4 py-2 text-[13px] font-semibold text-surface">
         피드 둘러보기
       </Link>
     </div>

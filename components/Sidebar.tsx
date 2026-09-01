@@ -28,9 +28,13 @@ export default function Sidebar() {
   const hydrated = useHydrated();
   const user = useApp((s) => s.user);
 
+  if (pathname.startsWith("/demo") || pathname.startsWith("/beauty-demo")) {
+    return null;
+  }
+
   return (
     <aside className="sticky top-0 hidden h-dvh w-[232px] shrink-0 flex-col border-r border-line bg-bg px-4 py-6 lg:flex">
-      <Link href="/" className="px-3 text-[22px] font-extrabold tracking-[0.14em]">
+      <Link href="/home" className="px-3 text-[22px] font-extrabold tracking-[0.14em]">
         STS<span className="text-primary">.</span>
       </Link>
       <p className="mt-1 px-3 text-[11px] text-ink-2">See it. Tap it. Shop it.</p>

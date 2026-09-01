@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { POSTS } from "@/lib/catalog";
 import { useApp, useHydrated } from "@/lib/store";
 import PostCard from "@/components/PostCard";
+import StoryRail from "@/components/StoryRail";
 
 export default function FeedPage() {
   const [tab, setTab] = useState<"foryou" | "following">("foryou");
@@ -52,6 +53,14 @@ export default function FeedPage() {
       </header>
 
       <div className="flex flex-col">
+        <StoryRail />
+        <section className="flex items-center justify-between border-b border-line bg-bg px-4 py-3">
+          <div>
+            <p className="text-[14px] font-bold">오늘의 새 콘텐츠</p>
+            <p className="mt-0.5 text-[11px] text-ink-2">다양한 크리에이터의 사진과 검증된 상품 태그를 둘러보세요.</p>
+          </div>
+          <span className="rounded-(--radius-btn) bg-surface-2 px-2.5 py-1 text-[11px] font-semibold text-primary">LIVE DEMO</span>
+        </section>
         {feed.map((post, i) => (
           <div key={post.id} className="card-in" style={{ animationDelay: `${Math.min(i, 4) * 60}ms` }}>
             <PostCard post={post} />

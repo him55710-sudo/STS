@@ -412,3 +412,88 @@ v3까지 웹 후보의 재랭킹은 `visual = 0` 이었다(`RANK_WEIGHTS.visual 
 ## 현재 서비스 영향: 없음
 `activeChain: ["letsur","gemini"]` 이고 Gemini 키가 설정돼 있어 자동 승격된다.
 Letsur 활성화는 provider 교체 건이지 기능 차단 요인이 아니다.
+
+---
+
+# fashion_v4 — 객체 크롭 기반 상품 이미지 검색·동일 상품 검증
+
+## 실제 실행 경로
+
+```
+업로드 원본
+  → Gemini 객체 탐지 + MediaPipe 실루엣
+  → 객체 bbox별 8% padding crop + 실루엣이 있으면 흰 배경으로 분리
+  → 최대 448px JPEG, 96KB 이하로 반복 압축
+  → AliExpress Affiliate Image Search (실제 상품·이미지·가격·promotion link)
+  → 상위 3개 후보 이미지 재수집
+  → Gemini 원본 객체/후보 다중 이미지 identity 검증
+  → catalog + AliExpress + ADPICK + Naver web detail URL + LLM 후보 병합
+  → visual/brand/logo/OCR/text/page trust 재랭킹
+  → EXACT / LIKELY / SIMILAR 보수적 등급화
+```
+
+`EXACT`는 아래 조건을 모두 만족할 때만 자동 부여한다.
+
+- Gemini 동일 제품 확률 0.93 이상
+- 시각 유사도 0.90 이상
+- 최종 복합 점수 0.78 이상
+- 브랜드·로고·상품명 중 하나의 identity 근거 0.60 이상
+- 버튼, 봉제선, 프린트, 밑창, 하드웨어 등 시각적 충돌 0개
+
+이미지 검증을 거치지 않은 로컬 카탈로그와 일반 웹 검색 후보는 최대 `LIKELY`다.
+또한 AI 웹 후보를 클릭하는 것만으로 creator 확정값이 `exact`가 되던 기존 동작을 제거했다.
+
+## 판매처 연결 원칙
+
+| 판매처 | STS 연결 방식 | 자동 이미지 검색 | 제한 |
+|---|---|---:|---|
+| AliExpress | 공식 Affiliate Image Search + promotion link | 예 | Open Platform 앱 키·signature 필요 |
+| ADPICK/LinkPrice | 기존 제휴 검색·딥링크 | 아니오 | 계약된 판매처만 수수료 발생 |
+| 네이버 | API HUB 이미지 색 검증 + webkr 상세 URL | 부분 | 쇼핑 검색 API는 2026-07-31 종료 |
+| 무신사 | 네이버 webkr에서 검증된 `/products/{id}` 상세 URL만 | 아니오 | 공개 구매자용 전체 상품 API 없음 |
+| 쿠팡 | 검증된 상세 URL/제휴 네트워크만 | 아니오 | 공개 Open API는 판매자 상품 운영 범위이며 전체 쇼핑 검색 API가 아님 |
+| Amazon | Creators API 어댑터 추가 가능 | 아니오 | Associates 자격·자격 판매·credential 필요, 키워드 검색 중심 |
+| Shopify | 지정 스토어별 Storefront API 어댑터 추가 가능 | 아니오 | Shopify 전체를 검색하는 글로벌 카탈로그 API가 아님 |
+
+검색 페이지를 exact 상품 링크처럼 표시하지 않는다. 실판매 상세 URL 또는 공식 promotion
+link가 없으면 후보는 검색 폴백으로 명시하고 수수료 가능 상품으로 계산하지 않는다.
+
+## 환경변수와 진단
+
+필수 서버 환경변수:
+
+```
+ALIEXPRESS_APP_KEY
+ALIEXPRESS_APP_SECRET
+ALIEXPRESS_APP_SIGNATURE
+```
+
+선택 환경변수:
+
+```
+ALIEXPRESS_TRACKING_ID
+ALIEXPRESS_MEDIA_USER_ID
+ALIEXPRESS_API_ENDPOINT=https://eco.taobao.com/router/rest
+```
+
+`/api/vision-health`의 `aliExpress.configured`가 `true`여야 실제 이미지 검색이 실행된다.
+Gemini 키도 있으면 `exactVerification`이 활성화된다. 어느 키가 없어도 기존 catalog,
+ADPICK, Naver web, LLM 폴백은 계속 동작한다.
+
+## 다음 GPU 검색 서비스 설계
+
+트래픽과 자체 상품 카탈로그가 충분해지면 서버리스 라우트 앞에 별도 GPU 서비스를 둔다.
+현재 Next.js/Vercel 프로세스에 대형 모델을 직접 적재하지 않는다.
+
+1. Grounding DINO로 자유 텍스트 기반 open-set detector를 실행한다.
+2. SAM 2로 객체 마스크와 배경 제거 crop을 만든다.
+3. FashionCLIP과 SigLIP 2의 정규화 임베딩을 함께 생성한다.
+4. pgvector 또는 FAISS에서 `category hard filter → image ANN top 200`을 수행한다.
+5. 브랜드/OCR/GTIN/model code를 hard 또는 strong filter로 적용한다.
+6. 상위 20개를 cross-encoder 또는 Gemini 다중 이미지 검증으로 재랭킹한다.
+7. creator 수정 결과를 hard negative로 저장해 카테고리별 threshold를 보정한다.
+
+오픈소스 기준선은 Grounding DINO(Apache-2.0), SAM 2(Apache-2.0/BSD),
+FashionCLIP(MIT), Google SigLIP 2(Apache-2.0)다. 정확도 평가는 랜덤 상품이 아니라
+`same SKU / same family / visually similar / unrelated` 4단계 라벨로 Recall@K,
+MRR, exact precision, false-exact rate를 각각 측정한다.

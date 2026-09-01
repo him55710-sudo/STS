@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { POSTS, PRODUCTS, creatorById } from "@/lib/catalog";
 import { useApp, useHydrated } from "@/lib/store";
@@ -23,6 +24,29 @@ export default function AdminPage() {
   const { userPosts, events, customProducts } = useApp();
   const allPosts = hydrated ? [...userPosts, ...POSTS] : POSTS;
   const recent = hydrated ? [...events].reverse().slice(0, 30) : [];
+  const [preview, setPreview] = useState<AdminPreviewResponse | null>(null);
+  const [accessState, setAccessState] = useState<"loading" | "ready" | "denied">("loading");
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadPreview() {
+      const response = await fetch("/api/admin/catalog/preview", { cache: "no-store" });
+      if (!active) return;
+      if (!response.ok) {
+        setAccessState("denied");
+        return;
+      }
+      const data = (await response.json()) as AdminPreviewResponse;
+      setPreview(data);
+      setAccessState("ready");
+    }
+
+    void loadPreview();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
     <div>
@@ -81,10 +105,87 @@ export default function AdminPage() {
           </p>
         )}
       </Section>
+
+      <Section title="Import preview / quarantine / metrics">
+        {accessState === "loading" ? (
+          <p className="rounded-(--radius-card) border border-line bg-surface px-3 py-6 text-center text-[12px] text-ink-2">
+            관리자 미리보기를 불러오는 중이에요.
+          </p>
+        ) : accessState === "denied" || !preview ? (
+          <p className="rounded-(--radius-card) border border-line bg-surface px-3 py-6 text-center text-[12px] text-ink-2">
+            관리자 세션이 없어서 미리보기를 볼 수 없어요.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            <div className="grid grid-cols-3 gap-2.5">
+              <Card label="직접 링크" value={Math.round(preview.metrics.directDetailCoverage * 100)} />
+              <Card label="제휴 링크" value={Math.round(preview.metrics.affiliateCoverage * 100)} />
+              <Card label="격리율" value={Math.round(preview.metrics.quarantineRate * 100)} />
+            </div>
+            <div className="overflow-hidden rounded-(--radius-card) border border-line bg-surface">
+              {preview.preview.quarantined.map((item) => (
+                <div key={`${item.rowNumber}-${item.code}`} className="flex items-start gap-3 border-b border-line px-3 py-2.5 last:border-b-0">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[12px] font-medium">{item.message}</p>
+                    <p className="text-[11px] text-ink-2">
+                      row {item.rowNumber} · {item.code}
+                      {item.field ? ` · ${item.field}` : ""}
+                    </p>
+                  </div>
+                </div>
+              ))}
+              {preview.preview.quarantined.length === 0 ? (
+                <div className="px-3 py-6 text-center text-[12px] text-ink-2">격리된 행이 없어요.</div>
+              ) : null}
+            </div>
+          </div>
+        )}
+      </Section>
       <div className="h-8" />
     </div>
   );
 }
+
+type AdminPreviewResponse = {
+  readonly preview: {
+    readonly batch: {
+      readonly source: string;
+      readonly checkpointCurrent: string | null;
+      readonly checkpointNext: string | null;
+      readonly preview: boolean;
+      readonly rowCount: number;
+      readonly acceptedCount: number;
+      readonly quarantinedCount: number;
+    };
+    readonly products: ReadonlyArray<{
+      readonly canonicalSku: string;
+      readonly brand: string | null;
+      readonly name: string;
+      readonly merchant: string;
+      readonly category: string;
+      readonly exactness: string;
+      readonly verifiedDetailUrl: boolean;
+      readonly sourceProductId: string;
+      readonly imageCount: number;
+    }>;
+    readonly quarantined: ReadonlyArray<{
+      readonly rowNumber: number;
+      readonly code: string;
+      readonly field: string | null;
+      readonly message: string;
+    }>;
+  };
+  readonly metrics: {
+    readonly directDetailCoverage: number;
+    readonly affiliateCoverage: number;
+    readonly quarantineRate: number;
+    readonly exactAcceptanceRate: number;
+    readonly falseExactCases: number;
+    readonly providerLatencyMs: number;
+    readonly providerErrors: number;
+    readonly outboundClicks: number;
+  };
+};
 
 function Card({ label, value }: { label: string; value: number }) {
   return (

@@ -13,6 +13,18 @@ export type MarketplaceLink = {
 const listingPath = /\/(search|list|category|categor|ranking|best|event|plan)(\/|$)/i;
 const listingQuery = /(^|&)(keyword|query|q|search|searchWord)=/i;
 const detailPath = /\/(products?|goods|item|detail|dp|vp\/products|app\/goods)\/[-\w]+/i;
+const affiliateRedirectHosts = new Map([
+  ["s.click.aliexpress.com", "aliexpress"],
+  ["a.aliexpress.com", "aliexpress"],
+]);
+const trustedProductHostSuffixes = [
+  "aliexpress.com",
+  "amazon.com",
+  "amazon.co.jp",
+  "coupang.com",
+  "musinsa.com",
+  "naver.com",
+];
 
 export function isMarketplaceDetailUrl(value: string): boolean {
   try {
@@ -39,6 +51,38 @@ export function marketplaceForUrl(value: string): MarketplaceId | null {
     return null;
   } catch {
     return null;
+  }
+}
+
+export function affiliateNetworkForUrl(value: string): string | null {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:") return null;
+    return affiliateRedirectHosts.get(url.hostname.toLowerCase()) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function isTrustedOutboundUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    const hostname = url.hostname.toLowerCase();
+    if (url.protocol !== "https:") return false;
+    if (affiliateNetworkForUrl(value)) return true;
+    if (!trustedProductHostSuffixes.some((suffix) => hostname === suffix || hostname.endsWith(`.${suffix}`))) {
+      return false;
+    }
+    if (
+      hostname === "search.shopping.naver.com" &&
+      url.pathname === "/gate.nhn" &&
+      /^\d+$/.test(url.searchParams.get("id") ?? "")
+    ) {
+      return true;
+    }
+    return isMarketplaceDetailUrl(value);
+  } catch {
+    return false;
   }
 }
 

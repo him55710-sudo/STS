@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "test": "vitest run",
-    "seed:manifest": "node scripts/generate-demo-manifest.mjs"
+    "seed:manifest": "node scripts/generate-demo-manifest.mjs",
+    "doctor": "npx react-doctor@latest"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "^20230920.0.0",
@@ -18,15 +19,21 @@
     "next": "^16.3.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "server-only": "^0.0.1",
     "zod": "^4.4.3",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
+    "@playwright/test": "^1.51.1",
     "@types/node": "^26.2.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
+    "cross-env": "^7.0.3",
     "postcss": "^8.5.26",
+    "react-doctor": "^0.9.12",
+    "react-grab": "^0.2.0",
+    "react-scan": "^0.5.7",
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",
     "vitest": "^4.1.11"

@@ -1,13 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { productById } from "@/lib/catalog";
-import { isAffiliateEligibleUrl, isAdpickConfigured, productDestinationUrl, resolveAdpickRedirect } from "@/lib/affiliate/adpick";
-import { recordAffiliateClick } from "@/lib/affiliate/clicks";
-import { resolveLinkPriceRedirect } from "@/lib/affiliate/linkprice";
-import { buildMarketplaceSearchLinks, isMarketplaceDetailUrl } from "@/lib/marketplace-links";
+import { productById } from "../catalog";
+import { isAffiliateEligibleUrl, isAdpickConfigured, resolveAdpickRedirect } from "./adpick";
+import { recordAffiliateClick } from "./clicks";
+import { resolveLinkPriceRedirect } from "./linkprice";
+import { resolveTestAffiliateUrl } from "./providers/test-resolver";
+import { createSovrnAffiliateLink } from "../commerce/providers/sovrn";
+import { getCommerceOfferById, getCommerceOffersForLegacyId } from "../commerce/canonical-repository";
+import { isPurchaseEligibleOffer, isVerifiedExactOffer } from "../commerce/url-policy";
 
 const contextSchema = z.object({
   productId: z.string().min(1).max(120),
+  postId: z.string().min(1).max(120).optional(),
+  objectId: z.string().min(1).max(120).optional(),
+  creatorId: z.string().min(1).max(120).optional(),
+  destinationUrl: z.url().max(4096).optional(),
+});
+
+const offerContextSchema = z.object({
+  offerId: z.string().min(1).max(240),
   postId: z.string().min(1).max(120).optional(),
   objectId: z.string().min(1).max(120).optional(),
   creatorId: z.string().min(1).max(120).optional(),
@@ -20,41 +31,91 @@ export async function handleOutboundRedirect(req: NextRequest, routeProductId?: 
     postId: searchParams.get("postId") ?? undefined,
     objectId: searchParams.get("objectId") ?? undefined,
     creatorId: searchParams.get("creatorId") ?? undefined,
+    destinationUrl: searchParams.get("destinationUrl") ?? undefined,
   });
   if (!parsed.success) return NextResponse.json({ error: "invalid affiliate request" }, { status: 400 });
 
-  const product = productById(parsed.data.productId);
-  if (!product) return NextResponse.json({ error: "product not found" }, { status: 404 });
-
-  const destinationUrl = productDestinationUrl(product);
-  if (!isMarketplaceDetailUrl(destinationUrl)) {
-    return marketplaceCandidateResponse(product, req.url);
+  if (parsed.data.destinationUrl) {
+    return NextResponse.json({ error: "custom destinations cannot redirect" }, { status: 422 });
   }
-  let redirectUrl = destinationUrl;
-  let network = "direct";
-  let affiliateUrl: string | undefined;
 
-  if (product.affiliate && isAffiliateEligibleUrl(destinationUrl)) {
-    const linkPriceResult = await resolveLinkPriceRedirect(destinationUrl, parsed.data);
+  if (!productById(parsed.data.productId)) {
+    return NextResponse.json({ error: "product not found" }, { status: 404 });
+  }
+
+  const offer = getCommerceOffersForLegacyId(parsed.data.productId).find(isVerifiedExactOffer);
+  if (!offer) return NextResponse.json({ error: "offer is not purchase eligible" }, { status: 422 });
+
+  return handleOfferOutboundRedirect(req, offer.id);
+}
+
+export async function handleOfferOutboundRedirect(req: NextRequest, routeOfferId?: string): Promise<NextResponse> {
+  const searchParams = new URL(req.url).searchParams;
+  const parsed = offerContextSchema.safeParse({
+    offerId: routeOfferId ?? searchParams.get("offerId"),
+    postId: searchParams.get("postId") ?? undefined,
+    objectId: searchParams.get("objectId") ?? undefined,
+    creatorId: searchParams.get("creatorId") ?? undefined,
+  });
+  if (!parsed.success) return NextResponse.json({ error: "invalid offer request" }, { status: 400 });
+
+  const offer = getCommerceOfferById(parsed.data.offerId);
+  if (!offer) return NextResponse.json({ error: "offer not found" }, { status: 404 });
+  if (!isVerifiedExactOffer(offer) || !offer.detailUrl) {
+    return NextResponse.json({ error: "offer is not purchase eligible" }, { status: 422 });
+  }
+
+  const attribution = {
+    productId: offer.providerProductId ?? offer.canonicalProductId ?? offer.id,
+    ...(parsed.data.postId ? { postId: parsed.data.postId } : {}),
+    ...(parsed.data.objectId ? { objectId: parsed.data.objectId } : {}),
+    ...(parsed.data.creatorId ? { creatorId: parsed.data.creatorId } : {}),
+  };
+  const destinationUrl = offer.detailUrl;
+  const testAffiliateUrl = resolveTestAffiliateUrl(offer);
+  let redirectUrl = offer.affiliateUrl ?? destinationUrl;
+  let affiliateUrl = offer.affiliateUrl ?? undefined;
+  let network: string = offer.provider;
+
+  if (testAffiliateUrl) {
+    redirectUrl = testAffiliateUrl;
+    affiliateUrl = testAffiliateUrl;
+    network = "test-resolver";
+  } else if (!offer.affiliateUrl && offer.provider === "sovrn") {
+    const sovrnUrl = createSovrnAffiliateLink(destinationUrl, parsed.data.postId);
+    if (sovrnUrl) {
+      redirectUrl = sovrnUrl;
+      affiliateUrl = sovrnUrl;
+    }
+  } else if (!offer.affiliateUrl && offer.provider !== "direct" && offer.commissionRate !== null && isAffiliateEligibleUrl(destinationUrl)) {
+    const linkPriceResult = await resolveLinkPriceRedirect(destinationUrl, attribution);
     if (linkPriceResult.kind === "redirect") {
       redirectUrl = linkPriceResult.location;
       affiliateUrl = linkPriceResult.location;
       network = "linkprice";
     } else if (isAdpickConfigured()) {
-      const adpickResult = await resolveAdpickRedirect(destinationUrl, parsed.data);
+      const adpickResult = await resolveAdpickRedirect(destinationUrl, attribution);
       if (adpickResult.kind === "redirect") {
         redirectUrl = new URL(adpickResult.location, req.url).toString();
         affiliateUrl = redirectUrl;
         network = "adpick";
-      } else {
-        console.warn(`[affiliate] fallback for ${product.id}: LinkPrice ${linkPriceResult.detail}; ADPICK ${adpickResult.detail}`);
       }
     }
   }
 
+  const eligibleAfterAffiliateResolution = testAffiliateUrl
+    ? true
+    : affiliateUrl !== undefined && isPurchaseEligibleOffer({ ...offer, affiliateUrl });
+  if (!eligibleAfterAffiliateResolution) {
+    return NextResponse.json({ error: "offer is missing an approved affiliate URL" }, { status: 422 });
+  }
+
   try {
     await recordAffiliateClick({
-      ...parsed.data,
+      productId: attribution.productId,
+      ...(parsed.data.postId ? { postId: parsed.data.postId } : {}),
+      ...(parsed.data.objectId ? { objectId: parsed.data.objectId } : {}),
+      ...(parsed.data.creatorId ? { creatorId: parsed.data.creatorId } : {}),
       network,
       destinationUrl,
       ...(affiliateUrl ? { affiliateUrl } : {}),
@@ -62,28 +123,12 @@ export async function handleOutboundRedirect(req: NextRequest, routeProductId?: 
       ...(req.headers.get("user-agent") ? { userAgent: req.headers.get("user-agent") ?? undefined } : {}),
     });
   } catch (error) {
-    if (error instanceof Error) console.warn(`[affiliate] click persistence failed: ${error.message}`);
-    else console.warn("[affiliate] click persistence failed");
+    if (error instanceof Error) console.warn(`[affiliate] offer click persistence failed: ${error.message}`);
+    else console.warn("[affiliate] offer click persistence failed");
   }
 
   return NextResponse.redirect(redirectUrl, {
     status: 302,
     headers: { "Cache-Control": "no-store" },
-  });
-}
-
-function marketplaceCandidateResponse(product: NonNullable<ReturnType<typeof productById>>, requestUrl: string): NextResponse {
-  const links = buildMarketplaceSearchLinks(product);
-  const linkMarkup = links
-    .map((link) => `<li><a href="${escapeHtml(link.url)}" rel="noopener noreferrer">${escapeHtml(link.label)}</a></li>`)
-    .join("");
-  const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>STS 판매처 후보</title></head><body><main><p>STS 상품 검증</p><h1>${escapeHtml(product.name)}</h1><p>검증된 상품 상세 URL이 없어 검색 후보만 제공합니다. 검색 결과의 상품 이미지와 모델명을 직접 확인해 주세요.</p><ul>${linkMarkup}</ul><a href="${escapeHtml(new URL(requestUrl).origin)}">STS로 돌아가기</a></main></body></html>`;
-  return new NextResponse(html, { status: 200, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
-}
-
-function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, (character) => {
-    const entities: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
-    return entities[character] ?? character;
   });
 }

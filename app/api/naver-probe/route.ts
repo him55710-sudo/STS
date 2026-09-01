@@ -5,6 +5,7 @@ import {
   searchImageTitleProducts,
   searchNaverProducts,
 } from "@/lib/naver/product-provider";
+import { authorizeAdminRequest } from "@/lib/admin/authorize";
 
 interface WebkrRaw {
   title: string;
@@ -26,6 +27,17 @@ export const maxDuration = 20;
  */
 
 export async function GET(req: NextRequest) {
+  const authorization = await authorizeAdminRequest(req, {
+    localAdminToken: process.env.STS_ADMIN_TOKEN,
+    production: process.env.NODE_ENV === "production",
+  });
+  if (!authorization.ok) {
+    return NextResponse.json(
+      { error: authorization.reason },
+      { status: authorization.status, headers: { "Cache-Control": "no-store" } }
+    );
+  }
+
   const url = new URL(req.url);
   const type = url.searchParams.get("type") ?? "webkr";
   const q = (url.searchParams.get("q") ?? "크림 니트").slice(0, 60);
@@ -33,7 +45,7 @@ export async function GET(req: NextRequest) {
   if (type === "shopcheck") {
     // 종료된 쇼핑 API를 두 계약으로 1회씩 실측 — "정말 죽었는가"의 라이브 증거.
     // (RETIRED_SEARCH_TYPES 로 일반 코드 경로에서는 호출이 금지되어 있다)
-    const out: Record<string, unknown>[] = [];
+    const out: { readonly status: number | "network-error" }[] = [];
     for (const cfg of contractConfigs()) {
       const probeUrl =
         cfg.contract === "apihub"
@@ -41,19 +53,10 @@ export async function GET(req: NextRequest) {
           : "https://openapi.naver.com/v1/search/shop.json?query=%EB%8B%88%ED%8A%B8&display=1";
       try {
         const res = await fetch(probeUrl, { headers: cfg.headers, signal: AbortSignal.timeout(7000) });
-        out.push({
-          contract: cfg.contract,
-          url: probeUrl.split("?")[0],
-          status: res.status,
-          body: (await res.text()).slice(0, 300),
-        });
-      } catch (e) {
-        out.push({
-          contract: cfg.contract,
-          url: probeUrl.split("?")[0],
-          status: "network-error",
-          body: (e as Error).message.slice(0, 160),
-        });
+        await res.text();
+        out.push({ status: res.status });
+      } catch {
+        out.push({ status: "network-error" });
       }
     }
     return NextResponse.json(
@@ -64,7 +67,10 @@ export async function GET(req: NextRequest) {
 
   if (type === "image") {
     const parsed = await searchImageTitleProducts([q]);
-    return NextResponse.json({ q, parsed }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json(
+      { q, parsedCount: parsed.length },
+      { headers: { "Cache-Control": "no-store" } }
+    );
   }
 
   if (type === "product") {
@@ -83,25 +89,17 @@ export async function GET(req: NextRequest) {
         q,
         webkr: {
           registered: webkrOk,
-          contract: webkrRaw.contract ?? null,
           httpStatus: webkrRaw.httpStatus ?? null,
-          errorCode: webkrRaw.errorCode ?? null,
-          errorMessage: webkrRaw.errorMessage ?? null,
           totalFromNaver: webkrRaw.total ?? null,
           mallPagesFound: bySource["naver-web"] ?? 0,
-          // 원본을 함께 보여준다 — 필터가 무엇을 왜 걸렀는지 한 URL로 판정하기 위함
-          rawTop: webkrRaw.items.slice(0, 5).map((i) => ({
-            title: (i.title ?? "").replace(/<[^>]+>/g, ""),
-            link: i.link,
-          })),
         },
         verdict: !webkrOk
-          ? `webkr 미등록/오류 (${webkrRaw.errorCode ?? webkrRaw.httpStatus}) — 이미지 제목 폴백으로 동작 중입니다.`
+          ? `webkr 미등록/오류 (${webkrRaw.httpStatus}) — 이미지 제목 폴백으로 동작 중입니다.`
           : (bySource["naver-web"] ?? 0) > 0
             ? `정상 — 웹문서 검색이 켜졌고 쇼핑몰 상품 페이지 ${bySource["naver-web"]}건을 직링크로 확보했습니다.`
             : "웹문서 검색은 켜졌지만 이 질의에선 쇼핑몰 페이지가 잡히지 않아 이미지 제목 폴백으로 채웠습니다.",
         candidatesBySource: bySource,
-        candidates: combined,
+        candidateCount: combined.length,
       },
       { headers: { "Cache-Control": "no-store" } }
     );
@@ -111,7 +109,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: `type must be one of ${HUB_SEARCH_TYPES.join(",")}` }, { status: 400 });
   }
 
-  // 원본 응답과 provider 파싱 결과를 나란히 — 파싱 손실을 눈으로 확인
   const raw = await naverSearch<{ title: string; link: string; description?: string }>(
     type as SearchType,
     q,
@@ -121,20 +118,12 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(
     {
       q,
-      raw: {
+      upstream: {
         ok: raw.ok,
-        contract: raw.contract,
         httpStatus: raw.httpStatus,
-        errorCode: raw.errorCode ?? null,
-        errorMessage: raw.errorMessage ?? null,
         total: raw.total ?? null,
-        items: raw.items.slice(0, 5).map((i) => ({
-          title: i.title,
-          link: i.link,
-          description: (i.description ?? "").slice(0, 160),
-        })),
       },
-      parsed,
+      parsedCount: parsed.length,
     },
     { headers: { "Cache-Control": "no-store" } }
   );

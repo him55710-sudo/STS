@@ -1,10 +1,11 @@
 import type { FashionAttributes } from "../types";
+import type { MatchState, ProductIdentifier } from "../commerce/types";
 
 /**
  * Product Retrieval 공통 타입 — provider 결과를 이 스키마로 normalize한다.
  */
 
-export type MatchTier = "exact" | "likely" | "similar";
+export type MatchTier = MatchState;
 
 export interface CandidateScores {
   visual: number;
@@ -26,6 +27,15 @@ export interface ProductCandidate {
   price: { value: number | null; currency: string | null };
   retailer: string;
   url: string;
+  /** 상품 상세 URL. 검색/목록 URL은 null이어야 한다. */
+  detailUrl?: string | null;
+  /** 검색/목록 페이지는 구매 링크가 아닌 discovery로만 보존한다. */
+  discoveryUrl?: string | null;
+  providerProductId?: string;
+  identifiers?: readonly ProductIdentifier[];
+  detailPageVerified?: boolean;
+  purchaseEligible?: boolean;
+  matchState?: MatchState;
   imageUrls: string[];
   availability?: string;
   /** "catalog" | "naver" | "gemini-web" | ... */
@@ -35,10 +45,26 @@ export interface ProductCandidate {
   /** 서버가 네이버 이미지 검색으로 산출한 색상 유사도 (0~1) */
   visualScore?: number;
   visualSource?: string;
+  sameProductProbability?: number;
+  visualEvidence?: readonly string[];
+  visualConflicts?: readonly string[];
+  visualSiglipScore?: number | null;
+  preliminaryIdentityScore?: number | null;
+  finalIdentityScore?: number | null;
+  identityStatus?: "VERIFIED" | "LIKELY" | "POSSIBLE" | "CONFLICT" | "UNVERIFIED";
+  variantExactness?: boolean;
+  matchReasons?: readonly string[];
+  conflicts?: readonly string[];
+  visualEvidenceDetail?: {
+    model: string;
+    score: number;
+    queryCropMode: "polygon" | "bbox";
+    candidateImageAvailable: boolean;
+  };
   /** 카탈로그 상품이면 로컬 product id (링크·제휴 정보 재사용) */
   catalogProductId?: string;
   affiliate?: boolean;
-  commissionRate?: number;
+  commissionRate?: number | null;
   scores: CandidateScores;
   tier: MatchTier;
   /** 왜 이 상품인지 — 사용자에게 보여줄 수 있는 근거 */

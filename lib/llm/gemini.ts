@@ -1,5 +1,16 @@
 import type { LlmProvider, ProviderResult, TextRequest, VisionRequest } from "./types";
 
+export type GeminiInlineImage = {
+  readonly mimeType: string;
+  readonly data: string;
+};
+
+type GeminiImagesJsonRequest = {
+  readonly images: readonly GeminiInlineImage[];
+  readonly prompt: string;
+  readonly timeoutMs?: number;
+};
+
 /**
  * Gemini 어댑터 — Letsur 도입 후 **폴백 provider**로 유지한다.
  * (키가 없거나 Letsur가 우선이면 호출되지 않는다)
@@ -52,6 +63,28 @@ async function call(
       elapsedMs: Date.now() - t0,
     };
   }
+}
+
+export async function geminiImagesJson(
+  request: GeminiImagesJsonRequest
+): Promise<ProviderResult<string>> {
+  const parts: Array<
+    { readonly inlineData: { readonly mimeType: string; readonly data: string } }
+    | { readonly text: string }
+  > = request.images.map((image) => ({
+    inlineData: { mimeType: image.mimeType, data: image.data },
+  }));
+  parts.push({ text: request.prompt });
+  return call(
+    {
+      contents: [{ parts }],
+      generationConfig: {
+        responseMimeType: "application/json",
+        temperature: 0,
+      },
+    },
+    request.timeoutMs ?? 18000
+  );
 }
 
 export const geminiProvider: LlmProvider = {

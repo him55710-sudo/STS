@@ -3,6 +3,11 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { productById } from "./catalog";
+import {
+  DEMO_PAYMENT_ACCOUNT_DISCONNECTED,
+  createConnectedDemoPaymentAccount,
+  type DemoPaymentAccount,
+} from "./demo-payment";
 import type { EventType, Post, Product, SessionUser, TrackedEvent } from "./types";
 
 interface AppState {
@@ -18,9 +23,12 @@ interface AppState {
   customProducts: Product[];
   /** 데모 로그인 세션 (실 OAuth는 클라이언트 키 등록 후 NextAuth로 대체) */
   user: SessionUser | null;
+  demoPaymentAccount: DemoPaymentAccount;
 
   signIn: (user: SessionUser) => void;
   signOut: () => void;
+  connectDemoPaymentAccount: () => void;
+  disconnectDemoPaymentAccount: () => void;
   /** 로그인 상태에서 프로필 일부 필드만 갱신 (프로필 편집·동기화용) */
   updateUser: (patch: Partial<SessionUser>) => void;
   addCustomProduct: (p: Product) => void;
@@ -42,14 +50,19 @@ export const useApp = create<AppState>()(
       savedProducts: [],
       savedPosts: [],
       likedPosts: [],
-      following: ["c-seoul", "c-daily"],
+      following: ["c-minu", "c-eun", "c-rin", "c-hana", "c-yun", "c-june"],
       events: [],
       userPosts: [],
       customProducts: [],
       user: null,
+      demoPaymentAccount: DEMO_PAYMENT_ACCOUNT_DISCONNECTED,
 
       signIn: (user) => set({ user }),
-      signOut: () => set({ user: null }),
+      signOut: () => set({ user: null, demoPaymentAccount: DEMO_PAYMENT_ACCOUNT_DISCONNECTED }),
+      connectDemoPaymentAccount: () =>
+        set({ demoPaymentAccount: createConnectedDemoPaymentAccount() }),
+      disconnectDemoPaymentAccount: () =>
+        set({ demoPaymentAccount: DEMO_PAYMENT_ACCOUNT_DISCONNECTED }),
       updateUser: (patch) =>
         set((s) => (s.user ? { user: { ...s.user, ...patch } } : {})),
       addCustomProduct: (p) => set((s) => ({ customProducts: [...s.customProducts, p] })),

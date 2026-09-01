@@ -1,13 +1,36 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { productById } from "@/lib/catalog";
+import { resolvePurchaseCtaDecision } from "@/lib/commerce/cta-policy";
+import { getCanonicalProductForLegacyId, getCommerceOffersForCanonicalId } from "@/lib/commerce/canonical-repository";
+import { rankCommerceCandidates } from "@/lib/commerce/ranker";
 import { won } from "@/lib/format";
-import { isMarketplaceDetailUrl } from "@/lib/marketplace-links";
+import { isTrustedOutboundUrl } from "@/lib/marketplace-links";
 import { useApp, useProductLookup } from "@/lib/store";
-import { buildTrackedOutboundPath } from "@/lib/affiliate/outbound-url";
+import {
+  buildTrackedCustomOutboundPath,
+  buildTrackedOfferOutboundPath,
+  type OutboundContext,
+} from "@/lib/affiliate/outbound-url";
+import type { CommerceOffer } from "@/lib/commerce/types";
 import type { ObjectTag, Product } from "@/lib/types";
+import DemoCheckoutSheet from "./DemoCheckoutSheet";
 import { ArrowUpRightIcon, BookmarkIcon, SearchIcon, XIcon } from "./Icons";
+
+function primaryOfferForProduct(product: Product): CommerceOffer | null {
+  const canonical = getCanonicalProductForLegacyId(product.id);
+  if (!canonical) return null;
+  return rankCommerceCandidates(getCommerceOffersForCanonicalId(canonical.id))[0] ?? null;
+}
+
+function productOutboundPath(product: Product, context: OutboundContext): string | null {
+  const offer = primaryOfferForProduct(product);
+  if (offer) return buildTrackedOfferOutboundPath(offer.id, context);
+  if (!product.id.startsWith("custom-")) return null;
+  if (!isTrustedOutboundUrl(product.url)) return null;
+  return buildTrackedCustomOutboundPath(product.id, product.url, context);
+}
 
 /**
  * Product Bottom Sheet — PRD §13
@@ -24,9 +47,12 @@ export default function ProductSheet({
 }) {
   const lookup = useProductLookup();
   const product = lookup(object.productId);
+  const primaryOffer = product ? primaryOfferForProduct(product) : null;
+  const purchaseDecision = resolvePurchaseCtaDecision(primaryOffer);
   const track = useApp((s) => s.track);
   const savedProducts = useApp((s) => s.savedProducts);
   const toggleSaveProduct = useApp((s) => s.toggleSaveProduct);
+  const [showDemoCheckout, setShowDemoCheckout] = useState(false);
 
   useEffect(() => {
     if (product) track("card_open", { postId, productId: product.id, objectId: object.id });
@@ -34,10 +60,9 @@ export default function ProductSheet({
   }, [object.id]);
 
   const openOutbound = (p: Product) => {
+    const outboundUrl = productOutboundPath(p, { postId, objectId: object.id });
+    if (!outboundUrl || purchaseDecision.kind !== "purchase") return;
     track("outbound_click", { postId, productId: p.id, objectId: object.id });
-    const outboundUrl = p.id.startsWith("custom-")
-      ? p.url
-      : buildTrackedOutboundPath(p.id, { postId, objectId: object.id });
     window.open(outboundUrl, "_blank", "noopener,noreferrer");
   };
 
@@ -70,7 +95,10 @@ export default function ProductSheet({
                 <div className="min-w-0 pt-1">
                   <div className="flex items-center gap-1.5">
                     <p className="text-xs font-medium text-ink-2">{product.brand}</p>
-                    <ExactBadge exactness={object.exactness} />
+                    <ExactBadge
+                      exactness={primaryOffer?.matchState === "exact" ? "exact" : "similar"}
+                      verified={Boolean(primaryOffer && primaryOffer.matchState === "exact" && primaryOffer.offerLifecycle === "active" && primaryOffer.detailPageVerified && primaryOffer.detailUrl && primaryOffer.affiliateUrl)}
+                    />
                   </div>
                   <h3 className="mt-0.5 truncate text-[17px] font-semibold leading-snug">
                     {product.name}
@@ -95,10 +123,12 @@ export default function ProductSheet({
                     {product.similarIds.map((sid) => {
                       const sp = productById(sid);
                       if (!sp) return null;
+                      const similarPath = productOutboundPath(sp, { postId, objectId: object.id });
                       return (
                         <button
                           key={sid}
                           onClick={() => openOutbound(sp)}
+                          disabled={!similarPath}
                           className="w-[76px] shrink-0 text-left"
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -134,10 +164,17 @@ export default function ProductSheet({
               <div className="mt-3.5 flex flex-col gap-2">
                 <button
                   onClick={() => openOutbound(product)}
-                  className="press flex h-12 items-center justify-center gap-1.5 rounded-(--radius-btn) bg-primary text-[15px] font-bold text-white"
+                  disabled={purchaseDecision.kind !== "purchase"}
+                  className="press flex h-12 items-center justify-center gap-1.5 rounded-(--radius-btn) bg-primary text-[15px] font-bold text-white disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-ink-2"
                 >
-                  {isMarketplaceDetailUrl(product.url) ? "구매하러 가기" : "판매처 후보 확인"}
-                  <ArrowUpRightIcon size={17} strokeWidth={2} />
+                  {purchaseDecision.kind === "purchase" ? "검증된 판매처에서 구매하기" : "리뷰/유사 상품만 보기"}
+                  {purchaseDecision.kind === "purchase" && <ArrowUpRightIcon size={15} strokeWidth={2} />}
+                </button>
+                <button
+                  onClick={() => setShowDemoCheckout(true)}
+                  className="press flex h-10 items-center justify-center gap-1.5 text-[13px] font-semibold text-primary"
+                >
+                  빠른 계좌 결제 체험
                 </button>
                 <button
                   onClick={() => toggleSaveProduct(product.id)}
@@ -152,10 +189,10 @@ export default function ProductSheet({
                 </button>
               </div>
               <p className="mt-2 text-center text-[10.5px] leading-relaxed text-ink-2">
-                {object.exactness === "similar" && "크리에이터가 확인한 유사 상품이에요. "}
-                {product.affiliate
-                  ? `제휴 파트너 상품 — 구매 시 수수료의 70%가 크리에이터에게 돌아가요.`
-                  : "가격·재고는 판매처 기준이에요. 상품 페이지로 바로 연결됩니다."}
+                {purchaseDecision.reason}{" "}
+                {purchaseDecision.kind === "purchase"
+                  ? "제휴 파트너 상품 — 구매 시 수수료의 70%가 크리에이터에게 돌아가요."
+                  : "가격·재고는 판매처 기준이며 검증된 구매 CTA는 숨겨집니다."}
               </p>
             </>
           ) : (
@@ -177,11 +214,21 @@ export default function ProductSheet({
           )}
         </div>
       </div>
+      {product && showDemoCheckout && (
+        <DemoCheckoutSheet product={product} onClose={() => setShowDemoCheckout(false)} />
+      )}
     </>
   );
 }
 
-export function ExactBadge({ exactness }: { exactness: "exact" | "similar" }) {
+export function ExactBadge({ exactness, verified = true }: { exactness: "exact" | "similar"; verified?: boolean }) {
+  if (!verified) {
+    return (
+      <span className="rounded-[5px] border border-line px-1.5 py-0.5 text-[10px] font-medium text-ink-2">
+        검증 필요
+      </span>
+    );
+  }
   return exactness === "exact" ? (
     <span className="rounded-[5px] bg-surface-2 px-1.5 py-0.5 text-[10px] font-semibold text-ink">
       동일 상품

@@ -13,6 +13,7 @@ import {
   SettingsIcon,
   TagIcon,
 } from "@/components/Icons";
+import ProfileCommerceSettings from "@/components/ProfileCommerceSettings";
 
 /**
  * Creator Console Home — 사업계획서 §17.
@@ -123,6 +124,8 @@ export default function ProfilePage() {
           </button>
         </div>
       )}
+
+      {loggedIn && <ProfileCommerceSettings />}
 
       {/* 온보딩: 아직 아이디를 직접 정하지 않은 신규 유저 유도 */}
       {needsSetup && (

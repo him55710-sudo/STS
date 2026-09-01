@@ -12,7 +12,33 @@
   --color-accent-2: #6d6680;
   --color-primary: #5b556e;     /* Toss Blue — 핵심 CTA/인터랙션 */
   --color-primary-soft: #efecf5;
+  --color-stone: #efede8;
+  --color-dark: #1a1a18;
+  --color-dark-raised: #22221f;
+  --color-lilac: #d5c8e2;
   --color-kakao: #fee500;
+  --color-brand-night: #12080d;
+  --color-brand-wine: #73132d;
+  --color-brand-coral: #e27c7d;
+  --color-brand-blush: #fbf8f8;
+  --color-brand-line: #ede2e4;
+  --color-brand-peach: #fff1e5;
+  --color-brand-peach-ink: #bf5b26;
+  --color-brand-wash: #fff9f2;
+  --color-brand-live: #20c987;
+  --color-tactile-canvas: #f3f0ea;
+  --color-tactile-raised: #fbfaf7;
+  --color-tactile-ink: #171714;
+  --color-tactile-muted: #6d6a63;
+  --color-tactile-line: #ded9d1;
+  --color-tactile-progress: #6e655e;
+  --color-tactile-unlock: #ca715b;
+  --color-tactile-violet: #756e92;
+  --color-tactile-success: #387a55;
+  --color-beauty: #a8757d;
+  --color-beauty-ink: #7a4f57;
+  --color-beauty-soft: #f3eaec;
+  --color-beauty-veil: #241a1d;
 
   --font-sans: "Pretendard Variable", Pretendard, "Inter", -apple-system,
     BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", Roboto, sans-serif;
@@ -21,10 +47,129 @@
   --radius-card: 14px;
   --radius-sheet: 22px;
   --radius-prod: 10px;
+  --radius-brand-pill: 9999px;
+  --radius-brand-device: 2.4rem;
+  --radius-brand-device-inner: 2rem;
+  --radius-brand-mini-device: 1.65rem;
+  --radius-brand-mini-inner: 1.35rem;
+  --radius-brand-inner: 19px;
+  --radius-brand-float: 18px;
+  --radius-brand-panel: 25px;
+  --radius-brand-card: 28px;
+  --radius-brand-cta: 30px;
+  --radius-tactile-frame: 24px;
+  --radius-tactile-control: 14px;
+  --shadow-brand-nav: 0 12px 36px color-mix(in srgb, var(--color-brand-night) 10%, transparent);
+  --shadow-brand-panel: 0 22px 55px color-mix(in srgb, var(--color-brand-night) 10%, transparent);
+  --shadow-brand-device: 0 32px 90px color-mix(in srgb, var(--color-brand-night) 60%, transparent);
+  --shadow-brand-mini: 0 18px 35px color-mix(in srgb, var(--color-brand-night) 16%, transparent);
+  --shadow-brand-media: 0 24px 60px color-mix(in srgb, var(--color-brand-night) 12%, transparent);
+  --shadow-brand-popover: 0 8px 25px color-mix(in srgb, var(--color-brand-night) 22%, transparent);
+  --shadow-brand-float-panel: 0 16px 40px color-mix(in srgb, var(--color-brand-night) 12%, transparent);
+  --shadow-brand-float: 0 12px 32px color-mix(in srgb, var(--color-brand-night) 24%, transparent);
+  --shadow-tactile-frame: 0 24px 64px color-mix(in srgb, var(--color-tactile-ink) 8%, transparent);
+  --shadow-tactile-float: 0 14px 34px color-mix(in srgb, var(--color-tactile-ink) 12%, transparent);
+  --shadow-beauty-frame: 0 28px 72px color-mix(in srgb, var(--color-ink) 18%, transparent);
+  --shadow-beauty-sheet: 0 -14px 36px color-mix(in srgb, var(--color-ink) 10%, transparent);
+}
+
+@keyframes beauty-sheet-up {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes beauty-hint-in {
+  0%, 100% { opacity: 0; transform: translateY(6px); }
+  18%, 78% { opacity: 1; transform: translateY(0); }
+}
+
+.beauty-sheet-enter {
+  animation: beauty-sheet-up 260ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+.beauty-hint-enter {
+  animation: beauty-hint-in 1200ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+.beauty-phone-frame {
+  box-shadow: var(--shadow-beauty-frame);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .beauty-sheet-enter,
+  .beauty-hint-enter {
+    animation: none;
+  }
 }
 
 html {
   background: var(--color-bg);
+  scroll-behavior: smooth;
+}
+
+@keyframes marketing-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes marketing-hero-zoom {
+  from {
+    opacity: 0.65;
+    transform: scale(1.04);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes marketing-panel {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.marketing-editorial .marketing-hero-image {
+  animation: marketing-hero-zoom 1200ms cubic-bezier(0.2, 0.65, 0.25, 1) both;
+}
+
+.marketing-editorial .marketing-hero-copy {
+  animation: marketing-rise 800ms 120ms cubic-bezier(0.2, 0.65, 0.25, 1) both;
+}
+
+.marketing-editorial [role="dialog"] {
+  animation: marketing-panel 180ms ease-out both;
+}
+
+@keyframes commerce-reveal {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes commerce-scan {
+  from { transform: translateY(-110%); opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  to { transform: translateY(520%); opacity: 0; }
+}
+
+.commerce-reveal {
+  animation: commerce-reveal 800ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+.commerce-scan-line {
+  animation: commerce-scan 2400ms cubic-bezier(0.32, 0.72, 0, 1) infinite;
 }
 
 body {
@@ -139,6 +284,21 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes tactile-board-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.tactile-board-reveal {
+  animation: tactile-board-reveal 420ms cubic-bezier(0.18, 0.9, 0.24, 1) both;
+}
+
 .rise-in {
   animation: rise-in 220ms ease-out both;
 }
@@ -169,6 +329,12 @@ body {
   .marketing-hotspot span:first-child {
     animation: none;
   }
+
+  .commerce-reveal,
+  .commerce-scan-line,
+  .tactile-board-reveal {
+    animation: none;
+  }
 }
 .stagger > *:nth-child(4) { animation-delay: 150ms; }
 .stagger > *:nth-child(5) { animation-delay: 200ms; }
@@ -193,3 +359,54 @@ body {
 
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { scrollbar-width: none; }
+
+.brand-home {
+  background: var(--color-brand-blush);
+}
+
+.brand-hero-glow {
+  background:
+    radial-gradient(circle at 50% 16%, color-mix(in srgb, var(--color-brand-wine) 68%, transparent), transparent 34%),
+    radial-gradient(circle at 78% 7%, color-mix(in srgb, var(--color-brand-coral) 26%, transparent), transparent 25%);
+}
+
+.brand-dot-grid {
+  background-image: radial-gradient(color-mix(in srgb, var(--color-brand-coral) 40%, transparent) 1px, transparent 1px);
+  background-size: 6px 6px;
+  mask-image: linear-gradient(to bottom, transparent, black 20%, black 76%, transparent);
+  opacity: 0.32;
+}
+
+.brand-device-shadow {
+  box-shadow: var(--shadow-brand-device);
+}
+
+@keyframes brand-ticker {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.brand-ticker-track {
+  animation: brand-ticker 34s linear infinite;
+}
+
+@keyframes brand-device-drift {
+  0%, 100% { transform: translateY(0) rotate(-1.5deg); }
+  50% { transform: translateY(-10px) rotate(1.5deg); }
+}
+
+.brand-device-drift {
+  animation: brand-device-drift 7s ease-in-out infinite;
+}
+
+.brand-chapter-number {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.1em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-ticker-track,
+  .brand-device-drift {
+    animation: none;
+  }
+}

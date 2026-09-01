@@ -7,7 +7,16 @@ import TabBar from "@/components/TabBar";
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  if (pathname === "/") {
+  if (
+    pathname === "/" ||
+    pathname === "/home" ||
+    pathname.startsWith("/demo") ||
+    pathname.startsWith("/beauty-demo") ||
+    pathname.startsWith("/board") ||
+    pathname.startsWith("/collection") ||
+    pathname.startsWith("/studio") ||
+    pathname.startsWith("/rewards")
+  ) {
     return <>{children}</>;
   }
 

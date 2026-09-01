@@ -6,7 +6,18 @@ import { useEffect, useRef, useState } from "react";
 import { candidatesFor, searchProducts } from "@/lib/match";
 import { retrieveAll, type ProductCandidate, type RetrievalQuery } from "@/lib/retrieval";
 import { useApp, useProductLookup } from "@/lib/store";
-import type { Category, DetectedObject, Exactness, Post, Product } from "@/lib/types";
+import { classifyCommerceUrl, isPurchaseEligibleOffer } from "@/lib/commerce/url-policy";
+import { getCommerceOffersForLegacyId } from "@/lib/commerce/canonical-repository";
+import type { CommerceOffer } from "@/lib/commerce/types";
+import {
+  CREATOR_ENTERED_PRODUCT_EXACTNESS,
+  resolveExactnessForProduct,
+  type Category,
+  type DetectedObject,
+  type Exactness,
+  type Post,
+  type Product,
+} from "@/lib/types";
 import { CheckIcon, ImageIcon, LinkIcon, SearchIcon, TrashIcon, XIcon } from "@/components/Icons";
 import { ExactBadge } from "@/components/ProductSheet";
 import { ringsToPath } from "@/components/ObjectLayer";
@@ -34,9 +45,30 @@ const SAMPLES = [
   { src: "/looks/look2.jpg", label: "헤리티지" },
 ];
 
+export function getCreatePurchaseEligibleOffer(product: Product | null | undefined): CommerceOffer | null {
+  if (!product) return null;
+  return getCommerceOffersForLegacyId(product.id).find(isPurchaseEligibleOffer) ?? null;
+}
+
+export function resolveCreateExactness(product: Product | null | undefined, requested: Exactness): Exactness {
+  if (requested !== "exact") return resolveExactnessForProduct(product, requested);
+  return getCreatePurchaseEligibleOffer(product) ? "exact" : CREATOR_ENTERED_PRODUCT_EXACTNESS;
+}
+
+export function isCreateCommissionVisible(product: Product | null | undefined): boolean {
+  const offer = getCreatePurchaseEligibleOffer(product);
+  return offer?.commissionRate != null;
+}
+
+type CommissionablePurchaseOffer = CommerceOffer & {
+  readonly price: number;
+  readonly commissionRate: number;
+};
+
 export default function CreatePage() {
   const router = useRouter();
   const { addUserPost, addCustomProduct, track } = useApp();
+  const lookupProduct = useProductLookup();
 
   const [step, setStep] = useState<Step>("select");
   const [stage, setStage] = useState<"detect" | "mask">("detect");
@@ -142,7 +174,11 @@ export default function CreatePage() {
     // ── 실루엣 마스크 스테이지 (fashion_v2) ──
     // 탐지된 bbox마다 온디바이스 세그멘테이션으로 실제 object shape 추출.
     // 실패해도 bbox로 자연 강등 — 전체 흐름은 절대 막지 않는다.
-    if (detected.length > 0 && process.env.NEXT_PUBLIC_VISION_PIPELINE !== "legacy") {
+    if (
+      process.env.NEXT_PUBLIC_CATALOG_E2E_FIXTURES !== "1" &&
+      detected.length > 0 &&
+      process.env.NEXT_PUBLIC_VISION_PIPELINE !== "legacy"
+    ) {
       setStage("mask");
       try {
         const { extractSilhouettes } = await import("@/lib/mask/client-engine");
@@ -177,7 +213,7 @@ export default function CreatePage() {
     // 리뷰 화면을 먼저 보여주고 후보는 도착하는 대로 채운다.
     if (drafts.length > 0) {
       setRetrieving(true);
-      retrieveAll(drafts)
+      retrieveAll(drafts, dataUrl)
         .then((results) => {
           setObjects((prev) =>
             prev.map((o) => {
@@ -481,12 +517,21 @@ export default function CreatePage() {
                   {isSel && (
                     <CandidatePanel
                       obj={o}
-                      onPick={(productId, exactness) => update(o.id, { productId, exactness })}
-                      onCustom={(p) => {
-                        addCustomProduct(p);
-                        update(o.id, { productId: p.id, exactness: "exact" });
+                      onPick={(productId, exactness) =>
+                        update(o.id, {
+                          productId,
+                          exactness: resolveCreateExactness(lookupProduct(productId), exactness),
+                        })
+                      }
+                      onCustom={(p, exactness = CREATOR_ENTERED_PRODUCT_EXACTNESS) => {
+                        const customProduct: Product = { ...p, source: p.source ?? "user-upload" };
+                        addCustomProduct(customProduct);
+                        update(o.id, {
+                          productId: customProduct.id,
+                          exactness: resolveCreateExactness(customProduct, exactness),
+                        });
                       }}
-                      onUnlink={() => update(o.id, { productId: null })}
+                      onUnlink={() => update(o.id, { productId: null, exactness: "unverified" })}
                     />
                   )}
                 </div>
@@ -585,10 +630,14 @@ function EarningsSummary({ objects }: { objects: DraftObject[] }) {
   const lookup = useProductLookup();
   const partnered = objects
     .map((o) => lookup(o.productId))
-    .filter((p) => p != null && p.affiliate);
+    .map(getCreatePurchaseEligibleOffer)
+    .filter(
+      (offer): offer is CommissionablePurchaseOffer =>
+        offer != null && offer.price != null && offer.commissionRate != null
+    );
   if (partnered.length === 0) return null;
   const perSale = partnered.reduce(
-    (sum, p) => sum + Math.round(p!.price * (p!.commissionRate ?? 0.05) * 0.7),
+    (sum, offer) => sum + Math.round(offer.price * offer.commissionRate * 0.7),
     0
   );
   return (
@@ -608,12 +657,20 @@ function EarningsSummary({ objects }: { objects: DraftObject[] }) {
 function ObjectStatus({ obj }: { obj: DraftObject }) {
   const lookup = useProductLookup();
   const product = lookup(obj.productId);
+  const eligibleOffer = getCreatePurchaseEligibleOffer(product);
+  const needsReview = obj.exactness !== "exact" && obj.exactness !== "similar";
+  const commissionVisible = isCreateCommissionVisible(product);
   return product ? (
     <p className="mt-0.5 flex items-center gap-1.5 text-[12px] text-ink-2">
-      <ExactBadge exactness={obj.exactness} />
-      {product.affiliate && (
+      <ExactBadge exactness={obj.exactness === "exact" ? "exact" : "similar"} />
+      {needsReview && (
+        <span className="shrink-0 rounded-[5px] bg-surface-2 px-1.5 py-0.5 text-[10px] font-semibold text-ink-2">
+          검토 필요
+        </span>
+      )}
+      {commissionVisible && eligibleOffer?.commissionRate != null && (
         <span className="shrink-0 rounded-[5px] bg-primary-soft px-1.5 py-0.5 text-[10px] font-semibold text-primary">
-          수익 {Math.round((product.commissionRate ?? 0.05) * 100 * 0.7)}%
+          수익 {Math.round(eligibleOffer.commissionRate * 100 * 0.7)}%
         </span>
       )}
       <span className="truncate">
@@ -639,6 +696,12 @@ function TierBadge({ tier }: { tier: ProductCandidate["tier"] }) {
         동일 제품 가능성
       </span>
     );
+  if (tier === "unverified")
+    return (
+      <span className="shrink-0 rounded-[4px] bg-surface-2 px-1 py-px text-[9px] font-semibold text-ink-2">
+        상세 검증 필요
+      </span>
+    );
   return (
     <span className="shrink-0 rounded-[4px] bg-surface-2 px-1 py-px text-[9px] font-semibold text-ink-2">
       유사 상품
@@ -656,11 +719,16 @@ function CandidateRow({
   picked: boolean;
   onPick: () => void;
 }) {
+  const selectable = Boolean(c.purchaseEligible && c.detailUrl);
+  const commissionRate = c.purchaseEligible === true ? c.commissionRate : null;
   return (
     <button
       onClick={onPick}
+      disabled={!selectable}
       className={`flex w-full items-start gap-2.5 rounded-(--radius-btn) border p-2 text-left transition-colors ${
         picked ? "border-accent bg-surface-2/60" : "border-line"
+      } ${
+        selectable ? "" : "cursor-not-allowed opacity-60"
       }`}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -673,9 +741,9 @@ function CandidateRow({
         <p className="flex items-center gap-1 truncate text-[12px] text-ink-2">
           {c.brand ?? "브랜드 미상"}
           <TierBadge tier={c.tier} />
-          {c.affiliate && (
+          {commissionRate != null && (
             <span className="shrink-0 rounded-[4px] bg-primary-soft px-1 py-px text-[9px] font-semibold text-primary">
-              제휴 {Math.round((c.commissionRate ?? 0.05) * 100)}%
+              제휴 {Math.round(commissionRate * 100)}%
             </span>
           )}
         </p>
@@ -690,6 +758,7 @@ function CandidateRow({
             ₩{c.price.value.toLocaleString("ko-KR")}
           </span>
         )}
+        {!selectable && <span className="text-[10px] text-ink-2">구매 링크 없음</span>}
         {picked && <CheckIcon size={16} className="text-primary" />}
       </div>
     </button>
@@ -705,7 +774,7 @@ function CandidatePanel({
 }: {
   obj: DraftObject;
   onPick: (productId: string, exactness: Exactness) => void;
-  onCustom: (p: Product) => void;
+  onCustom: (p: Product, exactness?: Exactness) => void;
   onUnlink: () => void;
 }) {
   const [mode, setMode] = useState<"candidates" | "search" | "url">("candidates");
@@ -720,6 +789,7 @@ function CandidatePanel({
 
   const submitUrl = () => {
     if (!url.trim()) return;
+    if (classifyCommerceUrl(url.trim()).kind !== "detail") return;
     let host = "판매처";
     try {
       host = new URL(url).hostname.replace("www.", "");
@@ -743,6 +813,7 @@ function CandidatePanel({
 
   const Row = ({ p, top }: { p: Product; top?: boolean }) => {
     const picked = obj.productId === p.id;
+    const eligibleOffer = getCreatePurchaseEligibleOffer(p);
     return (
       <button
         onClick={() => onPick(p.id, obj.exactness)}
@@ -755,9 +826,9 @@ function CandidatePanel({
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-1 truncate text-[12px] text-ink-2">
             {p.brand}
-            {p.affiliate && (
+            {eligibleOffer?.commissionRate != null && (
               <span className="shrink-0 rounded-[4px] bg-primary-soft px-1 py-px text-[9px] font-semibold text-primary">
-                제휴 {Math.round((p.commissionRate ?? 0.05) * 100)}%
+                제휴 {Math.round(eligibleOffer.commissionRate * 100)}%
               </span>
             )}
             {top && (
@@ -818,9 +889,11 @@ function CandidatePanel({
                 c={c}
                 picked={obj.productId === (c.catalogProductId ?? c.id)}
                 onPick={() => {
-                  if (c.catalogProductId) {
+                if (c.catalogProductId) {
+                    if (!c.purchaseEligible || !c.detailUrl) return;
                     onPick(c.catalogProductId, c.tier === "exact" ? "exact" : "similar");
                   } else {
+                    if (!c.purchaseEligible || !c.detailUrl) return;
                     onCustom({
                       id: `custom-${c.id}`,
                       brand: c.brand ?? c.retailer,
@@ -828,12 +901,13 @@ function CandidatePanel({
                       price: c.price.value ?? 0,
                       currency: "KRW",
                       retailer: c.retailer,
-                      url: c.url,
+                      url: c.detailUrl,
                       image: c.imageUrls[0] ?? "/looks/_custom-link.svg",
                       category: obj.category,
-                      affiliate: false,
+                      affiliate: c.affiliate ?? false,
+                      commissionRate: c.commissionRate ?? undefined,
                       similarIds: [],
-                    });
+                    }, c.tier === "exact" ? "exact" : "similar");
                   }
                 }}
               />
@@ -909,22 +983,27 @@ function CandidatePanel({
       {current && (
         <div className="mt-3 flex items-center gap-2 border-t border-line pt-3">
           <p className="text-[12px] text-ink-2">이 상품은</p>
-          {(
-            [
-              ["exact", "동일 상품"],
-              ["similar", "유사 상품"],
-            ] as const
-          ).map(([key, label]) => (
+          {resolveCreateExactness(current, "exact") === "exact" && (
             <button
-              key={key}
-              onClick={() => onPick(current.id, key)}
+              onClick={() => onPick(current.id, "exact")}
               className={`rounded-(--radius-btn) px-2.5 py-1 text-[12px] font-medium ${
-                obj.exactness === key ? "bg-accent text-white" : "bg-surface-2 text-ink-2"
+                obj.exactness === "exact" ? "bg-accent text-white" : "bg-surface-2 text-ink-2"
               }`}
             >
-              {label}
+              동일 상품
             </button>
-          ))}
+          )}
+          <button
+            onClick={() => onPick(current.id, "similar")}
+            className={`rounded-(--radius-btn) px-2.5 py-1 text-[12px] font-medium ${
+              obj.exactness === "similar" ? "bg-accent text-white" : "bg-surface-2 text-ink-2"
+            }`}
+          >
+            유사 상품
+          </button>
+          {resolveCreateExactness(current, "exact") !== "exact" && (
+            <span className="text-[11px] text-ink-2">카탈로그 확인 후 동일 상품으로 확정할 수 있어요</span>
+          )}
         </div>
       )}
     </div>

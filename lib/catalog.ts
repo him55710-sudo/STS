@@ -1,4 +1,5 @@
 import type { Creator, Post, Product } from "./types";
+import { DEMO_CREATORS, DEMO_POSTS } from "./social-content";
 
 /**
  * STS 시드 카탈로그 — 전 상품이 실존 제품이고, 콘텐츠는 전부 실사 사진이다.
@@ -11,8 +12,22 @@ import type { Creator, Post, Product } from "./types";
 
 const nv = (q: string) => `https://search.shopping.naver.com/search/all?query=${encodeURIComponent(q)}`;
 
+const markDemoProducts = (products: readonly Product[]): Product[] =>
+  products.map((product) => ({
+    ...product,
+    is_demo: true,
+    source: "demo-seed",
+  }));
+
+const markDemoPosts = (posts: readonly Post[]): Post[] =>
+  posts.map((post) => ({
+    ...post,
+    is_demo: true,
+    source: "demo-seed",
+  }));
+
 /** 남성 룩 1~5 상품 */
-export const LOOK_PRODUCTS: Product[] = [
+export const LOOK_PRODUCTS: Product[] = markDemoProducts([
   // Look 1 — 스마트 캐주얼 / 아이비리그
   { id: "pl-polo-oxford", brand: "Polo Ralph Lauren", name: "아이코닉 옥스포드 셔츠 클래식 핏", price: 259000, currency: "KRW", retailer: "폴로 공식몰", url: nv("폴로 랄프로렌 아이코닉 옥스포드 셔츠 클래식핏 블루"), image: "/looks/pl-polo-oxford.jpg", category: "fashion", affiliate: true, commissionRate: 0.07, similarIds: ["plw-polo-oxford", "pl-uniqlo-tee"] },
   { id: "pl-levis-501", brand: "Levi's", name: "501 오리지널 라이트 워시", price: 91300, currency: "KRW", retailer: "리바이스 공식몰", url: nv("리바이스 501 오리지널 라이트 인디고"), image: "/looks/pl-levis-501.jpg", category: "fashion", affiliate: true, commissionRate: 0.08, similarIds: ["pl-apc-jeans", "plw-levis-ribcage"] },
@@ -39,10 +54,10 @@ export const LOOK_PRODUCTS: Product[] = [
   { id: "pl-ysl-jeans", brand: "Saint Laurent", name: "슬림핏 진 다크 블루 블랙", price: 1340000, currency: "KRW", retailer: "생로랑 공식", url: nv("생로랑 슬림핏 데님 블랙"), image: "/looks/pl-ysl-jeans.jpg", category: "fashion", affiliate: false, similarIds: ["plw-cos-dark-jeans"] },
   { id: "pl-samba", brand: "Adidas", name: "삼바 OG 블랙", price: 139000, currency: "KRW", retailer: "아디다스 코리아", url: nv("아디다스 삼바 OG 블랙"), image: "/looks/pl-samba.jpg", category: "fashion", affiliate: true, commissionRate: 0.06, similarIds: ["plw-samba-white", "pl-dm-1461"] },
   { id: "pl-cartier-tank", brand: "Cartier", name: "탱크 머스트 레더 스트랩", price: 4300000, currency: "KRW", retailer: "까르띠에 부티크", url: nv("까르띠에 탱크 머스트"), image: "/looks/pl-cartier-tank.jpg", category: "fashion", affiliate: false, similarIds: ["pl-omega-speedmaster"] },
-];
+]);
 
 /** 여성 룩 6~10 상품 */
-export const LOOK_PRODUCTS_W: Product[] = [
+export const LOOK_PRODUCTS_W: Product[] = markDemoProducts([
   // Look 6 — 프레피 스마트 캐주얼
   { id: "plw-polo-oxford", brand: "Polo Ralph Lauren", name: "클래식 핏 옥스포드 셔츠 스카이 블루", price: 259000, currency: "KRW", retailer: "무신사", url: "https://www.musinsa.com/products/3010383", image: "/looks/plw-polo-oxford.jpg", category: "fashion", affiliate: true, commissionRate: 0.07, similarIds: ["pl-polo-oxford"] },
   { id: "plw-levis-ribcage", brand: "Levi's", name: "리브케이지 스트레이트 앵클 라이트 워시", price: 148000, currency: "KRW", retailer: "리바이스 공식몰", url: nv("리바이스 리브케이지 스트레이트 앵클 라이트"), image: "/looks/plw-levis-ribcage.jpg", category: "fashion", affiliate: true, commissionRate: 0.08, similarIds: ["pl-levis-501"] },
@@ -70,22 +85,29 @@ export const LOOK_PRODUCTS_W: Product[] = [
 
   // Look 10 — 프렌치 럭셔리 캐주얼
   { id: "plw-polene-bag", brand: "Polène", name: "뉴메로 위 나노 블랙", price: 580000, currency: "KRW", retailer: "폴렌 공식", url: nv("폴렌 뉴메로 위 나노 블랙"), image: "/looks/plw-polene-bag.jpg", category: "fashion", affiliate: false, similarIds: ["plw-celine-bag", "plw-longchamp"] },
-];
+]);
 
-export const PRODUCTS: Product[] = [...LOOK_PRODUCTS, ...LOOK_PRODUCTS_W];
+export const KBEAUTY_PRODUCTS: Product[] = markDemoProducts([
+  { id: "kb-anua-heartleaf-toner", brand: "Anua", name: "어성초 77 히알루론산 수분 진정 토너 150ml", price: 11500, currency: "KRW", retailer: "쿠팡", url: "https://www.coupang.com/vp/products/9485384031", image: "https://miin-cosmetics.co.uk/10466/heartleaf-77-soothing-toner.jpg", category: "beauty", affiliate: true, similarIds: ["kb-cosrx-snail-96"] },
+  { id: "kb-medicube-booster-pro", brand: "medicube · APR", name: "AGE-R 부스터 프로", price: 219000, currency: "KRW", retailer: "쿠팡", url: "https://www.coupang.com/vp/products/8605055545", image: "https://shoplineimg.com/66274f58274ffc00683dcaa5/677a19b5f828b7000ff2f169/800x.png", category: "beauty", affiliate: true, similarIds: ["kb-anua-heartleaf-toner"] },
+  { id: "kb-cosrx-snail-96", brand: "COSRX", name: "어드벤스드 스네일 96 뮤신 파워 에센스 100ml", price: 28480, currency: "KRW", retailer: "쿠팡", url: "https://www.coupang.com/vp/products/2472155", image: "https://drnutrition.com/storage/media/l30X42gmH2z7kiLxuAbu3SOQzUW2b4qw6XDSHSpW.jpg", category: "beauty", affiliate: true, similarIds: ["kb-anua-heartleaf-toner"] },
+]);
+
+export const PRODUCTS: Product[] = [...LOOK_PRODUCTS, ...LOOK_PRODUCTS_W, ...KBEAUTY_PRODUCTS];
 
 export const CREATORS: Creator[] = [
   { id: "c-minu", handle: "minu.archive", name: "김민우", bio: "매일의 실물 착장 아카이브 📌\n사진 속 물건을 탭하면 바로 구매로 이어져요", followers: 218000, category: "fashion", tone: "#4A4D52", avatarImage: "/looks/look1.jpg", verified: true },
   { id: "c-eun", handle: "edit.eunseo", name: "김은서", bio: "여성 데일리 룩 에디토리얼 ✧\n입은 것 전부 탭으로 연결해둡니다", followers: 184300, category: "fashion", tone: "#8A8175", avatarImage: "/looks/look8.jpg", verified: true },
   { id: "c-rin", handle: "rin.heritage", name: "이서린", bio: "헤리티지 · 아웃도어 스타일링\n오래 입는 옷만 고릅니다", followers: 96700, category: "fashion", tone: "#5C6152", avatarImage: "/looks/look9.jpg", verified: true },
   { id: "c-me", handle: "me.sts", name: "나", bio: "내 콘텐츠", followers: 0, category: "fashion", tone: "#77727F" },
+  ...DEMO_CREATORS,
 ];
 
 /**
  * 실사 룩 게시물 — 좌표는 Gemini detection 실측 + 그리드 검수값.
  * polygon(실루엣)은 fashion_v2 온디바이스 세그멘테이션으로 생성해 주입한다.
  */
-export const LOOK_POSTS: Post[] = [
+export const LOOK_POSTS: Post[] = markDemoPosts([
   {
     id: "post-look1",
     creatorId: "c-minu",
@@ -263,10 +285,10 @@ export const LOOK_POSTS: Post[] = [
       { id: "l10-earrings", label: "골드 귀걸이", x: 0.428, y: 0.188, w: 0.02, h: 0.025, polygons: [[[0.43,0.18],[0.447,0.18],[0.455,0.191],[0.454,0.211],[0.446,0.221],[0.429,0.221],[0.421,0.211],[0.421,0.191],[0.421,0.18],[0.421,0.18]]], productId: "plw-gold-hoop", exactness: "similar", confidence: 0.54 },
     ],
   },
-];
+]);
 
 /** 피드 = 실사 룩 게시물 (최신순) */
-export const POSTS: Post[] = [...LOOK_POSTS].sort(
+export const POSTS: Post[] = [...LOOK_POSTS, ...DEMO_POSTS].sort(
   (a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)
 );
 

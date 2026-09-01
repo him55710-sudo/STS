@@ -3,10 +3,14 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { KBEAUTY_PRODUCTS, PRODUCTS } from "@/lib/catalog";
+import { getCanonicalProductForLegacyId, getCommerceOffersForCanonicalId } from "@/lib/commerce/canonical-repository";
+import { rankCommerceCandidates } from "@/lib/commerce/ranker";
 import type { Product } from "@/lib/types";
 import { DEFAULT_PLATFORM_PATH } from "@/lib/navigation";
-import { isMarketplaceDetailUrl } from "@/lib/marketplace-links";
+import { buildTrackedOfferOutboundPath } from "@/lib/affiliate/outbound-url";
+import { resolvePurchaseCtaDecision } from "@/lib/commerce/cta-policy";
 import { useApp, useHydrated } from "@/lib/store";
+import MarketingSidebar, { MarketingMobileNav } from "@/components/MarketingSidebar";
 import {
   ArrowUpRightIcon,
   BagIcon,
@@ -60,6 +64,11 @@ function productById(id: string): Product {
   return product;
 }
 
+function primaryOfferForProduct(product: Product) {
+  const canonical = getCanonicalProductForLegacyId(product.id);
+  return canonical ? rankCommerceCandidates(getCommerceOffersForCanonicalId(canonical.id))[0] ?? null : null;
+}
+
 export default function MarketingLanding() {
   const hydrated = useHydrated();
   const user = useApp((state) => state.user);
@@ -69,32 +78,39 @@ export default function MarketingLanding() {
     [selectedId]
   );
   const selectedProduct = productById(selectedObject.productId);
+  const selectedOffer = primaryOfferForProduct(selectedProduct);
+  const selectedDecision = resolvePurchaseCtaDecision(selectedOffer);
   const platformHref = hydrated && user ? DEFAULT_PLATFORM_PATH : `/login?next=${encodeURIComponent(DEFAULT_PLATFORM_PATH)}`;
   const platformLabel = hydrated && user ? "플랫폼 열기" : "로그인";
 
   return (
-    <div className="marketing-site min-h-dvh overflow-hidden bg-bg">
-      <header className="sticky top-0 z-50 border-b border-line/80 bg-bg/90 backdrop-blur-xl">
-        <div className="mx-auto flex h-[72px] max-w-[1240px] items-center justify-between px-5 sm:px-8">
-          <Link href="/" className="text-[21px] font-extrabold tracking-[0.15em]">
+    <div id="top" className="marketing-site min-h-dvh overflow-hidden bg-bg">
+      <div className="flex min-h-dvh">
+        <MarketingSidebar platformHref={platformHref} platformLabel={platformLabel} />
+        <div className="min-w-0 flex-1">
+          <header className="sticky top-0 z-50 border-b border-line/80 bg-bg/90 backdrop-blur-xl">
+            <div className="mx-auto flex h-[72px] max-w-[1240px] items-center justify-between px-5 sm:px-8">
+              <Link href="#top" className="text-[21px] font-extrabold tracking-[0.15em]">
             STS<span className="text-primary">.</span>
-          </Link>
-          <nav className="hidden items-center gap-7 text-[13px] font-medium text-ink-2 md:flex">
-            <a href="#experience" className="transition-colors hover:text-ink">제품 경험</a>
-            <a href="#k-beauty" className="transition-colors hover:text-ink">K-뷰티</a>
-            <a href="#creators" className="transition-colors hover:text-ink">크리에이터</a>
-            <a href="#partnerships" className="transition-colors hover:text-ink">브랜드 도입</a>
-          </nav>
-          <div className="flex items-center gap-2.5">
-            <Link href={platformHref} className="press rounded-full border border-line bg-surface px-3.5 py-2.5 text-[12px] font-bold text-ink">
-              {platformLabel}
-            </Link>
-            <Link href="/creator" className="press rounded-full bg-ink px-4 py-2.5 text-[12px] font-bold text-surface">
-              크리에이터 시작
-            </Link>
-          </div>
-        </div>
-      </header>
+              </Link>
+              <nav className="hidden items-center gap-7 text-[13px] font-medium text-ink-2 md:flex">
+                <a href="#experience" className="transition-colors hover:text-ink">제품 경험</a>
+                <a href="#k-beauty" className="transition-colors hover:text-ink">K-뷰티</a>
+                <a href="#creators" className="transition-colors hover:text-ink">크리에이터</a>
+                <a href="#partnerships" className="transition-colors hover:text-ink">브랜드 도입</a>
+              </nav>
+              <div className="flex items-center gap-2.5">
+                <Link href={platformHref} className="press rounded-full border border-line bg-surface px-3.5 py-2.5 text-[12px] font-bold text-ink">
+                  {platformLabel}
+                </Link>
+                <Link href="/creator" className="press rounded-full bg-ink px-4 py-2.5 text-[12px] font-bold text-surface">
+                  크리에이터 시작
+                </Link>
+              </div>
+            </div>
+          </header>
+
+      <MarketingMobileNav />
 
       <main>
         <section className="marketing-grid relative">
@@ -146,6 +162,8 @@ export default function MarketingLanding() {
               selectedId={selectedId}
               selectedObject={selectedObject}
               selectedProduct={selectedProduct}
+              selectedOfferId={selectedOffer?.id ?? null}
+              selectedDecision={selectedDecision}
               onSelect={setSelectedId}
             />
           </div>
@@ -153,7 +171,7 @@ export default function MarketingLanding() {
 
         <KBeautySection />
 
-        <section id="how-it-works" className="border-y border-line bg-surface">
+        <section id="how-it-works" className="scroll-mt-20 border-y border-line bg-surface">
           <div className="mx-auto max-w-[1240px] px-5 py-20 sm:px-8 lg:py-28">
             <div className="max-w-[620px]">
               <p className="text-[11px] font-bold tracking-[0.18em] text-primary">ONE TAP COMMERCE</p>
@@ -181,7 +199,7 @@ export default function MarketingLanding() {
           </div>
         </section>
 
-        <section id="creators" className="bg-ink text-surface">
+        <section id="creators" className="scroll-mt-20 bg-ink text-surface">
           <div className="mx-auto grid max-w-[1240px] gap-14 px-5 py-20 sm:px-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:gap-24 lg:py-28">
             <div>
               <p className="text-[11px] font-bold tracking-[0.18em] text-[#b8b1c9]">FOR EVERYDAY CREATORS</p>
@@ -226,7 +244,7 @@ export default function MarketingLanding() {
           </div>
         </section>
 
-        <section id="platform" className="bg-bg">
+        <section id="platform" className="scroll-mt-20 bg-bg">
           <div className="mx-auto max-w-[1240px] px-5 py-20 sm:px-8 lg:py-28">
             <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
               <div className="max-w-[600px]">
@@ -280,7 +298,8 @@ export default function MarketingLanding() {
           </div>
         </section>
 
-        <section id="partnerships" className="border-t border-line bg-surface">
+        <section id="partnerships" className="scroll-mt-20 border-t border-line bg-surface">
+          <span id="affiliate-guide" className="block scroll-mt-20" aria-hidden="true" />
           <div className="mx-auto grid max-w-[1240px] gap-12 px-5 py-20 sm:px-8 lg:grid-cols-[1fr_0.85fr] lg:items-end lg:gap-24 lg:py-28">
             <div>
               <p className="text-[11px] font-bold tracking-[0.18em] text-primary">FOR BRANDS &amp; PLATFORMS</p>
@@ -326,6 +345,8 @@ export default function MarketingLanding() {
           </div>
         </div>
       </footer>
+        </div>
+      </div>
     </div>
   );
 }
@@ -385,6 +406,7 @@ function KBeautyProductCard({
 }) {
   const artBackgrounds = ["bg-[#dfe8df]", "bg-[#24232a]", "bg-[#e8e1d4]"] as const;
   const artBackground = artBackgrounds[index] ?? artBackgrounds[0];
+  const offer = primaryOfferForProduct(product);
 
   return (
     <article className="overflow-hidden rounded-[22px] border border-black/10 bg-surface">
@@ -409,9 +431,15 @@ function KBeautyProductCard({
             <p className="text-[10px] text-ink-2">참고가</p>
             <p className="mt-1 text-[17px] font-bold">₩{product.price.toLocaleString("ko-KR")}</p>
           </div>
-          <a href={`/api/outbound?productId=${product.id}&source=marketing-kbeauty`} target="_blank" rel="noreferrer" className="press inline-flex items-center gap-1.5 rounded-full bg-ink px-3.5 py-2.5 text-[11px] font-bold text-surface">
-            상품 확인 <ArrowUpRightIcon size={14} strokeWidth={1.9} />
-          </a>
+          {offer ? (
+            <a href={buildTrackedOfferOutboundPath(offer.id, { postId: "marketing-kbeauty" })} target="_blank" rel="noreferrer" className="press inline-flex items-center gap-1.5 rounded-full bg-ink px-3.5 py-2.5 text-[11px] font-bold text-surface">
+              상품 확인 <ArrowUpRightIcon size={14} strokeWidth={1.9} />
+            </a>
+          ) : (
+            <span className="inline-flex items-center rounded-full bg-surface-2 px-3.5 py-2.5 text-[11px] font-semibold text-ink-2">
+              검증된 상세 링크 없음
+            </span>
+          )}
         </div>
       </div>
     </article>
@@ -449,11 +477,15 @@ function InteractiveDemo({
   selectedId,
   selectedObject,
   selectedProduct,
+  selectedOfferId,
+  selectedDecision,
   onSelect,
 }: {
   selectedId: string;
   selectedObject: DemoObject;
   selectedProduct: Product;
+  selectedOfferId: string | null;
+  selectedDecision: ReturnType<typeof resolvePurchaseCtaDecision>;
   onSelect: (id: string) => void;
 }) {
   return (
@@ -524,20 +556,25 @@ function InteractiveDemo({
                 <p className="truncate text-[13px] font-bold">{selectedProduct.name}</p>
               </div>
             </div>
-            <div className="mt-5 flex items-end justify-between border-t border-line pt-4">
-              <div>
-                <p className="text-[10px] text-ink-2">{selectedProduct.retailer}</p>
-                <p className="mt-1 text-[17px] font-bold">₩{selectedProduct.price.toLocaleString("ko-KR")}</p>
-              </div>
-              <a
-                href={`/api/outbound?productId=${selectedProduct.id}&source=marketing-demo`}
-                target="_blank"
-                rel="noreferrer"
-                className="press inline-flex items-center gap-1.5 rounded-full bg-primary px-3.5 py-2.5 text-[11px] font-bold text-white"
-              >
-                {isMarketplaceDetailUrl(selectedProduct.url) ? "구매하러 가기" : "판매처 후보 확인"}
-                <ArrowUpRightIcon size={14} strokeWidth={1.9} />
-              </a>
+          <div className="mt-5 flex items-end justify-between border-t border-line pt-4">
+            <div>
+              <p className="text-[10px] text-ink-2">{selectedProduct.retailer}</p>
+              <p className="mt-1 text-[17px] font-bold">₩{selectedProduct.price.toLocaleString("ko-KR")}</p>
+            </div>
+              {selectedOfferId && selectedDecision.kind === "purchase" ? (
+                <a
+                  href={buildTrackedOfferOutboundPath(selectedOfferId, { postId: "marketing-demo" })}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="press inline-flex items-center gap-1.5 rounded-full bg-primary px-3.5 py-2.5 text-[11px] font-bold text-white"
+                >
+                  구매하러 가기 <ArrowUpRightIcon size={14} strokeWidth={1.9} />
+                </a>
+              ) : (
+                <span className="inline-flex items-center rounded-full bg-surface-2 px-3.5 py-2.5 text-[11px] font-semibold text-ink-2">
+                  리뷰/유사 상품만 보기
+                </span>
+              )}
             </div>
           </div>
           <p className="mt-4 flex items-center gap-1.5 text-[10px] leading-[1.5] text-ink-2"><CheckIcon size={13} className="text-primary" /> AI 후보를 크리에이터가 확인하고 연결합니다.</p>

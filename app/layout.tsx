@@ -1,15 +1,15 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import "./globals.css";
 import AppShell from "@/components/AppShell";
 import SupabaseAuthProvider from "@/components/SupabaseAuthProvider";
 
 export const metadata: Metadata = {
-  title: "STS — See it. Tap it. Shop it.",
-  description:
-    "사진 속 물건을 직접 탭해서 쇼핑하는 AI Visual Commerce. 게시물의 모든 상품을 AI가 자동으로 연결하고, 크리에이터와 수익을 나눕니다.",
+  title: "TACTILE",
+  description: "Collectible virtual keycaps with tactile press feedback, customization, sound presets, and reward progress.",
   openGraph: {
-    title: "STS — See it. Tap it. Shop it.",
-    description: "사진 속 모든 것이 바로 쇼핑이 되는 Visual Commerce 플랫폼.",
+    title: "TACTILE",
+    description: "Collect, customize, press, and unlock virtual mechanical keycaps.",
     type: "website",
   },
 };
@@ -18,13 +18,28 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  themeColor: "#f7f7f6",
+  themeColor: "#f3f0ea",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ko">
       <head>
+        {process.env.NODE_ENV === "development" && (
+          <>
+            <Script
+              src="https://unpkg.com/react-grab/dist/index.global.js"
+              crossOrigin="anonymous"
+              strategy="beforeInteractive"
+            />
+            <Script
+              src="https://unpkg.com/react-scan/dist/auto.global.js"
+              crossOrigin="anonymous"
+              strategy="beforeInteractive"
+            />
+          </>
+        )}
+
         <link
           rel="stylesheet"
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"

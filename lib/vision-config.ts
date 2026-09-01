@@ -189,7 +189,6 @@ export const MAX_OBJECTS = 10;
 
 /**
  * Product Retrieval 랭킹 가중치 — 절대값이 아니라 벤치마크로 조정하는 값.
- * (visual = 색상·실루엣 비교, 현 단계에서 카탈로그 provider는 색상 거리가 visual 신호)
  */
 export const RANK_WEIGHTS = {
   visual: 0.35,
@@ -199,6 +198,41 @@ export const RANK_WEIGHTS = {
   color: 0.08,
   text: 0.07,
   pageTrust: 0.05,
+} as const;
+
+/** Goal 3 visual reranking weights. Commission and affiliate fields are intentionally absent. */
+export const VISUAL_RERANK_WEIGHTS = {
+  visualSiglip: 0.5,
+  brand: 0.15,
+  canonicalClass: 0.1,
+  logoOrText: 0.08,
+  attributes: 0.07,
+  color: 0.05,
+  sourceAgreement: 0.05,
+} as const;
+
+export const FINAL_IDENTITY_WEIGHTS = {
+  visualSiglip: 0.4,
+  brand: 0.12,
+  canonicalClass: 0.08,
+  model: 0.15,
+  identifier: 0.1,
+  logo: 0.05,
+  colorway: 0.05,
+  sourceAgreement: 0.05,
+} as const;
+
+export const VISUAL_RERANK_POLICY = {
+  modelVersion: "google/siglip2-base-patch16-224",
+  preliminaryTopK: 10,
+  finalTopK: 5,
+  verifiedVisualMin: 0.86,
+  likelyVisualMin: 0.72,
+  verifiedFinalMin: 0.78,
+  likelyFinalMin: 0.58,
+  maxCandidateImageBytes: 2 * 1024 * 1024,
+  requestTimeoutMs: 8_000,
+  maxImageConcurrency: 4,
 } as const;
 
 /** Exact / Likely / Similar 판정 임계값 (finalScore 0~1) */
