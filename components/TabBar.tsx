@@ -2,14 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookmarkIcon, HomeIcon, PlusIcon, SearchIcon, UserIcon } from "./Icons";
+import { BookmarkIcon, EyeIcon, HomeIcon, PlusIcon, SearchIcon, UserIcon } from "./Icons";
 
 const TABS = [
-  { href: "/board", label: "Board", Icon: HomeIcon },
-  { href: "/collection", label: "Collection", Icon: SearchIcon },
-  { href: "/studio", label: "Studio", Icon: PlusIcon, center: true },
-  { href: "/rewards", label: "Rewards", Icon: BookmarkIcon },
-  { href: "/profile", label: "Profile", Icon: UserIcon },
+  { href: "/feed", label: "홈", Icon: HomeIcon },
+  { href: "/discover", label: "발견", Icon: SearchIcon },
+  { href: "/create", label: "만들기", Icon: PlusIcon, center: true },
+  { href: "/reels", label: "릴스", Icon: EyeIcon },
+  { href: "/saved", label: "저장", Icon: BookmarkIcon },
+  { href: "/profile", label: "프로필", Icon: UserIcon },
 ];
 
 export default function TabBar() {
@@ -38,7 +39,7 @@ export default function TabBar() {
               key={href}
               href={href}
               aria-label={label}
-              className={`flex flex-col items-center gap-0.5 px-3 pt-2.5 pb-2 transition-colors ${
+                className={`flex flex-col items-center gap-0.5 px-2.5 pt-2.5 pb-2 transition-colors ${
                 active ? "text-ink" : "text-ink-2"
               }`}
             >

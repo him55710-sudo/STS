@@ -1,4 +1,6 @@
-import type { Category, SocialDisclosure, SocialMediaAsset, SocialRights, SocialSourceRecord } from "./types";
+import seedManifestJson from "../data/social/seed-manifest.json";
+import { socialSeedManifestSchema, type SocialSeedRecord } from "./social-seed/schemas";
+import type { Category, Creator, MediaObjectTag, SocialDisclosure, SocialMediaAsset, SocialRights, SocialSourceRecord } from "./types";
 
 export type StoryDirection = "previous" | "next";
 
@@ -10,7 +12,9 @@ export type ManualStoryNavigation = {
 
 export type Story = {
   readonly id: string;
+  readonly storyGroupId: string;
   readonly creatorId: string;
+  readonly creator: Creator;
   readonly image: string;
   readonly contentKind: "story";
   readonly assets: readonly SocialMediaAsset[];
@@ -22,27 +26,32 @@ export type Story = {
   readonly subtitle: string;
   readonly productCount: number;
   readonly postedLabel: string;
+  readonly startsAt: string;
+  readonly expiresAt: string;
+  readonly seenAt: string | null;
   readonly is_demo: true;
   readonly source: "demo-seed";
 };
 
-type DemoStorySeed = {
-  readonly id: string;
-  readonly creatorId: string;
-  readonly image: string;
-  readonly category: Category;
-  readonly title: string;
-  readonly subtitle: string;
-  readonly productCount: number;
-  readonly postedLabel: string;
+export type StoryViewRecord = {
+  readonly storyId: string;
+  readonly viewerSessionId: string;
+  readonly viewedAt: string;
+  readonly idempotent: boolean;
 };
 
-const DEMO_STORY_DISCLOSURE = {
+type StoryViewWrite = {
+  readonly storyId: string;
+  readonly viewerSessionId: string;
+  readonly viewedAt: Date;
+};
+
+const REPOSITORY_STORY_DISCLOSURE = {
   kind: "none",
   label: null,
 } as const satisfies SocialDisclosure;
 
-const DEMO_STORY_RIGHTS = {
+const REPOSITORY_STORY_RIGHTS = {
   kind: "demo",
   status: "approved",
   canDisplay: true,
@@ -52,33 +61,95 @@ const DEMO_STORY_RIGHTS = {
   expiresAt: null,
 } as const satisfies SocialRights;
 
-function demoStoryAsset(storyId: string, image: string): SocialMediaAsset {
+const manifest = socialSeedManifestSchema.parse(seedManifestJson);
+const storyViews = new Map<string, StoryViewRecord>();
+
+export function getRepositorySeedRecords(): readonly SocialSeedRecord[] {
+  return manifest.records;
+}
+
+function storyAsset(record: SocialSeedRecord): SocialMediaAsset {
+  const asset = record.media.assets[0];
+  if (!asset) throw new Error(`Repository story ${record.id} has no media asset.`);
   return {
-    id: `asset-${storyId}`,
-    order: 0,
-    kind: "image",
-    url: image,
-    dimensions: { width: 1080, height: 1920 },
-    poster: null,
-    durationMs: null,
+    id: asset.id,
+    order: asset.order,
+    kind: asset.kind,
+    url: asset.url,
+    dimensions: asset.dimensions,
+    poster: asset.poster,
+    durationMs: asset.durationMs,
     manifest: null,
-    objectTags: [],
+    objectTags: objectTagsForAsset(asset.id, record.tags),
   };
 }
 
-function demoStory(seed: DemoStorySeed): Story {
+function objectTagsForAsset(assetId: string, tags: readonly string[]): readonly MediaObjectTag[] {
+  return tags.slice(0, 3).map((tag, index) => ({
+    id: `${assetId}-tag-${index + 1}`,
+    ownerAssetId: assetId,
+    label: tag.replaceAll("-", " "),
+    x: 0.18 + index * 0.18,
+    y: 0.22 + index * 0.08,
+    w: 0.18,
+    h: 0.12,
+    productId: null,
+    exactness: "unverified",
+    confidence: 0.6,
+  }));
+}
+
+function storyWindow(index: number): Pick<Story, "startsAt" | "expiresAt"> {
+  const startsAt = new Date();
+  startsAt.setMinutes(0, 0, 0);
+  startsAt.setHours(startsAt.getHours() - index);
+  const expiresAt = new Date(startsAt.getTime() + 24 * 60 * 60 * 1_000);
+  return { startsAt: startsAt.toISOString(), expiresAt: expiresAt.toISOString() };
+}
+
+function storyCreator(record: SocialSeedRecord): Creator {
   return {
-    ...seed,
+    id: record.creator.id,
+    handle: record.creator.handle,
+    name: record.creator.displayName,
+    bio: record.creator.rightsEvidence,
+    followers: 0,
+    category: record.category,
+    tone: "#5B556E",
+    avatarImage: record.media.assets[0]?.url,
+    verified: false,
+    is_demo: true,
+    source: "demo-seed",
+  };
+}
+
+function repositoryStory(record: SocialSeedRecord, index: number): Story {
+  const asset = storyAsset(record);
+  const window = storyWindow(index);
+  return {
+    id: record.id,
+    storyGroupId: `story-group-${record.creator.id}`,
+    creatorId: record.creator.id,
+    creator: storyCreator(record),
+    image: asset.poster?.url ?? asset.url,
     contentKind: "story",
-    assets: [demoStoryAsset(seed.id, seed.image)],
+    assets: [asset],
     sourceRecord: {
-      kind: "demo_seed",
-      provider: "sts-demo",
-      identity: `demo-seed/story/${seed.id}`,
-      canonicalUrl: null,
+      kind: record.source.kind,
+      provider: record.source.provider,
+      identity: record.source.identity,
+      canonicalUrl: record.source.canonicalUrl,
     },
-    disclosure: DEMO_STORY_DISCLOSURE,
-    rights: DEMO_STORY_RIGHTS,
+    disclosure: REPOSITORY_STORY_DISCLOSURE,
+    rights: { ...REPOSITORY_STORY_RIGHTS, evidence: record.rights.evidence },
+    category: record.category satisfies Category,
+    title: titleForRecord(record),
+    subtitle: record.caption,
+    productCount: asset.objectTags.length,
+    postedLabel: "Repository story",
+    startsAt: window.startsAt,
+    expiresAt: window.expiresAt,
+    seenAt: null,
     is_demo: true,
     source: "demo-seed",
   };
@@ -105,85 +176,34 @@ function assertNever(value: never): never {
   throw new Error(`Unexpected story direction: ${value}`);
 }
 
-export const STORIES: readonly Story[] = [
-  demoStory({
-    id: "story-minu-morning",
-    creatorId: "c-nari",
-    image: "/looks/look1.jpg",
-    category: "fashion",
-    title: "오늘의 옥스포드",
-    subtitle: "같은 셔츠, 다른 실루엣",
-    productCount: 4,
-    postedLabel: "방금 전",
-  }),
-  demoStory({
-    id: "story-hana-palette",
-    creatorId: "c-hana",
-    image: "/imported/asset_943d1003d847bb01-insta_ootd_1.jpg",
-    category: "fashion",
-    title: "late summer palette",
-    subtitle: "sky blue and washed denim",
-    productCount: 3,
-    postedLabel: "4분 전",
-  }),
-  demoStory({
-    id: "story-yun-closet",
-    creatorId: "c-yun",
-    image: "/imported/asset_20e358cab2c3e704-insta_ootd_2.jpg",
-    category: "fashion",
-    title: "출근 전 옷장",
-    subtitle: "오늘 저장한 세 가지",
-    productCount: 3,
-    postedLabel: "7분 전",
-  }),
-  demoStory({
-    id: "story-eun-detail",
-    creatorId: "c-ara",
-    image: "/looks/look8.jpg",
-    category: "fashion",
-    title: "소재를 남기는 룩",
-    subtitle: "그레이지와 블랙의 비율",
-    productCount: 5,
-    postedLabel: "11분 전",
-  }),
-  demoStory({
-    id: "story-june-shoe",
-    creatorId: "c-june",
-    image: "/imported/asset_d99e8deff6d3b3a0-insta_ootd_3.jpg",
-    category: "fashion",
-    title: "오늘의 신발",
-    subtitle: "매일 신어도 질리지 않는 한 켤레",
-    productCount: 1,
-    postedLabel: "15분 전",
-  }),
-  demoStory({
-    id: "story-rin-outdoor",
-    creatorId: "c-jiho",
-    image: "/looks/look9.jpg",
-    category: "fashion",
-    title: "city trail notes",
-    subtitle: "도시와 야외 사이의 레이어",
-    productCount: 6,
-    postedLabel: "22분 전",
-  }),
-  demoStory({
-    id: "story-soo-archive",
-    creatorId: "c-soo",
-    image: "/imported/asset_74a10c566fd66eb7-insta_ootd_4.jpg",
-    category: "fashion",
-    title: "weekend archive",
-    subtitle: "사진 속 물건을 다시 고르는 시간",
-    productCount: 4,
-    postedLabel: "30분 전",
-  }),
-  demoStory({
-    id: "story-dae-look",
-    creatorId: "c-dae",
-    image: "/imported/asset_0858cc05f8f9d94e-real_fashion_01.jpg",
-    category: "fashion",
-    title: "one photo, five tags",
-    subtitle: "먼저 찾고 싶은 물건부터 탭하세요",
-    productCount: 5,
-    postedLabel: "43분 전",
-  }),
-];
+function titleForRecord(record: SocialSeedRecord): string {
+  return `${record.category} ${record.contentKind} ${record.id.slice(-3)}`;
+}
+
+function storyViewKey(write: Pick<StoryViewWrite, "storyId" | "viewerSessionId">): string {
+  return `${write.viewerSessionId}:${write.storyId}`;
+}
+
+export function recordStoryViewOnce(write: StoryViewWrite): StoryViewRecord {
+  const key = storyViewKey(write);
+  const existing = storyViews.get(key);
+  if (existing) return { ...existing, idempotent: true };
+
+  const record = {
+    storyId: write.storyId,
+    viewerSessionId: write.viewerSessionId,
+    viewedAt: write.viewedAt.toISOString(),
+    idempotent: false,
+  } satisfies StoryViewRecord;
+  storyViews.set(key, record);
+  return record;
+}
+
+export function resetStoryViewRecordsForTests(): void {
+  storyViews.clear();
+}
+
+export const REPOSITORY_STORIES: readonly Story[] = manifest.records
+  .filter((record) => record.contentKind === "story")
+  .slice(0, 8)
+  .map(repositoryStory);

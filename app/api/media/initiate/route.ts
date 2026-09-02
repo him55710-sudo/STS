@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { validateUploadRequest } from "@/lib/media";
+import { createSupabaseMediaAdminClient } from "@/lib/media/admin-client";
 
 export const runtime = "nodejs";
 export const maxDuration = 10;
@@ -31,6 +32,20 @@ const requestSchema = z.strictObject({
   contentHash: z.string().min(1).max(96).optional(),
   audio: audioSchema.optional(),
 });
+
+type InitiatedMediaAssetRow = {
+  readonly id: string;
+  readonly storage_path: string | null;
+  readonly public_url: string;
+  readonly width: number | null;
+  readonly height: number | null;
+  readonly content_hash: string | null;
+  readonly processing_state: string;
+};
+type InitiationRpcResult = {
+  readonly data: InitiatedMediaAssetRow | readonly InitiatedMediaAssetRow[] | null;
+  readonly error: { readonly message?: string } | null;
+};
 
 export async function POST(req: NextRequest) {
   let rawBody: unknown;
@@ -65,6 +80,9 @@ export async function POST(req: NextRequest) {
   if (postResult.error) return NextResponse.json({ error: "post lookup failed" }, { status: 500 });
   if (!postResult.data) return NextResponse.json({ error: "post not found" }, { status: 404 });
 
+  const adminSupabase = createSupabaseMediaAdminClient();
+  if (!adminSupabase) return NextResponse.json({ error: "media upload admin client unavailable" }, { status: 503 });
+
   const storagePath = `${user.id}/${randomUUID()}/${encodeURIComponent(parsedBody.data.fileName)}`;
   const signed = await supabase.storage.from("post-media").createSignedUploadUrl(storagePath);
   if (signed.error || !signed.data?.signedUrl) {
@@ -74,41 +92,41 @@ export async function POST(req: NextRequest) {
     data: { publicUrl },
   } = supabase.storage.from("post-media").getPublicUrl(storagePath);
 
-  const inserted = await supabase
-    .from("media_assets")
-    .insert({
-      post_id: parsedBody.data.postId,
-      storage_path: storagePath,
-      public_url: publicUrl,
-      width: validation.dimensions?.width ?? null,
-      height: validation.dimensions?.height ?? null,
-      source: "user_upload",
-      media_kind: validation.mediaKind === "video" ? "video" : "photo",
-      mime_type: validation.mimeType,
-      byte_size: parsedBody.data.sizeBytes,
-      duration_ms: parsedBody.data.durationMs ?? null,
-      processing_state: "uploaded",
-      processing_error: null,
-      license_note: JSON.stringify({
-        status: "uploaded",
-        kind: validation.mediaKind,
-        mimeType: validation.mimeType,
-        durationMs: parsedBody.data.durationMs ?? null,
-        audio: parsedBody.data.audio ?? null,
-      }),
-      content_hash: null,
-    })
-    .select("id, storage_path, public_url, width, height, content_hash, processing_state")
-    .single();
-  if (inserted.error) return NextResponse.json({ error: "media persist failed" }, { status: 500 });
+  const initiated: InitiationRpcResult = await adminSupabase.rpc("initiate_media_upload", {
+    p_post_id: parsedBody.data.postId,
+    p_owner_id: user.id,
+    p_storage_path: storagePath,
+    p_public_url: publicUrl,
+    p_width: validation.dimensions?.width ?? null,
+    p_height: validation.dimensions?.height ?? null,
+    p_media_kind: validation.mediaKind === "video" ? "video" : "photo",
+    p_mime_type: validation.mimeType,
+    p_byte_size: parsedBody.data.sizeBytes,
+    p_duration_ms: parsedBody.data.durationMs ?? null,
+    p_license_note: JSON.stringify({
+      status: "uploaded",
+      kind: validation.mediaKind,
+      mimeType: validation.mimeType,
+      durationMs: parsedBody.data.durationMs ?? null,
+      audio: parsedBody.data.audio ?? null,
+    }),
+  });
+  const initiatedAsset = firstInitiatedAsset(initiated.data);
+  if (initiated.error || !initiatedAsset) return NextResponse.json({ error: "media persist failed" }, { status: 500 });
 
   return NextResponse.json(
     {
-      asset: inserted.data,
+      asset: initiatedAsset,
       upload: { uploadUrl: signed.data.signedUrl, storagePath, publicUrl, headers: { "content-type": validation.mimeType } },
       status: "uploaded",
       deduped: false,
     },
     { status: 201, headers: { "Cache-Control": "no-store" } }
   );
+}
+
+function firstInitiatedAsset(data: InitiationRpcResult["data"]): InitiatedMediaAssetRow | null {
+  if (!data) return null;
+  if ("id" in data) return data;
+  return data[0] ?? null;
 }

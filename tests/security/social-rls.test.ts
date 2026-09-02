@@ -1,31 +1,5 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-
-const migrationSql = readFileSync(new URL("../../supabase/migrations/0003_social_community.sql", import.meta.url), "utf8");
-
-function policyBlock(sql: string, policyName: string): string {
-  const policyStart = sql.indexOf(`create policy ${policyName}`);
-  const nextPolicyStart = sql.indexOf("create policy ", policyStart + 1);
-
-  expect(policyStart, `${policyName} should exist`).toBeGreaterThanOrEqual(0);
-  return sql.slice(policyStart, nextPolicyStart < 0 ? undefined : nextPolicyStart);
-}
-
-function sqlStatements(sql: string): readonly string[] {
-  return sql
-    .split(";")
-    .map((statement) => statement.trim())
-    .filter((statement) => statement.length > 0);
-}
-
-function functionBlock(sql: string, functionName: string): string {
-  const functionStart = sql.indexOf(`create or replace function ${functionName}`);
-  const functionEnd = sql.indexOf("\n$$;", functionStart);
-
-  expect(functionStart, `${functionName} should exist`).toBeGreaterThanOrEqual(0);
-  expect(functionEnd, `${functionName} should terminate`).toBeGreaterThan(functionStart);
-  return sql.slice(functionStart, functionEnd);
-}
+import { migrationSql, policyBlock, sqlStatements, functionBlock } from "./social-rls-fixtures";
 
 describe("social RLS migration", () => {
   it("rejects anonymous inserts into content, comments, reactions, follows, and reposts", () => {
@@ -117,6 +91,7 @@ describe("social RLS migration", () => {
     const commentUpdatePolicy = policyBlock(migrationSql, "post_comments_author_update");
     const repostPolicy = policyBlock(migrationSql, "post_reposts_creator_insert");
     const postObjectPolicy = policyBlock(migrationSql, "post_objects_owner_write");
+    const postObjectHelper = functionBlock(migrationSql, "public.can_write_social_post_object");
     const rightsPolicy = policyBlock(migrationSql, "content_rights_admin_review");
     const rightsInsertPolicy = policyBlock(migrationSql, "content_rights_owner_insert");
 
@@ -126,9 +101,10 @@ describe("social RLS migration", () => {
     expect(commentInsertPolicy).toContain("moderation_state = 'pending'");
     expect(commentUpdatePolicy).toContain("moderation_state = 'pending'");
     expect(repostPolicy).toContain("permission_state = 'pending'");
-    expect(mediaAssetPolicy).toContain("processing_state in ('uploaded', 'processing', 'failed')");
-    expect(mediaVariantPolicy).toContain("processing_state in ('uploaded', 'processing', 'failed')");
-    expect(postObjectPolicy).toContain("content_rights.can_use_for_commerce_matching = true");
+    expect(mediaAssetPolicy).toContain("processing_state = 'uploaded'");
+    expect(mediaVariantPolicy).toContain("processing_state = 'uploaded'");
+    expect(postObjectPolicy).toContain("public.can_write_social_post_object");
+    expect(postObjectHelper).toContain("content_rights.can_use_for_commerce_matching = true");
     expect(rightsInsertPolicy).toContain("rights_status = 'pending'");
     expect(rightsInsertPolicy).toContain("can_display = false");
     expect(rightsInsertPolicy).toContain("can_use_for_commerce_matching = false");
@@ -152,8 +128,24 @@ describe("social RLS migration", () => {
   });
 
   it("does not grant public analytics writes", () => {
-    expect(migrationSql).not.toMatch(/grant\s+insert[\s\S]*public\.analytics_events[\s\S]*\bto\s+anon\b/i);
-    expect(migrationSql).not.toMatch(/grant\s+insert[\s\S]*public\.analytics_events[\s\S]*\bto\s+authenticated\b/i);
+    const grants = sqlStatements(migrationSql).filter((statement) => /^grant\s+insert\b/i.test(statement));
+
+    expect(grants.some((statement) => /\bpublic\.analytics_events\b[\s\S]*\bto\s+anon\b/i.test(statement))).toBe(false);
+    expect(grants.some((statement) => /\bpublic\.analytics_events\b[\s\S]*\bto\s+authenticated\b/i.test(statement))).toBe(false);
     expect(migrationSql).toContain("No client insert policy by design");
+  });
+
+  it("defines server-owned social interaction persistence RPCs with idempotency storage", () => {
+    const recordInteractionFunction = functionBlock(migrationSql, "public.record_social_interaction");
+    const getInteractionFunction = functionBlock(migrationSql, "public.get_social_interaction_by_idempotency_key");
+
+    expect(migrationSql).toContain("create table if not exists public.social_interactions");
+    expect(migrationSql).toContain("unique (actor_id, idempotency_key)");
+    expect(migrationSql).toContain("alter table public.social_interactions enable row level security");
+    expect(migrationSql).toContain("revoke all on table public.social_interactions from anon, authenticated");
+    expect(recordInteractionFunction).toContain("insert into public.social_interactions");
+    expect(recordInteractionFunction).toContain("on conflict (actor_id, idempotency_key)");
+    expect(getInteractionFunction).toContain("where social_interactions.actor_id = p_actor_id");
+    expect(getInteractionFunction).toContain("social_interactions.idempotency_key = p_idempotency_key");
   });
 });

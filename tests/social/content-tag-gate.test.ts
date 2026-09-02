@@ -1,137 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { resolveSocialTagGate } from "../../lib/commerce/social-tag-gate";
-import type { CommerceOffer, IdentityEvidence, MatchState } from "../../lib/commerce/types";
-import type { MediaObjectTag, SocialMediaAsset, SocialRights, SocialSourceRecord } from "../../lib/types";
-
-const detailUrl = "https://www.musinsa.com/products/3010383";
-const affiliateUrl = "https://sovrn.co?u=https%3A%2F%2Fwww.musinsa.com%2Fproducts%2F3010383";
-
-const identityEvidence = {
-  signal: "brand",
-  value: "Polo Ralph Lauren catalog record",
-  score: 1,
-} satisfies IdentityEvidence;
-
-const detailEvidence = {
-  signal: "detail_page",
-  value: detailUrl,
-  score: 1,
-} satisfies IdentityEvidence;
-
-const licensedRights = {
-  kind: "licensed",
-  status: "approved",
-  canDisplay: true,
-  canUseForCommerceMatching: true,
-  evidence: "license:partner-feed-2026-08",
-  expiresAt: null,
-} satisfies SocialRights;
-
-const displayOnlyMatchingBlockedRights = {
-  ...licensedRights,
-  canUseForCommerceMatching: false,
-} satisfies SocialRights;
-
-const userUploadSource = {
-  kind: "user_upload",
-  provider: "local-upload",
-  identity: "creator-1/post-1",
-  canonicalUrl: null,
-} satisfies SocialSourceRecord;
-
-const officialEmbedSource = {
-  kind: "official_embed",
-  provider: "instagram",
-  identity: "instagram:p/official",
-  canonicalUrl: "https://www.instagram.com/p/official/",
-} satisfies SocialSourceRecord;
-
-const demoSource = {
-  kind: "demo_seed",
-  provider: "fixture",
-  identity: "demo:post-1",
-  canonicalUrl: null,
-} satisfies SocialSourceRecord;
-
-const asset = {
-  id: "asset-blue-oxford-1",
-  order: 0,
-  kind: "image",
-  url: "/social/blue-oxford.jpg",
-  dimensions: { width: 1080, height: 1080 },
-  poster: null,
-  durationMs: null,
-  manifest: null,
-  objectTags: [],
-} satisfies SocialMediaAsset;
-
-const exactTag = {
-  id: "tag-blue-oxford",
-  ownerAssetId: "asset-blue-oxford-1",
-  label: "blue oxford shirt",
-  x: 0.1,
-  y: 0.1,
-  w: 0.4,
-  h: 0.5,
-  productId: "plw-polo-oxford",
-  exactness: "exact",
-  confidence: 0.96,
-} satisfies MediaObjectTag;
-
-function offer(overrides: Partial<CommerceOffer> = {}): CommerceOffer {
-  return {
-    id: "offer:catalog:plw-polo-oxford",
-    canonicalProductId: "canonical:polo-ralph-lauren:classic-fit-oxford:sky-blue",
-    provider: "direct",
-    providerProductId: "plw-polo-oxford",
-    sourceIdentity: { source: "direct", sourceProductId: "plw-polo-oxford" },
-    merchant: "무신사",
-    title: "Polo Ralph Lauren Classic Fit Oxford Shirt Sky Blue",
-    detailUrl,
-    discoveryUrl: null,
-    affiliateUrl,
-    imageUrl: "/looks/plw-polo-oxford.jpg",
-    imageVariants: [{ kind: "primary", url: "/looks/plw-polo-oxford.jpg" }],
-    price: 199000,
-    currency: "KRW",
-    shippingPrice: null,
-    availability: "in_stock",
-    stock: { status: "in_stock", quantity: null },
-    commissionRate: 0.07,
-    matchState: "exact",
-    offerLifecycle: "active",
-    freshness: {
-      observedAt: "2026-08-27T00:00:00.000Z",
-      staleAfter: null,
-    },
-    identityScore: 1,
-    evidence: [identityEvidence, detailEvidence],
-    verificationEvidence: [detailEvidence],
-    detailPageVerified: true,
-    ...overrides,
-  };
-}
-
-function resolve(overrides: {
-  readonly rights?: SocialRights;
-  readonly sourceRecord?: SocialSourceRecord;
-  readonly tag?: MediaObjectTag;
-  readonly offer?: CommerceOffer | null;
-} = {}) {
-  return resolveSocialTagGate({
-    asset,
-    tag: overrides.tag ?? exactTag,
-    rights: overrides.rights ?? licensedRights,
-    sourceRecord: overrides.sourceRecord ?? userUploadSource,
-    offer: overrides.offer === undefined ? offer() : overrides.offer,
-    context: { postId: "post-1", creatorId: "creator-1", objectId: "tag-blue-oxford" },
-  });
-}
-
-function expectReviewOnly(result: ReturnType<typeof resolve>): void {
-  expect(result.purchaseEligible).toBe(false);
-  expect(result.destination).toBeNull();
-}
+import type { MatchState } from "../../lib/commerce/types";
+import type { MediaObjectTag, SocialRights } from "../../lib/types";
+import {
+  demoSource,
+  detailEvidence,
+  displayOnlyMatchingBlockedRights,
+  exactTag,
+  expectReviewOnly,
+  identityEvidence,
+  licensedRights,
+  offer,
+  officialEmbedSource,
+  resolveTagGate,
+} from "./content-tag-gate-fixtures";
 
 describe("social content tag commerce gate", () => {
   it("returns a /go offer destination when a licensed media tag resolves to a verified exact Oxford offer", () => {
@@ -139,7 +20,7 @@ describe("social content tag commerce gate", () => {
     const exactOffer = offer();
 
     // When
-    const result = resolve({ offer: exactOffer });
+    const result = resolveTagGate({ offer: exactOffer });
 
     // Then
     expect(result.purchaseEligible).toBe(true);
@@ -163,7 +44,7 @@ describe("social content tag commerce gate", () => {
     });
 
     // When
-    const result = resolve({ offer: greyOffer });
+    const result = resolveTagGate({ offer: greyOffer });
 
     // Then
     expectReviewOnly(result);
@@ -175,7 +56,7 @@ describe("social content tag commerce gate", () => {
     const searchUrl = "https://search.shopping.naver.com/search/all?query=oxford";
 
     // When
-    const result = resolve({
+    const result = resolveTagGate({
       offer: offer({
         detailUrl: searchUrl,
         discoveryUrl: searchUrl,
@@ -193,7 +74,7 @@ describe("social content tag commerce gate", () => {
     const malformedUrl = "not-a-direct-product-url";
 
     // When
-    const result = resolve({
+    const result = resolveTagGate({
       offer: offer({
         detailUrl: malformedUrl,
         affiliateUrl: `https://sovrn.co?u=${encodeURIComponent(malformedUrl)}`,
@@ -207,7 +88,7 @@ describe("social content tag commerce gate", () => {
 
   it("requires rights.canUseForCommerceMatching while keeping match evidence and confidence visible", () => {
     // When
-    const result = resolve({ rights: displayOnlyMatchingBlockedRights });
+    const result = resolveTagGate({ rights: displayOnlyMatchingBlockedRights });
 
     // Then
     expectReviewOnly(result);
@@ -228,7 +109,7 @@ describe("social content tag commerce gate", () => {
     } satisfies SocialRights;
 
     // When
-    const result = resolve({ rights: embedRights, sourceRecord: officialEmbedSource });
+    const result = resolveTagGate({ rights: embedRights, sourceRecord: officialEmbedSource });
 
     // Then
     expectReviewOnly(result);
@@ -247,7 +128,7 @@ describe("social content tag commerce gate", () => {
     } satisfies SocialRights;
 
     // When
-    const result = resolve({ rights: demoRights, sourceRecord: demoSource });
+    const result = resolveTagGate({ rights: demoRights, sourceRecord: demoSource });
 
     // Then
     expectReviewOnly(result);
@@ -261,7 +142,7 @@ describe("social content tag commerce gate", () => {
   ] satisfies readonly { readonly name: string; readonly tag: MediaObjectTag; readonly reason: string }[])(
     "blocks purchase eligibility when a tag is $name",
     ({ tag, reason }) => {
-      const result = resolve({ tag });
+      const result = resolveTagGate({ tag });
 
       // Then
       expectReviewOnly(result);
@@ -275,7 +156,7 @@ describe("social content tag commerce gate", () => {
     const staleOffer = offer({ offerLifecycle: "stale" });
 
     // When
-    const result = resolve({ offer: staleOffer });
+    const result = resolveTagGate({ offer: staleOffer });
 
     // Then
     expectReviewOnly(result);
@@ -292,7 +173,7 @@ describe("social content tag commerce gate", () => {
     } satisfies MediaObjectTag;
 
     // When
-    const result = resolve({
+    const result = resolveTagGate({
       tag: creatorClaimedExactTag,
       offer: offer({
         matchState: "similar",
@@ -318,7 +199,7 @@ describe("social content tag commerce gate", () => {
     });
 
     // When
-    const result = resolve({ offer: affiliateOnlyOffer });
+    const result = resolveTagGate({ offer: affiliateOnlyOffer });
 
     // Then
     expectReviewOnly(result);
@@ -330,7 +211,7 @@ describe("social content tag commerce gate", () => {
     const unresolvedOffer = null;
 
     // When
-    const result = resolve({ offer: unresolvedOffer });
+    const result = resolveTagGate({ offer: unresolvedOffer });
 
     // Then
     expectReviewOnly(result);

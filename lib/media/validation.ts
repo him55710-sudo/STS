@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type { MediaDimensions, MediaKind, MediaUploadMimeType, RejectedUpload, UploadRequest } from "./types";
 import { MEDIA_UPLOAD_MIME_TYPES } from "./types";
+import { parseStoredVideoDurationMs } from "./video-metadata";
 
 export const MEDIA_LIMITS = {
   imageMaxBytes: 8 * 1024 * 1024,
@@ -22,6 +23,25 @@ type AcceptedValidation = {
 };
 
 export type UploadValidationResult = AcceptedValidation | RejectedUpload;
+
+type UploadedObjectValidationInput = {
+  readonly mimeType: string;
+  readonly actualMimeType: string | null;
+  readonly declaredSizeBytes: number;
+  readonly declaredDimensions: MediaDimensions | null;
+  readonly durationMs: number | null;
+  readonly contentBytes: Buffer | Uint8Array;
+};
+
+type AcceptedUploadedObject = {
+  readonly kind: "accepted";
+  readonly mediaKind: MediaKind;
+  readonly mimeType: MediaUploadMimeType;
+  readonly contentHash: string;
+  readonly dimensions: MediaDimensions | null;
+};
+
+export type UploadedObjectValidationResult = AcceptedUploadedObject | RejectedUpload;
 
 export function validateUploadRequest(request: UploadRequest): UploadValidationResult {
   const mimeType = parseMimeType(request.mimeType);
@@ -61,6 +81,9 @@ export function validateUploadRequest(request: UploadRequest): UploadValidationR
   if (mediaKind === "image" && !parsedDimensions) return reject("corrupt_media", 400, "image dimensions could not be parsed");
   const parsedDimensionsResult = validateDimensions(parsedDimensions ?? undefined);
   if (parsedDimensionsResult.kind === "rejected") return parsedDimensionsResult;
+  if (parsedDimensions && request.dimensions && !dimensionsEqual(parsedDimensions, request.dimensions)) {
+    return reject("dimension_mismatch", 400, "declared media dimensions did not match payload");
+  }
 
   return {
     kind: "accepted",
@@ -69,6 +92,41 @@ export function validateUploadRequest(request: UploadRequest): UploadValidationR
     contentHash: computedHash,
     uploadFingerprint: computedHash,
     dimensions: parsedDimensions ?? request.dimensions ?? null,
+  };
+}
+
+export function validateUploadedObject(input: UploadedObjectValidationInput): UploadedObjectValidationResult {
+  const mimeType = parseMimeType(input.mimeType);
+  if (!mimeType) return reject("unsupported_mime", 415, "unsupported media MIME type");
+  const actualMimeType = input.actualMimeType ? parseMimeType(input.actualMimeType) : null;
+  if (input.actualMimeType && !actualMimeType) return reject("unsupported_mime", 415, "unsupported stored media MIME type");
+  if (actualMimeType && actualMimeType !== mimeType) {
+    return reject("mime_mismatch", 400, "stored media MIME did not match declared MIME");
+  }
+
+  const validation = validateUploadRequest({
+    fileName: "uploaded-object",
+    mimeType,
+    sizeBytes: input.declaredSizeBytes,
+    dimensions: input.declaredDimensions ?? undefined,
+    contentBytes: input.contentBytes,
+  });
+  if (validation.kind === "rejected") return validation;
+  if (validation.mediaKind === "video") {
+    const durationMs = parseStoredVideoDurationMs(Buffer.from(input.contentBytes), validation.mimeType);
+    if (durationMs === null) {
+      return reject("video_metadata_unverified", 400, "stored video duration could not be verified");
+    }
+    if (durationMs > MEDIA_LIMITS.maxDurationMs) {
+      return reject("duration_too_long", 413, "video duration exceeds safety limits");
+    }
+  }
+  return {
+    kind: "accepted",
+    mediaKind: validation.mediaKind,
+    mimeType: validation.mimeType,
+    contentHash: validation.uploadFingerprint,
+    dimensions: validation.dimensions,
   };
 }
 
@@ -146,6 +204,10 @@ function webpDimensions(bytes: Buffer): MediaDimensions | null {
 function normalizeHash(hash: string | undefined): string | null {
   if (hash === undefined) return null;
   return SHA256_HASH_PATTERN.test(hash) ? hash : null;
+}
+
+function dimensionsEqual(left: MediaDimensions, right: MediaDimensions): boolean {
+  return left.width === right.width && left.height === right.height;
 }
 
 function reject(code: string, status: number, message: string): RejectedUpload {

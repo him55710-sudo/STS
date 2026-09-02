@@ -1,6 +1,7 @@
-import { createHash } from "node:crypto";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { validateUploadedObject } from "@/lib/media";
+import { createSupabaseMediaAdminClient } from "@/lib/media/admin-client";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -14,7 +15,23 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createSupabaseServerClient
 type StorageVerification =
   | { readonly kind: "uploaded"; readonly contentHash: string }
   | { readonly kind: "missing" }
-  | { readonly kind: "failed" };
+  | { readonly kind: "failed" }
+  | { readonly kind: "rejected"; readonly code: string; readonly status: number; readonly message: string };
+type CurrentMediaAssetRow = {
+  readonly id: string;
+  readonly post_id: string;
+  readonly storage_path: string | null;
+  readonly public_url: string;
+  readonly source: string;
+  readonly mime_type: string | null;
+  readonly byte_size: number | null;
+  readonly width: number | null;
+  readonly height: number | null;
+  readonly duration_ms: number | null;
+  readonly content_hash: string | null;
+  readonly processing_state: string;
+  readonly posts: { readonly creator_id: string };
+};
 type CompletedMediaAssetRow = {
   readonly id: string;
   readonly storage_path: string | null;
@@ -46,9 +63,9 @@ export async function POST(req: NextRequest) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "missing-session" }, { status: 401 });
 
-  const current = await supabase
+  const current: { readonly data: CurrentMediaAssetRow | null; readonly error: { readonly message?: string } | null } = await supabase
     .from("media_assets")
-    .select("id, post_id, storage_path, public_url, source, content_hash, processing_state, posts!inner(creator_id)")
+    .select("id, post_id, storage_path, public_url, source, mime_type, byte_size, width, height, duration_ms, content_hash, processing_state, posts!inner(creator_id)")
     .eq("id", parsedBody.data.assetId)
     .eq("posts.creator_id", user.id)
     .maybeSingle();
@@ -62,7 +79,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid media upload state" }, { status: 409 });
   }
 
-  const storageVerification = await verifyUploadedStorageObject(supabase, current.data.storage_path);
+  const storageVerification = await verifyUploadedStorageObject(supabase, current.data);
   switch (storageVerification.kind) {
     case "uploaded":
       break;
@@ -70,13 +87,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "media upload missing" }, { status: 409 });
     case "failed":
       return NextResponse.json({ error: "media storage verification failed" }, { status: 503 });
+    case "rejected":
+      return NextResponse.json(
+        { error: storageVerification.code, message: storageVerification.message },
+        { status: storageVerification.status }
+      );
     default:
       return assertNever(storageVerification);
   }
 
-  const completed: CompletionRpcResult = await supabase.rpc("complete_media_upload_and_enqueue", {
+  const adminSupabase = createSupabaseMediaAdminClient();
+  if (!adminSupabase) return NextResponse.json({ error: "media queue admin client unavailable" }, { status: 503 });
+
+  const completed: CompletionRpcResult = await adminSupabase.rpc("complete_media_upload_and_enqueue", {
     p_asset_id: current.data.id,
     p_content_hash: storageVerification.contentHash,
+    p_owner_id: user.id,
   });
   const completedAsset = firstCompletedAsset(completed.data);
   if (completed.error || !completedAsset) {
@@ -91,8 +117,12 @@ export async function POST(req: NextRequest) {
 
 async function verifyUploadedStorageObject(
   supabase: SupabaseServerClient,
-  storagePath: string
+  asset: CurrentMediaAssetRow
 ): Promise<StorageVerification> {
+  if (!asset.storage_path || !asset.mime_type || !asset.byte_size) {
+    return { kind: "rejected", code: "invalid_media_record", status: 409, message: "media upload metadata is incomplete" };
+  }
+  const storagePath = asset.storage_path;
   const separatorIndex = storagePath.lastIndexOf("/");
   const folder = separatorIndex === -1 ? "" : storagePath.slice(0, separatorIndex);
   const objectName = separatorIndex === -1 ? storagePath : storagePath.slice(separatorIndex + 1);
@@ -102,8 +132,20 @@ async function verifyUploadedStorageObject(
   if (!listed.data?.some((object) => object.name === objectName)) return { kind: "missing" };
   const downloaded = await bucket.download(storagePath);
   if (downloaded.error || !downloaded.data) return { kind: "failed" };
+  if (downloaded.data.size !== asset.byte_size) {
+    return { kind: "rejected", code: "invalid_size", status: 400, message: "declared media size did not match payload" };
+  }
   const bytes = Buffer.from(await downloaded.data.arrayBuffer());
-  return { kind: "uploaded", contentHash: `sha256:${createHash("sha256").update(bytes).digest("hex")}` };
+  const validation = validateUploadedObject({
+    mimeType: asset.mime_type,
+    actualMimeType: downloaded.data.type || null,
+    declaredSizeBytes: asset.byte_size,
+    declaredDimensions: asset.width && asset.height ? { width: asset.width, height: asset.height } : null,
+    durationMs: asset.duration_ms,
+    contentBytes: bytes,
+  });
+  if (validation.kind === "rejected") return validation;
+  return { kind: "uploaded", contentHash: validation.contentHash };
 }
 
 function firstCompletedAsset(data: CompletionRpcResult["data"]): CompletedMediaAssetRow | null {

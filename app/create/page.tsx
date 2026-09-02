@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { candidatesFor, searchProducts } from "@/lib/match";
 import { retrieveAll, type ProductCandidate, type RetrievalQuery } from "@/lib/retrieval";
 import { useApp, useProductLookup } from "@/lib/store";
@@ -21,6 +21,15 @@ import {
 import { CheckIcon, ImageIcon, LinkIcon, SearchIcon, TrashIcon, XIcon } from "@/components/Icons";
 import { ExactBadge } from "@/components/ProductSheet";
 import { ringsToPath } from "@/components/ObjectLayer";
+import { CreatorPublishingControls } from "./CreatorPublishingControls";
+import {
+  createDefaultPublishMetadata,
+  getCreatorPublishGate,
+  resolveCandidateExactness,
+  toSocialMediaAsset,
+  type CreatorPublishMetadata,
+} from "./creator-publishing";
+import { useCreatorMediaUploads } from "./useCreatorMediaUploads";
 
 /**
  * AI Tagging Creator Flow — PRD §14–15.
@@ -44,6 +53,10 @@ const SAMPLES = [
   { src: "/looks/look9.jpg", label: "아웃도어" },
   { src: "/looks/look2.jpg", label: "헤리티지" },
 ];
+
+function createDraftPostId(): string {
+  return `user-${Date.now().toString(36)}`;
+}
 
 export function getCreatePurchaseEligibleOffer(product: Product | null | undefined): CommerceOffer | null {
   if (!product) return null;
@@ -69,14 +82,24 @@ export default function CreatePage() {
   const router = useRouter();
   const { addUserPost, addCustomProduct, track } = useApp();
   const lookupProduct = useProductLookup();
+  const {
+    assets: uploadedAssets,
+    uploadFiles,
+    resetUploads,
+    setAssetAltText,
+    setAssetDisplayApproved,
+    setPrimaryAssetCandidates,
+  } = useCreatorMediaUploads();
 
   const [step, setStep] = useState<Step>("select");
+  const [draftPostId, setDraftPostId] = useState(createDraftPostId);
   const [stage, setStage] = useState<"detect" | "mask">("detect");
   const [image, setImage] = useState<string | null>(null);
   const [ratio, setRatio] = useState(0.75);
   const [objects, setObjects] = useState<DraftObject[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [caption, setCaption] = useState("");
+  const [publishMetadata, setPublishMetadata] = useState(createDefaultPublishMetadata);
   const [aiSource, setAiSource] = useState<string>("");
   const [startedAt, setStartedAt] = useState(0);
   const [elapsed, setElapsed] = useState(0);
@@ -86,6 +109,10 @@ export default function CreatePage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const imgRef = useRef<HTMLDivElement>(null);
   const seq = useRef(0);
+  const publishGate = useMemo(
+    () => getCreatorPublishGate(publishMetadata, uploadedAssets),
+    [publishMetadata, uploadedAssets]
+  );
 
   // 디버그 뷰 (?debugFashion=true) — production 빌드에서는 비활성
   useEffect(() => {
@@ -94,10 +121,14 @@ export default function CreatePage() {
   }, []);
 
   // ── Step 1: 이미지 선택 ────────────────────────────────
-  const onFile = (file: File) => {
+  const onFiles = (files: FileList | null) => {
+    const selectedFiles = Array.from(files ?? []);
+    const primaryImage = selectedFiles.find((file) => file.type.startsWith("image/"));
+    if (!primaryImage) return;
+    void uploadFiles(selectedFiles, draftPostId);
     const reader = new FileReader();
     reader.onload = () => downscale(String(reader.result));
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(primaryImage);
   };
 
   const downscale = (dataUrl: string) => {
@@ -211,13 +242,14 @@ export default function CreatePage() {
     // ── 상품 검색 스테이지 (비차단) ──
     // attributes → 쿼리 생성 → 카탈로그+웹 provider → rerank → tier.
     // 리뷰 화면을 먼저 보여주고 후보는 도착하는 대로 채운다.
-    if (drafts.length > 0) {
-      setRetrieving(true);
-      retrieveAll(drafts, dataUrl)
-        .then((results) => {
-          setObjects((prev) =>
-            prev.map((o) => {
-              const i = drafts.findIndex((d) => d.id === o.id);
+	    if (drafts.length > 0) {
+	      setRetrieving(true);
+	      retrieveAll(drafts, dataUrl)
+	        .then((results) => {
+            setPrimaryAssetCandidates(results.get(0)?.candidates ?? []);
+	          setObjects((prev) =>
+	            prev.map((o) => {
+	              const i = drafts.findIndex((d) => d.id === o.id);
               const r = i >= 0 ? results.get(i) : undefined;
               return r ? { ...o, candidates: r.candidates, retrievalQuery: r.query } : o;
             })
@@ -274,18 +306,43 @@ export default function CreatePage() {
 
   // ── Step 4: 발행 ──────────────────────────────────────
   const publish = () => {
-    if (!image) return;
-    const id = `user-${Date.now().toString(36)}`;
+    if (!image || publishGate.kind !== "ready") return;
+    const id = draftPostId;
+    const socialAssets = publishGate.assets.map(toSocialMediaAsset);
+    const firstAsset = socialAssets[0];
+    if (!firstAsset) return;
     const post: Post = {
       id,
       creatorId: "c-me",
-      image,
-      ratio,
+      image: firstAsset.url,
+      ratio: firstAsset.dimensions.width / firstAsset.dimensions.height,
       caption: caption.trim() || "새 콘텐츠",
       category: objects[0]?.category ?? "lifestyle",
       likes: 0,
       createdAt: new Date().toISOString(),
       isUserPost: true,
+      source: "user-upload",
+      contentKind: publishMetadata.contentKind,
+      assets: socialAssets,
+      sourceRecord: {
+        kind: publishMetadata.sourceKind,
+        provider: publishMetadata.sourceProvider.trim(),
+        identity: publishMetadata.sourceIdentity.trim(),
+        canonicalUrl: null,
+      },
+      disclosure: {
+        kind: publishMetadata.disclosureKind,
+        label: publishMetadata.disclosureLabel.trim() || null,
+      },
+      rights: {
+        kind: publishMetadata.rightsKind,
+        status: "approved",
+        canDisplay: true,
+        canUseForCommerceMatching: true,
+        canRedistribute: false,
+        evidence: publishMetadata.rightsEvidence.trim(),
+        expiresAt: null,
+      },
       objects: objects.map((o, i) => ({
         id: `${id}-o${i}`,
         label: o.labelKo,
@@ -309,10 +366,13 @@ export default function CreatePage() {
 
   const reset = () => {
     setStep("select");
+    setDraftPostId(createDraftPostId());
     setImage(null);
     setObjects([]);
     setSelectedId(null);
     setCaption("");
+    setPublishMetadata(createDefaultPublishMetadata());
+    resetUploads();
   };
 
   return (
@@ -363,13 +423,14 @@ export default function CreatePage() {
               올리기만 하면 AI가 상품을 찾아드려요
             </span>
           </button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            hidden
-            onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])}
-          />
+	          <input
+	            ref={fileRef}
+	            type="file"
+	            accept="image/*,video/*"
+              multiple
+	            hidden
+	            onChange={(e) => onFiles(e.target.files)}
+	          />
 
           <p className="mb-2 mt-7 text-[13px] font-semibold text-ink-2">샘플로 체험하기</p>
           <div className="grid grid-cols-3 gap-2">
@@ -568,24 +629,37 @@ export default function CreatePage() {
             </div>
           )}
 
-          {/* caption + publish */}
-          <div className="mt-5 px-4">
-            <textarea
-              value={caption}
-              onChange={(e) => setCaption(e.target.value)}
+	          {/* caption + publish */}
+            <CreatorPublishingControls
+              metadata={publishMetadata}
+              assets={uploadedAssets}
+              gate={publishGate}
+              onMetadataChange={(patch: Partial<CreatorPublishMetadata>) =>
+                setPublishMetadata((current) => ({ ...current, ...patch }))
+              }
+              onAssetAltTextChange={setAssetAltText}
+              onAssetApprovalChange={setAssetDisplayApproved}
+            />
+
+	          <div className="mt-5 px-4">
+	            <textarea
+	              value={caption}
+	              onChange={(e) => setCaption(e.target.value)}
               placeholder="캡션을 입력하세요"
               rows={2}
               className="w-full resize-none rounded-(--radius-card) border border-line bg-surface p-3.5 text-[14px] outline-none placeholder:text-ink-2 focus:border-accent"
             />
-            <button
-              onClick={publish}
-              className="press mt-3 h-12 w-full rounded-(--radius-btn) bg-primary text-[15px] font-bold text-white"
-            >
-              발행하기
-              {objects.filter((o) => o.productId).length > 0 &&
-                ` · 상품 ${objects.filter((o) => o.productId).length}개 연결됨`}
-            </button>
-          </div>
+	            <button
+	              onClick={publish}
+                disabled={publishGate.kind !== "ready"}
+	              className="press mt-3 h-12 w-full rounded-(--radius-btn) bg-primary text-[15px] font-bold text-white disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-ink-2"
+	            >
+	              {publishGate.kind === "ready" ? "발행하기" : "발행 준비 필요"}
+	              {publishGate.kind === "ready" &&
+                  objects.filter((o) => o.productId).length > 0 &&
+	                ` · 상품 ${objects.filter((o) => o.productId).length}개 연결됨`}
+	            </button>
+	          </div>
         </div>
       )}
 
@@ -891,7 +965,7 @@ function CandidatePanel({
                 onPick={() => {
                 if (c.catalogProductId) {
                     if (!c.purchaseEligible || !c.detailUrl) return;
-                    onPick(c.catalogProductId, c.tier === "exact" ? "exact" : "similar");
+	                    onPick(c.catalogProductId, resolveCandidateExactness(c, c.tier === "exact" ? "exact" : "similar"));
                   } else {
                     if (!c.purchaseEligible || !c.detailUrl) return;
                     onCustom({
@@ -907,7 +981,7 @@ function CandidatePanel({
                       affiliate: c.affiliate ?? false,
                       commissionRate: c.commissionRate ?? undefined,
                       similarIds: [],
-                    }, c.tier === "exact" ? "exact" : "similar");
+	                    }, resolveCandidateExactness(c, c.tier === "exact" ? "exact" : "similar"));
                   }
                 }}
               />

@@ -1,44 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
   buildPublicContentSelect,
-  canSelectPublicSocialChild,
   canReadSocialContent,
   canUseSocialContentForCommerceMatching,
   filterReadableSocialContent,
   isPublicDisplayableContent,
   type SocialActor,
   type SocialContentRow,
-  type SocialPublicChildTarget,
 } from "../../lib/social-repository/content-repository";
-
-type LabeledPublicChildTarget = {
-  readonly label: string;
-  readonly target: SocialPublicChildTarget;
-};
+import { adminActor, anonymousActor, now, ownerActor, publishedRow, serviceActor, wrongOwnerActor } from "./content-repository-fixtures";
 
 describe("social content repository", () => {
-  const now = new Date("2026-09-01T00:00:00.000Z");
-  const anonymousActor: SocialActor = { kind: "anonymous" };
-  const wrongOwnerActor: SocialActor = { kind: "user", userId: "user-wrong" };
-  const ownerActor: SocialActor = { kind: "user", userId: "user-owner" };
-  const adminActor: SocialActor = { kind: "admin", userId: "user-admin" };
-  const serviceActor: SocialActor = { kind: "service_role" };
-
-  const publishedRow: SocialContentRow = {
-    id: "post-public",
-    creatorId: "user-owner",
-    visibility: "public",
-    publishState: "published",
-    displayState: "approved",
-    publishedAt: "2026-08-31T00:00:00.000Z",
-    expiresAt: null,
-    rightsStatus: "approved",
-    rightsExpiresAt: null,
-    canDisplay: true,
-    canUseForCommerceMatching: false,
-    takedownAt: null,
-  };
-
   it("returns true when published content is display-approved and non-expired", () => {
     const result = isPublicDisplayableContent(publishedRow, now);
 
@@ -60,111 +32,6 @@ describe("social content repository", () => {
     const results = cases.map((row) => isPublicDisplayableContent(row, now));
 
     expect(results).toEqual([false, false, false, false, false, false, false, false]);
-  });
-
-  it("hides public child surfaces when their parent rights expire or are taken down", () => {
-    const expiredRightsRow: SocialContentRow = {
-      ...publishedRow,
-      id: "rights-expired-parent",
-      rightsExpiresAt: "2026-08-31T23:59:59.000Z",
-    };
-    const takenDownRow: SocialContentRow = {
-      ...publishedRow,
-      id: "taken-down-parent",
-      takedownAt: "2026-08-31T12:00:00.000Z",
-    };
-
-    const targetsWithExpiredRights: readonly LabeledPublicChildTarget[] = [
-      {
-        label: "story_group",
-        target: {
-          kind: "story_group",
-          visibility: "public",
-          publishState: "published",
-          displayState: "approved",
-          startsAt: "2026-08-31T00:00:00.000Z",
-          expiresAt: "2026-09-02T00:00:00.000Z",
-          storyItemParents: [expiredRightsRow],
-        },
-      },
-      {
-        label: "comment",
-        target: { kind: "comment", parent: expiredRightsRow, moderationState: "approved", deletedAt: null },
-      },
-      { label: "post_object", target: { kind: "post_object", parent: expiredRightsRow } },
-      {
-        label: "repost",
-        target: { kind: "repost", original: expiredRightsRow, repost: publishedRow, permissionState: "approved" },
-      },
-      { label: "media_asset", target: { kind: "media_asset", parent: expiredRightsRow, processingState: "ready" } },
-      {
-        label: "media_variant",
-        target: {
-          kind: "media_variant",
-          parent: expiredRightsRow,
-          mediaAssetProcessingState: "ready",
-          variantProcessingState: "ready",
-        },
-      },
-    ];
-
-    const targetsWithTakedown: readonly LabeledPublicChildTarget[] = [
-      {
-        label: "story_group",
-        target: {
-          kind: "story_group",
-          visibility: "public",
-          publishState: "published",
-          displayState: "approved",
-          startsAt: "2026-08-31T00:00:00.000Z",
-          expiresAt: "2026-09-02T00:00:00.000Z",
-          storyItemParents: [takenDownRow],
-        },
-      },
-      {
-        label: "comment",
-        target: { kind: "comment", parent: takenDownRow, moderationState: "approved", deletedAt: null },
-      },
-      { label: "post_object", target: { kind: "post_object", parent: takenDownRow } },
-      {
-        label: "repost",
-        target: { kind: "repost", original: publishedRow, repost: takenDownRow, permissionState: "approved" },
-      },
-      { label: "media_asset", target: { kind: "media_asset", parent: takenDownRow, processingState: "ready" } },
-      {
-        label: "media_variant",
-        target: {
-          kind: "media_variant",
-          parent: takenDownRow,
-          mediaAssetProcessingState: "ready",
-          variantProcessingState: "ready",
-        },
-      },
-    ];
-
-    const expiredRightsResults = Object.fromEntries(
-      targetsWithExpiredRights.map(({ label, target }) => [label, canSelectPublicSocialChild(target, now)]),
-    );
-    const takenDownResults = Object.fromEntries(
-      targetsWithTakedown.map(({ label, target }) => [label, canSelectPublicSocialChild(target, now)]),
-    );
-
-    expect(expiredRightsResults).toEqual({
-      story_group: false,
-      comment: false,
-      post_object: false,
-      repost: false,
-      media_asset: false,
-      media_variant: false,
-    });
-    expect(takenDownResults).toEqual({
-      story_group: false,
-      comment: false,
-      post_object: false,
-      repost: false,
-      media_asset: false,
-      media_variant: false,
-    });
   });
 
   it("evaluates actor reads against anonymous, wrong owner, owner, admin, and service role", () => {

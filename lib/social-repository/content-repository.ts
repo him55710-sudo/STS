@@ -1,67 +1,27 @@
-export type SocialVisibility = "public" | "private" | "unlisted";
-export type SocialPublishState = "draft" | "scheduled" | "published" | "archived";
-export type SocialDisplayState = "pending" | "approved" | "blocked";
-export type SocialRightsStatus = "pending" | "approved" | "rejected" | "expired" | "takedown";
-export type SocialSourceKind = "user_upload" | "licensed_editorial" | "brand_feed" | "official_embed" | "demo_seed";
-export type SocialProcessingState = "uploaded" | "processing" | "ready" | "blocked" | "failed";
-export type SocialModerationState = "pending" | "approved" | "blocked";
-export type SocialPermissionState = "pending" | "approved" | "rejected";
-export type SocialActor =
-  | { readonly kind: "anonymous" }
-  | { readonly kind: "user"; readonly userId: string }
-  | { readonly kind: "admin"; readonly userId: string }
-  | { readonly kind: "service_role" };
+import type { SocialActor, SocialContentRow, SocialPublicChildTarget, SocialWriteChildTarget } from "./types";
 
-export type SocialContentRow = {
-  readonly id: string;
-  readonly creatorId: string;
-  readonly visibility: SocialVisibility;
-  readonly publishState: SocialPublishState;
-  readonly displayState: SocialDisplayState;
-  readonly publishedAt: string | null;
-  readonly expiresAt: string | null;
-  readonly rightsStatus: SocialRightsStatus;
-  readonly rightsExpiresAt: string | null;
-  readonly canDisplay: boolean;
-  readonly canUseForCommerceMatching: boolean;
-  readonly takedownAt: string | null;
-  readonly sourceKind?: SocialSourceKind;
+type PublicActiveStoryGroupTarget = {
+  readonly visibility: "public" | "private" | "unlisted";
+  readonly publishState: "draft" | "published" | "archived";
+  readonly displayState: "pending" | "approved" | "blocked";
+  readonly startsAt: string;
+  readonly expiresAt: string;
 };
 
-export type SocialPublicChildTarget =
-  | {
-      readonly kind: "story_group";
-      readonly visibility: SocialVisibility;
-      readonly publishState: "draft" | "published" | "archived";
-      readonly displayState: SocialDisplayState;
-      readonly startsAt: string;
-      readonly expiresAt: string;
-      readonly storyItemParents: readonly SocialContentRow[];
-    }
-  | {
-      readonly kind: "comment";
-      readonly parent: SocialContentRow;
-      readonly moderationState: SocialModerationState;
-      readonly deletedAt: string | null;
-    }
-  | { readonly kind: "post_object"; readonly parent: SocialContentRow }
-  | {
-      readonly kind: "repost";
-      readonly original: SocialContentRow;
-      readonly repost: SocialContentRow;
-      readonly permissionState: SocialPermissionState;
-    }
-  | {
-      readonly kind: "media_asset";
-      readonly parent: SocialContentRow;
-      readonly processingState: SocialProcessingState;
-    }
-  | {
-      readonly kind: "media_variant";
-      readonly parent: SocialContentRow;
-      readonly mediaAssetProcessingState: SocialProcessingState;
-      readonly variantProcessingState: SocialProcessingState;
-    };
+export type {
+  SocialActor,
+  SocialContentRow,
+  SocialDisplayState,
+  SocialModerationState,
+  SocialPermissionState,
+  SocialProcessingState,
+  SocialPublishState,
+  SocialPublicChildTarget,
+  SocialRightsStatus,
+  SocialSourceKind,
+  SocialVisibility,
+  SocialWriteChildTarget,
+} from "./types";
 
 function assertNever(value: never): never {
   throw new Error(`Unhandled social policy actor: ${JSON.stringify(value)}`);
@@ -89,15 +49,21 @@ export function isPublicDisplayableContent(row: SocialContentRow, now: Date): bo
   return true;
 }
 
+function isPublicActiveStoryGroup(target: PublicActiveStoryGroupTarget, now: Date): boolean {
+  return (
+    target.visibility === "public" &&
+    target.publishState === "published" &&
+    target.displayState === "approved" &&
+    isStarted(target.startsAt, now) &&
+    isActiveUntil(target.expiresAt, now)
+  );
+}
+
 export function canSelectPublicSocialChild(target: SocialPublicChildTarget, now: Date): boolean {
   switch (target.kind) {
     case "story_group":
       return (
-        target.visibility === "public" &&
-        target.publishState === "published" &&
-        target.displayState === "approved" &&
-        isStarted(target.startsAt, now) &&
-        isActiveUntil(target.expiresAt, now) &&
+        isPublicActiveStoryGroup(target, now) &&
         target.storyItemParents.some((parent) => isPublicDisplayableContent(parent, now))
       );
     case "comment":
@@ -140,6 +106,88 @@ export function canReadSocialContent(actor: SocialActor, row: SocialContentRow, 
       return true;
     default:
       return assertNever(actor);
+  }
+}
+
+function authenticatedActorId(actor: SocialActor): string | null {
+  switch (actor.kind) {
+    case "anonymous":
+    case "service_role":
+      return null;
+    case "user":
+    case "admin":
+      return actor.userId;
+    default:
+      return assertNever(actor);
+  }
+}
+
+function isUsableOwnedDraft(row: SocialContentRow, ownerId: string, now: Date): boolean {
+  const hasBlockingRightsStatus =
+    row.rightsStatus === "rejected" || row.rightsStatus === "expired" || row.rightsStatus === "takedown";
+
+  return (
+    row.creatorId === ownerId &&
+    row.takedownAt === null &&
+    !hasBlockingRightsStatus &&
+    isActiveUntil(row.expiresAt, now) &&
+    isActiveUntil(row.rightsExpiresAt, now)
+  );
+}
+
+export function canWriteSocialChild(actor: SocialActor, target: SocialWriteChildTarget, now: Date): boolean {
+  const actorId = authenticatedActorId(actor);
+  if (actorId === null) return false;
+
+  switch (target.kind) {
+    case "comment":
+      return (
+        target.authorId === actorId &&
+        target.moderationState === "pending" &&
+        isPublicDisplayableContent(target.parent, now)
+      );
+    case "reaction":
+      return target.actorId === actorId && isPublicDisplayableContent(target.parent, now);
+    case "post_object":
+      return (
+        target.parent.creatorId === actorId &&
+        target.parent.sourceKind !== "official_embed" &&
+        isPublicDisplayableContent(target.parent, now) &&
+        target.parent.canUseForCommerceMatching
+      );
+    case "repost":
+      return (
+        target.creatorId === actorId &&
+        target.permissionState === "pending" &&
+        isPublicDisplayableContent(target.original, now) &&
+        isUsableOwnedDraft(target.repost, actorId, now)
+      );
+    case "story_item":
+      return (
+        target.storyGroupCreatorId === actorId &&
+        target.storyGroupDisplayState === "pending" &&
+        target.mediaParent.creatorId === actorId &&
+        isPublicDisplayableContent(target.mediaParent, now) &&
+        (target.postParent === null || target.postParent.id === target.mediaParent.id)
+      );
+    case "story_view":
+      return (
+        target.viewerId === actorId &&
+        isPublicActiveStoryGroup(
+          {
+            visibility: target.storyGroupVisibility,
+            publishState: target.storyGroupPublishState,
+            displayState: target.storyGroupDisplayState,
+            startsAt: target.storyGroupStartsAt,
+            expiresAt: target.storyGroupExpiresAt,
+          },
+          now,
+        ) &&
+        target.mediaAssetProcessingState === "ready" &&
+        isPublicDisplayableContent(target.mediaParent, now)
+      );
+    default:
+      return assertNever(target);
   }
 }
 

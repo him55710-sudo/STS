@@ -2,17 +2,19 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { creatorById } from "@/lib/catalog";
+import { CREATORS } from "@/lib/catalog";
 import { compact, timeAgo } from "@/lib/format";
 import { useApp } from "@/lib/store";
-import type { ObjectTag, Post } from "@/lib/types";
+import type { Creator, ObjectTag, Post } from "@/lib/types";
 import Avatar from "./Avatar";
 import { BagIcon, BookmarkIcon, HeartIcon, ShareIcon } from "./Icons";
-import ObjectLayer from "./ObjectLayer";
+import { contentSourceLabel, disclosureLabel, tagsForPost } from "./MixedMediaFeed";
+import MixedMediaStage from "./MixedMediaStage";
 import ProductSheet from "./ProductSheet";
 
 export default function PostCard({ post }: { post: Post }) {
-  const creator = creatorById(post.creatorId);
+  const catalogCreator = CREATORS.find((creator) => creator.id === post.creatorId);
+  const creator = catalogCreator ?? fallbackCreatorForPost(post);
   const [selected, setSelected] = useState<ObjectTag | null>(null);
   const { likedPosts, savedPosts, following, toggleLike, toggleSavePost, toggleFollow, track } =
     useApp();
@@ -20,7 +22,6 @@ export default function PostCard({ post }: { post: Post }) {
   const saved = savedPosts.includes(post.id);
   const follows = following.includes(post.creatorId);
 
-  // asset_view — 카드가 50% 이상 보였을 때 1회 기록
   const viewRef = useRef<HTMLDivElement>(null);
   const viewedRef = useRef(false);
   useEffect(() => {
@@ -38,22 +39,29 @@ export default function PostCard({ post }: { post: Post }) {
     );
     io.observe(el);
     return () => io.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [post.id]);
+  }, [post.id, track]);
 
-  const linkedCount = post.objects.filter((o) => o.productId).length;
+  const linkedCount = tagsForPost(post).filter((object) => object.productId).length;
+  const creatorHeader = (
+    <>
+      <Avatar creator={creator} size={34} />
+      <div className="leading-tight">
+        <p className="text-[13px] font-semibold">{creator.handle}</p>
+        <p className="text-[11px] text-ink-2">{timeAgo(post.createdAt)}</p>
+      </div>
+    </>
+  );
 
   return (
     <article ref={viewRef} className="border-b border-line bg-surface pb-3">
-      {/* creator row */}
       <div className="flex items-center gap-2.5 px-4 py-2.5">
-        <Link href={`/creator/${creator.id}`} className="flex items-center gap-2.5">
-          <Avatar creator={creator} size={34} />
-          <div className="leading-tight">
-            <p className="text-[13px] font-semibold">{creator.handle}</p>
-            <p className="text-[11px] text-ink-2">{timeAgo(post.createdAt)}</p>
-          </div>
-        </Link>
+        {catalogCreator ? (
+          <Link href={`/creator/${creator.id}`} className="flex items-center gap-2.5">
+            {creatorHeader}
+          </Link>
+        ) : (
+          <div className="flex items-center gap-2.5">{creatorHeader}</div>
+        )}
         {!post.isUserPost && (
           <button
             onClick={() => toggleFollow(post.creatorId)}
@@ -66,23 +74,8 @@ export default function PostCard({ post }: { post: Post }) {
         )}
       </div>
 
-      {/* content — 객체 자체가 인터페이스 + 우측 액션 레일 (SEEIT) */}
       <div className="relative">
-        <ObjectLayer
-          postId={post.id}
-          objects={post.objects}
-          selectedId={selected?.id ?? null}
-          onSelect={setSelected}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={post.image}
-            alt={post.caption}
-            className="w-full object-cover"
-            style={{ aspectRatio: `${post.ratio}` }}
-            loading="lazy"
-          />
-        </ObjectLayer>
+        <MixedMediaStage post={post} selectedId={selected?.id ?? null} onSelect={setSelected} />
 
         <div className="pointer-events-none absolute bottom-3 right-2.5 flex flex-col items-center gap-3.5 text-white">
           <button
@@ -109,13 +102,16 @@ export default function PostCard({ post }: { post: Post }) {
       </div>
 
       <p className="px-4 pt-2.5 text-[14px] leading-relaxed">
-        <Link href={`/creator/${creator.id}`} className="mr-1.5 font-semibold">
-          {creator.handle}
-        </Link>
+        {catalogCreator ? (
+          <Link href={`/creator/${creator.id}`} className="mr-1.5 font-semibold">
+            {creator.handle}
+          </Link>
+        ) : (
+          <span className="mr-1.5 font-semibold">{creator.handle}</span>
+        )}
         {post.caption}
       </p>
 
-      {/* 상품 chip — 탭하면 객체 힌트 유도 */}
       {linkedCount > 0 && (
         <p className="mt-1.5 flex items-center gap-1 px-4 text-xs text-ink-2">
           <BagIcon size={13} />
@@ -123,9 +119,24 @@ export default function PostCard({ post }: { post: Post }) {
         </p>
       )}
 
+      <p className="mt-1.5 px-4 text-[10.5px] leading-relaxed text-ink-2">
+        {disclosureLabel(post)} · {contentSourceLabel(post)}
+      </p>
+
       {selected && (
         <ProductSheet postId={post.id} object={selected} onClose={() => setSelected(null)} />
       )}
     </article>
   );
+}
+function fallbackCreatorForPost(post: Post): Creator {
+  return {
+    id: post.creatorId,
+    handle: post.creatorId,
+    name: post.creatorId,
+    bio: "Repository creator",
+    followers: 0,
+    category: post.category,
+    tone: "var(--color-accent)",
+  };
 }

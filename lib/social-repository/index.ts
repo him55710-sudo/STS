@@ -2,6 +2,7 @@ export {
   buildPublicContentSelect,
   canSelectPublicSocialChild,
   canReadSocialContent,
+  canWriteSocialChild,
   canUseSocialContentForCommerceMatching,
   filterReadableSocialContent,
   isPublicDisplayableContent,
@@ -16,4 +17,5 @@ export {
   type SocialRightsStatus,
   type SocialSourceKind,
   type SocialVisibility,
+  type SocialWriteChildTarget,
 } from "./content-repository";

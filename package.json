@@ -8,6 +8,7 @@
     "start": "next start",
     "test": "vitest run",
     "seed:manifest": "node scripts/generate-demo-manifest.mjs",
+    "seed:social-manifest": "tsc scripts/seed-social-manifest.ts lib/social-seed/assets.ts lib/social-seed/generator.ts lib/social-seed/schemas.ts --ignoreConfig --target ES2020 --module Node16 --moduleResolution Node16 --types node --esModuleInterop --resolveJsonModule --skipLibCheck --strict --outDir .omo/evidence/task-11-social-community/runner && node .omo/evidence/task-11-social-community/runner/scripts/seed-social-manifest.js",
     "doctor": "npx react-doctor@latest"
   },
   "dependencies": {

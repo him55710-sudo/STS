@@ -149,8 +149,9 @@ export interface UploadedStorageVerifier {
 
 export const MEDIA_PROCESSING_JOB_KINDS = ["media_processing"] as const;
 export type MediaProcessingJobKind = (typeof MEDIA_PROCESSING_JOB_KINDS)[number];
-export const MEDIA_PROCESSING_JOB_STATUSES = ["queued", "running", "succeeded", "failed"] as const;
+export const MEDIA_PROCESSING_JOB_STATUSES = ["queued", "running", "succeeded", "failed", "blocked"] as const;
 export type MediaProcessingJobStatus = (typeof MEDIA_PROCESSING_JOB_STATUSES)[number];
+export const MEDIA_PROCESSING_MAX_ATTEMPTS = 3;
 export type MediaProcessingJob = {
   readonly id: string;
   readonly assetId: string;
@@ -159,6 +160,7 @@ export type MediaProcessingJob = {
   readonly status: MediaProcessingJobStatus;
   readonly attempts: number;
   readonly errorCode: string | null;
+  readonly availableAt: string;
 };
 
 export type MediaProcessingEnqueueResult =
@@ -174,7 +176,8 @@ export interface MediaProcessingQueue {
 export interface MediaProcessingJobRepository extends MediaProcessingQueue {
   claimNext(): Promise<MediaProcessingJob | null>;
   markSucceeded(jobId: string): Promise<void>;
-  markFailed(jobId: string, code: string): Promise<void>;
+  markFailed(job: MediaProcessingJob, code: string): Promise<MediaProcessingJob>;
+  markBlocked(jobId: string, code: string): Promise<void>;
 }
 
 export interface MediaProcessorAdapter {

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { POSTS, PRODUCTS, creatorById } from "@/lib/catalog";
 import { useApp, useHydrated } from "@/lib/store";
 import { ChevronLeftIcon } from "@/components/Icons";
+import { SocialAdminPanel } from "./SocialAdminPanel";
 
 const EVENT_LABEL: Record<string, string> = {
   asset_view: "콘텐츠 조회",
@@ -140,6 +141,9 @@ export default function AdminPage() {
             </div>
           </div>
         )}
+      </Section>
+      <Section title="Social rights / moderation / source diagnostics">
+        <SocialAdminPanel />
       </Section>
       <div className="h-8" />
     </div>

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CONTENT_KINDS, type ContentKind } from "../../lib/types";
 import { DEMO_CREATORS, DEMO_POSTS, normalizeSocialContent } from "../../lib/social-content";
-import { STORIES } from "../../lib/stories";
+import { REPOSITORY_STORIES } from "../../lib/stories";
 import { approvedRights, contentKindFixtures, disclosure, imageAsset, sourceRecord, validReel } from "./content-contract.fixtures";
 import type { Post } from "../../lib/types";
 
@@ -48,7 +48,7 @@ describe("social content contract baseline", () => {
     // Given
     const posts = DEMO_POSTS;
     const creators = DEMO_CREATORS;
-    const stories = STORIES;
+    const stories = REPOSITORY_STORIES;
 
     // When
     const demoPostMetadata = posts.map((post) => ({ is_demo: post.is_demo, source: post.source }));
@@ -60,7 +60,7 @@ describe("social content contract baseline", () => {
     expect(demoPostMetadata.every((metadata) => metadata.is_demo === true && metadata.source === "demo-seed")).toBe(true);
     expect(demoCreatorMetadata.every((metadata) => metadata.is_demo === true && metadata.source === "demo-seed")).toBe(true);
     expect(demoStoryMetadata.every((metadata) => metadata.is_demo === true && metadata.source === "demo-seed")).toBe(true);
-    expect(stories.every((story) => creatorIdSet.has(story.creatorId))).toBe(true);
+    expect(stories.every((story) => creatorIdSet.has(story.creatorId) || story.sourceRecord.provider === "sts-local-social-seed")).toBe(true);
     expect(posts.every((post) => post.image.length > 0)).toBe(true);
   });
 

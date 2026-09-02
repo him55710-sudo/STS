@@ -6,6 +6,7 @@ import { useApp, useHydrated } from "@/lib/store";
 import {
   BarChartIcon,
   BookmarkIcon,
+  EyeIcon,
   HomeIcon,
   PlusIcon,
   SearchIcon,
@@ -15,6 +16,7 @@ import {
 
 const NAV = [
   { href: "/feed", label: "홈", Icon: HomeIcon },
+  { href: "/reels", label: "릴스", Icon: EyeIcon },
   { href: "/discover", label: "발견", Icon: SearchIcon },
   { href: "/saved", label: "저장됨", Icon: BookmarkIcon },
   { href: "/create", label: "만들기", Icon: PlusIcon },

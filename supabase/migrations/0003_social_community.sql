@@ -36,6 +36,9 @@ alter table public.media_assets
   add column if not exists processing_error text,
   add column if not exists perceptual_hash text;
 
+alter table public.post_objects
+  add column if not exists media_asset_id uuid references public.media_assets(id) on delete cascade;
+
 create table if not exists public.content_rights (
   id uuid primary key default gen_random_uuid(),
   post_id text not null references public.posts(id) on delete cascade,
@@ -154,6 +157,7 @@ create index if not exists posts_social_public_idx on public.posts (publish_stat
 create index if not exists posts_source_idx on public.posts (source_id);
 create index if not exists media_assets_social_post_idx on public.media_assets (post_id, asset_order);
 create index if not exists media_assets_processing_idx on public.media_assets (processing_state, created_at desc);
+create index if not exists post_objects_media_asset_idx on public.post_objects (media_asset_id);
 create index if not exists content_sources_kind_idx on public.content_sources (source_kind, provider);
 create index if not exists content_rights_post_idx on public.content_rights (post_id, rights_status);
 create index if not exists content_rights_review_idx on public.content_rights (rights_status, reviewed_at desc);
@@ -165,14 +169,83 @@ create index if not exists post_reactions_post_idx on public.post_reactions (pos
 create index if not exists creator_follows_creator_idx on public.creator_follows (creator_id, created_at desc);
 create index if not exists post_reposts_original_idx on public.post_reposts (original_post_id, created_at desc);
 
-create or replace function public.enforce_content_rights_commerce_matching()
+create or replace function public.prevent_posts_source_id_update()
 returns trigger
 language plpgsql
 set search_path = public
 as $$
 begin
+  if new.source_id is distinct from old.source_id then
+    raise exception 'posts.source_id is immutable after insert'
+      using errcode = '23514';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists posts_source_id_immutable on public.posts;
+create trigger posts_source_id_immutable
+before update of source_id on public.posts
+for each row execute function public.prevent_posts_source_id_update();
+
+create or replace function public.prevent_content_rights_source_id_update()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if new.source_id is distinct from old.source_id then
+    raise exception 'content_rights.source_id is immutable after insert'
+      using errcode = '23514';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists content_rights_source_id_immutable on public.content_rights;
+create trigger content_rights_source_id_immutable
+before update of source_id on public.content_rights
+for each row execute function public.prevent_content_rights_source_id_update();
+
+create or replace function public.prevent_content_source_kind_update()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if new.source_kind is distinct from old.source_kind then
+    raise exception 'content_sources.source_kind is immutable'
+      using errcode = '23514';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists content_sources_prevent_source_kind_update on public.content_sources;
+create trigger content_sources_prevent_source_kind_update
+before update of source_kind on public.content_sources
+for each row execute function public.prevent_content_source_kind_update();
+
+create or replace function public.enforce_content_rights_commerce_matching()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+declare
+  post_source_id text;
+begin
+  select posts.source_id
+  into post_source_id
+  from public.posts
+  where posts.id = new.post_id;
+
   if new.license_scope in ('display_only', 'public_embed') then
     new.can_use_for_commerce_matching = false;
+    new.can_derive = false;
+    new.can_redistribute = false;
   elsif new.source_id is not null and exists (
     select 1
     from public.content_sources
@@ -180,6 +253,17 @@ begin
       and content_sources.source_kind = 'official_embed'
   ) then
     new.can_use_for_commerce_matching = false;
+    new.can_derive = false;
+    new.can_redistribute = false;
+  elsif post_source_id is not null and exists (
+    select 1
+    from public.content_sources
+    where content_sources.id = post_source_id
+      and content_sources.source_kind = 'official_embed'
+  ) then
+    new.can_use_for_commerce_matching = false;
+    new.can_derive = false;
+    new.can_redistribute = false;
   end if;
 
   return new;
@@ -190,6 +274,88 @@ drop trigger if exists content_rights_enforce_commerce_matching on public.conten
 create trigger content_rights_enforce_commerce_matching
 before insert or update on public.content_rights
 for each row execute function public.enforce_content_rights_commerce_matching();
+
+create or replace function public.enforce_content_rights_source_alignment()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+declare
+  post_source_id text;
+  requires_same_source boolean;
+begin
+  select posts.source_id
+  into post_source_id
+  from public.posts
+  where posts.id = new.post_id;
+
+  requires_same_source := new.license_scope in ('display_only', 'public_embed')
+    or exists (
+      select 1
+      from public.content_sources
+      where content_sources.id = new.source_id
+        and content_sources.source_kind = 'official_embed'
+    )
+    or exists (
+      select 1
+      from public.content_sources
+      where content_sources.id = post_source_id
+        and content_sources.source_kind = 'official_embed'
+    );
+
+  if requires_same_source and (post_source_id is null or new.source_id is null or new.source_id <> post_source_id) then
+    raise exception 'content_rights.source_id must match posts.source_id for official or display-only content'
+      using errcode = '23514';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists content_rights_enforce_source_alignment on public.content_rights;
+create trigger content_rights_enforce_source_alignment
+before insert or update of post_id, source_id, license_scope on public.content_rights
+for each row execute function public.enforce_content_rights_source_alignment();
+
+create or replace function public.enforce_posts_source_alignment()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if exists (
+    select 1
+    from public.content_rights
+    where content_rights.post_id = new.id
+      and (
+        content_rights.license_scope in ('display_only', 'public_embed')
+        or exists (
+          select 1
+          from public.content_sources
+          where content_sources.id = content_rights.source_id
+            and content_sources.source_kind = 'official_embed'
+        )
+        or exists (
+          select 1
+          from public.content_sources
+          where content_sources.id = new.source_id
+            and content_sources.source_kind = 'official_embed'
+        )
+      )
+      and (new.source_id is null or content_rights.source_id is null or content_rights.source_id <> new.source_id)
+  ) then
+    raise exception 'posts.source_id must match content_rights.source_id for official or display-only content'
+      using errcode = '23514';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists posts_enforce_source_alignment on public.posts;
+create trigger posts_enforce_source_alignment
+before update of source_id on public.posts
+for each row execute function public.enforce_posts_source_alignment();
 
 create or replace function public.is_public_displayable_post(target_post_id text)
 returns boolean
@@ -221,6 +387,271 @@ $$;
 
 revoke all on function public.is_public_displayable_post(text) from public;
 grant execute on function public.is_public_displayable_post(text) to anon, authenticated;
+
+create or replace function public.can_write_social_post_object(target_post_id text, target_actor_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.posts
+    join public.content_rights on content_rights.post_id = posts.id
+    where posts.id = target_post_id
+      and posts.creator_id = target_actor_id
+      and public.is_public_displayable_post(posts.id)
+      and content_rights.can_use_for_commerce_matching = true
+      and content_rights.rights_status = 'approved'
+      and content_rights.takedown_at is null
+      and (content_rights.expires_at is null or content_rights.expires_at > now())
+      and content_rights.license_scope not in ('display_only', 'public_embed')
+      and not exists (
+        select 1
+        from public.content_sources
+        where content_sources.id in (posts.source_id, content_rights.source_id)
+          and content_sources.source_kind = 'official_embed'
+      )
+  );
+$$;
+
+revoke all on function public.can_write_social_post_object(text, uuid) from public;
+grant execute on function public.can_write_social_post_object(text, uuid) to authenticated;
+
+create or replace function public.can_write_social_media_for_post(target_post_id text, target_actor_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.posts
+    where posts.id = target_post_id
+      and posts.creator_id = target_actor_id
+      and (posts.expires_at is null or posts.expires_at > now())
+      and not exists (
+        select 1
+        from public.content_rights
+        where content_rights.post_id = posts.id
+          and (
+            content_rights.rights_status in ('rejected', 'expired', 'takedown')
+            or content_rights.takedown_at is not null
+            or content_rights.expires_at <= now()
+          )
+      )
+  );
+$$;
+
+revoke all on function public.can_write_social_media_for_post(text, uuid) from public;
+grant execute on function public.can_write_social_media_for_post(text, uuid) to authenticated;
+
+create or replace function public.prevent_media_asset_owner_trusted_update()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if auth.uid() is not null
+    and not public.is_admin()
+    and exists (
+      select 1
+      from public.posts
+      where posts.id = old.post_id
+        and posts.creator_id = auth.uid()
+    )
+    and (
+      new.post_id is distinct from old.post_id
+      or new.storage_path is distinct from old.storage_path
+      or new.public_url is distinct from old.public_url
+      or new.width is distinct from old.width
+      or new.height is distinct from old.height
+      or new.source is distinct from old.source
+      or new.license_note is distinct from old.license_note
+      or new.content_hash is distinct from old.content_hash
+      or new.is_demo is distinct from old.is_demo
+      or new.media_kind is distinct from old.media_kind
+      or new.poster_url is distinct from old.poster_url
+      or new.hls_url is distinct from old.hls_url
+      or new.duration_ms is distinct from old.duration_ms
+      or new.mime_type is distinct from old.mime_type
+      or new.byte_size is distinct from old.byte_size
+      or new.processing_state is distinct from old.processing_state
+      or new.processing_error is distinct from old.processing_error
+      or new.perceptual_hash is distinct from old.perceptual_hash
+    ) then
+    raise exception 'media asset server-trusted fields are immutable for owners'
+      using errcode = '42501';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists media_assets_prevent_owner_trusted_update on public.media_assets;
+create trigger media_assets_prevent_owner_trusted_update
+before update on public.media_assets
+for each row execute function public.prevent_media_asset_owner_trusted_update();
+
+create or replace function public.prevent_media_variant_owner_trusted_update()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if auth.uid() is not null
+    and not public.is_admin()
+    and exists (
+      select 1
+      from public.media_assets
+      join public.posts on posts.id = media_assets.post_id
+      where media_assets.id = old.media_asset_id
+        and posts.creator_id = auth.uid()
+    )
+    and (
+      new.media_asset_id is distinct from old.media_asset_id
+      or new.variant_kind is distinct from old.variant_kind
+      or new.storage_path is distinct from old.storage_path
+      or new.public_url is distinct from old.public_url
+      or new.mime_type is distinct from old.mime_type
+      or new.width is distinct from old.width
+      or new.height is distinct from old.height
+      or new.duration_ms is distinct from old.duration_ms
+      or new.byte_size is distinct from old.byte_size
+      or new.content_hash is distinct from old.content_hash
+      or new.processing_state is distinct from old.processing_state
+    ) then
+    raise exception 'media variant server-trusted fields are immutable for owners'
+      using errcode = '42501';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists media_variants_prevent_owner_trusted_update on public.media_variants;
+create trigger media_variants_prevent_owner_trusted_update
+before update on public.media_variants
+for each row execute function public.prevent_media_variant_owner_trusted_update();
+
+create or replace function public.can_write_social_story_item(
+  target_story_group_id uuid,
+  target_media_asset_id uuid,
+  target_post_id text,
+  target_actor_id uuid
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.story_groups
+    join public.media_assets on media_assets.id = target_media_asset_id
+    join public.posts on posts.id = media_assets.post_id
+    where story_groups.id = target_story_group_id
+      and story_groups.creator_id = target_actor_id
+      and story_groups.display_state = 'pending'
+      and media_assets.processing_state <> 'blocked'
+      and posts.creator_id = target_actor_id
+      and public.is_public_displayable_post(media_assets.post_id)
+      and (posts.expires_at is null or posts.expires_at > now())
+      and (target_post_id is null or target_post_id = media_assets.post_id)
+      and not exists (
+        select 1
+        from public.content_rights
+        where content_rights.post_id = posts.id
+          and (
+            content_rights.rights_status in ('rejected', 'expired', 'takedown')
+            or content_rights.takedown_at is not null
+            or content_rights.expires_at <= now()
+          )
+      )
+  );
+$$;
+
+revoke all on function public.can_write_social_story_item(uuid, uuid, text, uuid) from public;
+grant execute on function public.can_write_social_story_item(uuid, uuid, text, uuid) to authenticated;
+
+create or replace function public.can_write_social_repost(
+  target_original_post_id text,
+  target_repost_post_id text,
+  target_actor_id uuid
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select public.is_public_displayable_post(target_original_post_id)
+    and exists (
+      select 1
+      from public.posts
+      where posts.id = target_repost_post_id
+        and posts.creator_id = target_actor_id
+        and posts.display_state = 'pending'
+        and (posts.expires_at is null or posts.expires_at > now())
+        and target_original_post_id <> target_repost_post_id
+        and not exists (
+          select 1
+          from public.content_rights
+          where content_rights.post_id = posts.id
+            and (
+              content_rights.rights_status in ('rejected', 'expired', 'takedown')
+              or content_rights.takedown_at is not null
+              or content_rights.expires_at <= now()
+            )
+        )
+    );
+$$;
+
+revoke all on function public.can_write_social_repost(text, text, uuid) from public;
+grant execute on function public.can_write_social_repost(text, text, uuid) to authenticated;
+
+create or replace function public.can_write_public_social_interaction(target_post_id text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select public.is_public_displayable_post(target_post_id);
+$$;
+
+revoke all on function public.can_write_public_social_interaction(text) from public;
+grant execute on function public.can_write_public_social_interaction(text) to authenticated;
+
+create or replace function public.can_write_social_story_item_view(target_story_item_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.story_items
+    join public.story_groups on story_groups.id = story_items.story_group_id
+    join public.media_assets on media_assets.id = story_items.media_asset_id
+    where story_items.id = target_story_item_id
+      and story_groups.visibility = 'public'
+      and story_groups.publish_state = 'published'
+      and story_groups.display_state = 'approved'
+      and story_groups.starts_at <= now()
+      and story_groups.expires_at > now()
+      and (story_items.post_id is null or story_items.post_id = media_assets.post_id)
+      and media_assets.processing_state = 'ready'
+      and public.is_public_displayable_post(media_assets.post_id)
+  );
+$$;
+
+revoke all on function public.can_write_social_story_item_view(uuid) from public;
+grant execute on function public.can_write_social_story_item_view(uuid) to authenticated;
 
 drop trigger if exists content_sources_set_updated_at on public.content_sources;
 create trigger content_sources_set_updated_at before update on public.content_sources for each row execute function public.set_updated_at();
@@ -374,10 +805,24 @@ using (
 drop policy if exists media_assets_owner_write on public.media_assets;
 create policy media_assets_owner_write on public.media_assets
 for all to authenticated
-using (exists (select 1 from public.posts where posts.id = media_assets.post_id and posts.creator_id = (select auth.uid())))
+using (public.can_write_social_media_for_post(media_assets.post_id, (select auth.uid())))
 with check (
-  processing_state in ('uploaded', 'processing', 'failed')
-  and exists (select 1 from public.posts where posts.id = media_assets.post_id and posts.creator_id = (select auth.uid()))
+  processing_state = 'uploaded'
+  and source = 'user_upload'
+  and license_note is null
+  and is_demo = false
+  and media_kind in ('photo', 'video')
+  and width is null
+  and height is null
+  and poster_url is null
+  and hls_url is null
+  and duration_ms is null
+  and mime_type is null
+  and byte_size is null
+  and processing_error is null
+  and perceptual_hash is null
+  and content_hash is null
+  and public.can_write_social_media_for_post(media_assets.post_id, (select auth.uid()))
 );
 
 drop policy if exists media_assets_admin_review on public.media_assets;
@@ -487,19 +932,24 @@ using (
   exists (
     select 1
     from public.media_assets
-    join public.posts on posts.id = media_assets.post_id
     where media_assets.id = media_variants.media_asset_id
-      and posts.creator_id = (select auth.uid())
+      and public.can_write_social_media_for_post(media_assets.post_id, (select auth.uid()))
   )
 )
 with check (
-  processing_state in ('uploaded', 'processing', 'failed')
+  variant_kind = 'original'
+  and processing_state = 'uploaded'
+  and mime_type is null
+  and width is null
+  and height is null
+  and duration_ms is null
+  and byte_size is null
+  and content_hash is null
   and exists (
     select 1
     from public.media_assets
-    join public.posts on posts.id = media_assets.post_id
     where media_assets.id = media_variants.media_asset_id
-      and posts.creator_id = (select auth.uid())
+      and public.can_write_social_media_for_post(media_assets.post_id, (select auth.uid()))
   )
 );
 
@@ -569,13 +1019,30 @@ using (
 drop policy if exists story_items_creator_write on public.story_items;
 create policy story_items_creator_write on public.story_items
 for all to authenticated
-using (exists (select 1 from public.story_groups where story_groups.id = story_items.story_group_id and story_groups.creator_id = (select auth.uid())))
-with check (exists (select 1 from public.story_groups where story_groups.id = story_items.story_group_id and story_groups.creator_id = (select auth.uid())));
+using (
+  public.can_write_social_story_item(
+    story_items.story_group_id,
+    story_items.media_asset_id,
+    story_items.post_id,
+    (select auth.uid())
+  )
+)
+with check (
+  public.can_write_social_story_item(
+    story_items.story_group_id,
+    story_items.media_asset_id,
+    story_items.post_id,
+    (select auth.uid())
+  )
+);
 
 drop policy if exists story_item_views_viewer_insert on public.story_item_views;
 create policy story_item_views_viewer_insert on public.story_item_views
 for insert to authenticated
-with check ((select auth.uid()) = viewer_id);
+with check (
+  (select auth.uid()) = viewer_id
+  and public.can_write_social_story_item_view(story_item_views.story_item_id)
+);
 
 drop policy if exists story_item_views_viewer_select on public.story_item_views;
 create policy story_item_views_viewer_select on public.story_item_views
@@ -597,6 +1064,7 @@ for insert to authenticated
 with check (
   (select auth.uid()) = author_id
   and moderation_state = 'pending'
+  and public.can_write_public_social_interaction(post_comments.post_id)
 );
 
 drop policy if exists post_comments_author_update on public.post_comments;
@@ -606,6 +1074,7 @@ using ((select auth.uid()) = author_id)
 with check (
   (select auth.uid()) = author_id
   and moderation_state = 'pending'
+  and public.can_write_public_social_interaction(post_comments.post_id)
 );
 
 drop policy if exists post_comments_admin_moderate on public.post_comments;
@@ -622,7 +1091,10 @@ using ((select auth.uid()) = actor_id or (select public.is_admin()));
 drop policy if exists post_reactions_actor_insert on public.post_reactions;
 create policy post_reactions_actor_insert on public.post_reactions
 for insert to authenticated
-with check ((select auth.uid()) = actor_id);
+with check (
+  (select auth.uid()) = actor_id
+  and public.can_write_public_social_interaction(post_reactions.post_id)
+);
 
 drop policy if exists post_reactions_actor_delete on public.post_reactions;
 create policy post_reactions_actor_delete on public.post_reactions
@@ -659,6 +1131,11 @@ for insert to authenticated
 with check (
   (select auth.uid()) = creator_id
   and permission_state = 'pending'
+  and public.can_write_social_repost(
+    post_reposts.original_post_id,
+    post_reposts.repost_post_id,
+    (select auth.uid())
+  )
 );
 
 drop policy if exists post_reposts_admin_review on public.post_reposts;
@@ -677,20 +1154,8 @@ using (
 drop policy if exists post_objects_owner_write on public.post_objects;
 create policy post_objects_owner_write on public.post_objects
 for all to authenticated
-using (exists (select 1 from public.posts where posts.id = post_objects.post_id and posts.creator_id = (select auth.uid())))
-with check (
-  public.is_public_displayable_post(post_objects.post_id)
-  and exists (
-    select 1
-    from public.content_rights
-    where content_rights.post_id = post_objects.post_id
-      and content_rights.can_use_for_commerce_matching = true
-      and content_rights.rights_status = 'approved'
-      and content_rights.takedown_at is null
-      and (content_rights.expires_at is null or content_rights.expires_at > now())
-  )
-  and exists (select 1 from public.posts where posts.id = post_objects.post_id and posts.creator_id = (select auth.uid()))
-);
+using (public.can_write_social_post_object(post_objects.post_id, (select auth.uid())))
+with check (public.can_write_social_post_object(post_objects.post_id, (select auth.uid())));
 
 drop policy if exists post_objects_admin_review on public.post_objects;
 create policy post_objects_admin_review on public.post_objects
