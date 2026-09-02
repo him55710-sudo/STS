@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>STS X-Banner 600×1800mm</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+<style>
+  /* ------------------------------------------------------------------
+     STS 컨퍼런스 X배너 — 인쇄 규격 600 × 1800 mm (표준 X배너)
+     모든 치수는 mm 단위. 좌우 안전 여백 36mm, 하단 110mm는 거치대 포켓 구역.
+     ------------------------------------------------------------------ */
+  @page { size: 600mm 1800mm; margin: 0; }
+  :root {
+    --night: #12080D;
+    --wine: #73132D;
+    --wine-deep: #3E0A19;
+    --coral: #E27C7D;
+    --blush: #FBF8F8;
+    --line: rgba(255, 255, 255, 0.14);
+    --ink: #111214;
+    --muted: rgba(251, 248, 248, 0.68);
+    --live: #20C987;
+    --font: "Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 600mm; height: 1800mm; }
+  body {
+    position: relative;
+    overflow: hidden;
+    font-family: var(--font);
+    color: var(--blush);
+    background: var(--night);
+    -webkit-font-smoothing: antialiased;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* 배경: 야경 톤 위에 와인색 광원 두 개, 아주 은은한 격자 */
+  .bg {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(60% 34% at 50% 45%, rgba(115, 19, 45, 0.85) 0%, rgba(115, 19, 45, 0) 100%),
+      radial-gradient(80% 26% at 50% 0%, rgba(115, 19, 45, 0.55) 0%, rgba(115, 19, 45, 0) 100%),
+      radial-gradient(70% 22% at 50% 100%, rgba(62, 10, 25, 0.9) 0%, rgba(62, 10, 25, 0) 100%),
+      linear-gradient(180deg, #170A10 0%, var(--night) 40%, var(--night) 100%);
+  }
+  .grid {
+    position: absolute; inset: 0; opacity: 0.35;
+    background-image:
+      linear-gradient(to right, rgba(255,255,255,0.045) 0.4mm, transparent 0.4mm),
+      linear-gradient(to bottom, rgba(255,255,255,0.045) 0.4mm, transparent 0.4mm);
+    background-size: 60mm 60mm;
+    mask-image: linear-gradient(180deg, rgba(0,0,0,0.9), rgba(0,0,0,0.25) 60%, transparent);
+    -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,0.9), rgba(0,0,0,0.25) 60%, transparent);
+  }
+
+  .safe { position: absolute; left: 36mm; right: 36mm; }
+
+  /* ---------- 상단: 로고 + 카테고리 ---------- */
+  .top { top: 52mm; display: flex; align-items: center; justify-content: space-between; }
+  .brand { display: flex; align-items: center; gap: 12mm; }
+  .mark {
+    width: 44mm; height: 44mm; border-radius: 10.5mm;
+    background: linear-gradient(135deg, #1B1D20, #0E0F11);
+    border: 0.6mm solid rgba(255,255,255,0.12);
+    position: relative; display: grid; place-items: center;
+  }
+  .mark span { font-size: 16mm; font-weight: 800; letter-spacing: 1mm; color: #F5F6F7; padding-left: 1mm; }
+  .mark i { position: absolute; right: 7mm; bottom: 14.5mm; width: 4.6mm; height: 4.6mm; border-radius: 50%; background: var(--coral); }
+  .wordmark { display: flex; flex-direction: column; gap: 2.5mm; }
+  .wordmark strong { font-size: 19mm; font-weight: 800; letter-spacing: 1.2mm; line-height: 1; }
+  .wordmark small { font-size: 7.6mm; font-weight: 500; letter-spacing: 1.6mm; color: var(--muted); text-transform: uppercase; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 4mm;
+    padding: 5mm 11mm; border-radius: 99mm;
+    border: 0.6mm solid rgba(226,124,125,0.6);
+    font-size: 8mm; font-weight: 600; letter-spacing: 0.6mm; color: var(--coral);
+  }
+  .pill b { width: 4mm; height: 4mm; border-radius: 50%; background: var(--live); box-shadow: 0 0 0 2mm rgba(32,201,135,0.18); }
+
+  /* ---------- 헤드라인 ---------- */
+  .hero { top: 150mm; }
+  .hero h1 {
+    font-size: 96mm; font-weight: 800; line-height: 0.92; letter-spacing: -0.4mm;
+    font-feature-settings: "ss05";
+  }
+  .hero h1 em { font-style: normal; color: var(--coral); }
+  .hero p {
+    margin-top: 26mm;
+    font-size: 24mm; font-weight: 500; line-height: 1.35; letter-spacing: -0.3mm;
+    color: rgba(251,248,248,0.92);
+    word-break: keep-all;
+  }
+  .hero p strong { font-weight: 800; color: #fff; }
+
+  /* ---------- 폰 목업 ---------- */
+  .stage { top: 560mm; height: 660mm; display: grid; place-items: start center; }
+  .glow {
+    position: absolute; top: 40mm; left: 50%; transform: translateX(-50%);
+    width: 460mm; height: 560mm; border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(226,124,125,0.22), rgba(226,124,125,0) 100%);
+    filter: blur(20mm);
+  }
+  .phone {
+    position: relative; width: 296mm; height: 640mm; border-radius: 40mm;
+    background: #0B0608;
+    border: 1.2mm solid rgba(255,255,255,0.16);
+    box-shadow: 0 30mm 60mm rgba(0,0,0,0.55), inset 0 0 0 4mm #16090F;
+    overflow: hidden;
+  }
+  .screen { position: absolute; inset: 5.2mm; border-radius: 35mm; background: #F5F6F7; overflow: hidden; color: var(--ink); }
+  .notch { position: absolute; top: 5mm; left: 50%; transform: translateX(-50%); width: 62mm; height: 14mm; border-radius: 99mm; background: #0B0608; z-index: 5; }
+  .photo { position: absolute; top: 0; left: 0; width: 100%; height: 462mm; overflow: hidden; }
+  .photo img { position: absolute; top: 0; left: 50%; transform: translateX(-50%); height: 100%; width: auto; }
+  .photo::after {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(0,0,0,0.28) 0%, rgba(0,0,0,0) 22%, rgba(0,0,0,0) 78%, rgba(0,0,0,0.35) 100%);
+  }
+  .hud { position: absolute; top: 28mm; left: 12mm; right: 12mm; display: flex; justify-content: space-between; align-items: center; z-index: 4; color: #fff; }
+  .hud .u { display: flex; align-items: center; gap: 4mm; font-size: 7.4mm; font-weight: 600; }
+  .hud .u b { width: 11mm; height: 11mm; border-radius: 50%; background: linear-gradient(135deg, #D5C8E2, #5B556E); display: block; }
+  .hud .tag { font-size: 6.4mm; font-weight: 600; padding: 2.4mm 6mm; border-radius: 99mm; background: rgba(255,255,255,0.18); backdrop-filter: blur(4mm); border: 0.4mm solid rgba(255,255,255,0.35); letter-spacing: 0.3mm; }
+
+  /* 오브젝트 탭 포인트 + 라벨 (PRD §39: 마스크 + 얇은 아웃라인, 바운딩 박스 금지) */
+  .dot {
+    position: absolute; z-index: 4; width: 14mm; height: 14mm; margin: -7mm 0 0 -7mm; border-radius: 50%;
+    background: rgba(255,255,255,0.92); border: 1mm solid rgba(17,18,20,0.35);
+    box-shadow: 0 0 0 5mm rgba(255,255,255,0.28), 0 0 0 11mm rgba(255,255,255,0.12);
+  }
+  .dot::after { content: ""; position: absolute; inset: 3.6mm; border-radius: 50%; background: var(--ink); }
+  .dot.hot { background: var(--coral); border-color: rgba(115,19,45,0.6); box-shadow: 0 0 0 5mm rgba(226,124,125,0.35), 0 0 0 11mm rgba(226,124,125,0.14); }
+  .dot.hot::after { background: #fff; }
+  .lbl {
+    position: absolute; z-index: 4; display: flex; align-items: center; gap: 3.5mm;
+    padding: 3.6mm 6.5mm 3.6mm 5mm; border-radius: 99mm;
+    background: rgba(255,255,255,0.96); color: var(--ink);
+    font-size: 7.2mm; font-weight: 700; letter-spacing: -0.15mm; white-space: nowrap;
+    box-shadow: 0 3mm 10mm rgba(0,0,0,0.25);
+  }
+  .lbl small { font-size: 6mm; font-weight: 600; color: #6B6F76; }
+  .lbl .st { font-size: 5.6mm; font-weight: 700; padding: 1.4mm 3.4mm; border-radius: 99mm; background: #EEEFED; color: #111214; }
+  .lbl .st.sim { background: #FFF1E5; color: #BF5B26; }
+
+  /* 상품 바텀시트 */
+  .sheet {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 168mm;
+    background: #fff; border-radius: 22mm 22mm 0 0;
+    padding: 10mm 14mm 12mm;
+    box-shadow: 0 -6mm 24mm rgba(0,0,0,0.25);
+  }
+  .handle { width: 22mm; height: 2.4mm; border-radius: 99mm; background: #DFE2E5; margin: 0 auto 8mm; }
+  .prod { display: grid; grid-template-columns: 60mm 1fr; gap: 9mm; align-items: center; }
+  .prod .img { width: 60mm; height: 60mm; border-radius: 8mm; overflow: hidden; background: #EEEFED; }
+  .prod .img img { width: 100%; height: 100%; object-fit: cover; }
+  .prod .meta { display: flex; flex-direction: column; gap: 3mm; }
+  .prod .brand-row { display: flex; align-items: center; gap: 4mm; font-size: 6.4mm; font-weight: 600; color: #6B6F76; letter-spacing: 0.2mm; }
+  .prod .brand-row .ex { font-size: 5.4mm; font-weight: 700; color: #111214; background: #EEEFED; padding: 1.2mm 3.4mm; border-radius: 99mm; }
+  .prod .name { font-size: 9.2mm; font-weight: 700; letter-spacing: -0.25mm; line-height: 1.2; color: #111214; }
+  .prod .price { font-size: 10mm; font-weight: 800; color: #111214; }
+  .prod .price small { font-size: 6mm; font-weight: 600; color: #6B6F76; margin-left: 3mm; }
+  .aff { margin-top: 6mm; display: flex; align-items: center; gap: 4mm; font-size: 6.2mm; font-weight: 600; color: #6B6F76; }
+  .aff b { width: 3.4mm; height: 3.4mm; border-radius: 50%; background: var(--live); }
+  .cta {
+    margin-top: 7mm; height: 30mm; border-radius: 10mm;
+    background: var(--ink); color: #fff; display: flex; align-items: center; justify-content: center; gap: 5mm;
+    font-size: 10mm; font-weight: 700; letter-spacing: -0.2mm;
+  }
+  .cta i { width: 7mm; height: 7mm; border: 1.4mm solid #fff; border-left: 0; border-bottom: 0; transform: rotate(45deg); margin-left: -2mm; }
+
+  /* ---------- 흐름 (코어 루프) ---------- */
+  .flow { top: 1235mm; }
+  .kicker { display: flex; align-items: center; gap: 6mm; font-size: 8.2mm; font-weight: 600; letter-spacing: 1.6mm; color: var(--coral); text-transform: uppercase; margin-bottom: 12mm; }
+  .kicker::after { content: ""; flex: 1; height: 0.5mm; background: var(--line); }
+  .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8mm; }
+  .step {
+    position: relative; height: 96mm; border-radius: 12mm; padding: 11mm 10mm;
+    background: rgba(255,255,255,0.05); border: 0.6mm solid var(--line);
+    display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .step .n { font-size: 8mm; font-weight: 700; color: var(--coral); letter-spacing: 0.6mm; }
+  .step .t { font-size: 13mm; font-weight: 800; letter-spacing: -0.3mm; line-height: 1.1; }
+  .step .d { font-size: 7.2mm; font-weight: 500; color: var(--muted); line-height: 1.35; word-break: keep-all; margin-top: 3mm; }
+  .step::after {
+    content: ""; position: absolute; right: -6.6mm; top: 50%; width: 5mm; height: 5mm;
+    border-top: 0.9mm solid rgba(226,124,125,0.9); border-right: 0.9mm solid rgba(226,124,125,0.9);
+    transform: translateY(-50%) rotate(45deg); z-index: 2;
+  }
+  .step:last-child::after { display: none; }
+  .step:last-child { background: linear-gradient(160deg, rgba(115,19,45,0.55), rgba(115,19,45,0.18)); border-color: rgba(226,124,125,0.45); }
+
+  /* ---------- 대상별 가치 ---------- */
+  .value { top: 1388mm; }
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8mm; }
+  .card {
+    height: 150mm; border-radius: 14mm; padding: 13mm 12mm 12mm;
+    background: rgba(255,255,255,0.05); border: 0.6mm solid var(--line);
+    display: flex; flex-direction: column;
+  }
+  .card .who { font-size: 7.4mm; font-weight: 700; letter-spacing: 1.2mm; color: var(--coral); text-transform: uppercase; }
+  .card .big { margin-top: auto; font-size: 34mm; font-weight: 800; letter-spacing: -1.2mm; line-height: 1; }
+  .card .big small { font-size: 14mm; font-weight: 700; letter-spacing: -0.2mm; margin-left: 1.5mm; }
+  .card .why { margin-top: 6mm; font-size: 8mm; font-weight: 500; line-height: 1.35; color: var(--muted); word-break: keep-all; }
+  .card .why strong { color: #fff; font-weight: 700; }
+
+  /* ---------- 하단 CTA + QR ---------- */
+  .foot { top: 1576mm; display: grid; grid-template-columns: 1fr 108mm; gap: 18mm; align-items: center; }
+  .foot h3 { font-size: 22mm; font-weight: 800; letter-spacing: -0.5mm; line-height: 1.12; word-break: keep-all; }
+  .foot h3 em { font-style: normal; color: var(--coral); }
+  .foot .url { margin-top: 9mm; font-size: 12mm; font-weight: 600; letter-spacing: 0.1mm; color: #fff; }
+  .foot .sub { margin-top: 4mm; font-size: 7.6mm; font-weight: 500; color: var(--muted); }
+  .qr { width: 108mm; height: 108mm; border-radius: 12mm; background: #fff; padding: 9mm; display: grid; place-items: center; }
+  .qr svg { width: 100%; height: 100%; display: block; }
+
+  /* 하단 110mm: 거치대 포켓 구역 — 중요한 정보 배치 금지 */
+  .pocket { position: absolute; left: 0; right: 0; bottom: 0; height: 110mm; display: flex; align-items: center; justify-content: center; }
+  .pocket .line { position: absolute; top: 0; left: 36mm; right: 36mm; height: 0.5mm; background: var(--line); }
+  .pocket p { font-size: 7.2mm; font-weight: 500; letter-spacing: 1.2mm; color: rgba(251,248,248,0.42); text-transform: uppercase; }
+  .pocket p b { color: var(--coral); font-weight: 700; margin: 0 4mm; }
+</style>
+</head>
+<body>
+  <div class="bg"></div>
+  <div class="grid"></div>
+
+  <!-- 상단 -->
+  <header class="safe top">
+    <div class="brand">
+      <div class="mark" aria-hidden="true"><span>STS</span><i></i></div>
+      <div class="wordmark">
+        <strong>STS</strong>
+        <small>AI Visual Commerce Platform</small>
+      </div>
+    </div>
+    <div class="pill"><b></b>LIVE DEMO · 부스에서 직접 체험</div>
+  </header>
+
+  <!-- 헤드라인 -->
+  <section class="safe hero">
+    <h1>See it.<br>Tap it.<br><em>Shop it.</em></h1>
+    <p>사진 속 <strong>물건을 탭</strong>하면,<br>AI가 상품을 찾아 <strong>구매까지 바로</strong> 연결합니다.</p>
+  </section>
+
+  <!-- 폰 목업 -->
+  <section class="safe stage">
+    <div class="glow" aria-hidden="true"></div>
+    <div class="phone">
+      <div class="screen">
+        <div class="notch"></div>
+        <div class="photo">
+          <img src="../../public/looks/look6.jpg" alt="크리에이터 착장 사진" />
+        </div>
+        <div class="hud">
+          <div class="u"><b></b>@edit.eunseo</div>
+          <div class="tag">AI 인식 3개</div>
+        </div>
+
+        <!-- 셔츠 (선택됨) : 사진 좌표 x54% y34% → 화면 좌표 환산 -->
+        <span class="dot hot" style="left:46%; top:168mm;"></span>
+        <div class="lbl" style="left:12mm; top:186mm;">옥스포드 셔츠 <small>96%</small><span class="st">동일 상품</span></div>
+
+        <!-- 숄더백 -->
+        <span class="dot" style="left:59%; top:150mm;"></span>
+        <div class="lbl" style="right:9mm; top:126mm;">숄더백 <small>92%</small><span class="st sim">유사 상품</span></div>
+
+        <!-- 스니커즈 -->
+        <span class="dot" style="left:45%; top:400mm;"></span>
+        <div class="lbl" style="left:14mm; top:418mm;">스니커즈 <small>94%</small><span class="st">동일 상품</span></div>
+
+        <div class="sheet">
+          <div class="handle"></div>
+          <div class="prod">
+            <div class="img"><img src="../../public/looks/plw-polo-oxford.jpg" alt="" /></div>
+            <div class="meta">
+              <div class="brand-row">Polo Ralph Lauren <span class="ex">동일 상품</span></div>
+              <div class="name">클래식 핏 옥스포드 셔츠<br>스카이 블루</div>
+              <div class="price">₩259,000 <small>무신사</small></div>
+            </div>
+          </div>
+          <div class="aff"><b></b>제휴 상품 · 구매 시 크리에이터에게 수익이 배분됩니다</div>
+          <div class="cta">구매하러 가기 <i></i></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 코어 루프 -->
+  <section class="safe flow">
+    <div class="kicker">How it works</div>
+    <div class="steps">
+      <div class="step"><div class="n">01</div><div><div class="t">콘텐츠 보기</div><div class="d">깨끗한 사진과 영상. 태그 아이콘도, 버튼도 없습니다.</div></div></div>
+      <div class="step"><div class="n">02</div><div><div class="t">물건 탭</div><div class="d">AI가 미리 인식한 오브젝트를 손끝으로 바로 선택.</div></div></div>
+      <div class="step"><div class="n">03</div><div><div class="t">상품 카드</div><div class="d">브랜드·가격·동일/유사 판별·구매 링크를 한 장에.</div></div></div>
+      <div class="step"><div class="n">04</div><div><div class="t">구매 · 리워드</div><div class="d">판매처 딥링크로 결제, 수익은 크리에이터에게 자동 배분.</div></div></div>
+    </div>
+  </section>
+
+  <!-- 대상별 가치 -->
+  <section class="safe value">
+    <div class="cards">
+      <div class="card">
+        <div class="who">For Shoppers</div>
+        <div class="big">2<small>탭</small></div>
+        <div class="why">탭 → 시트 → <strong>상품 페이지 딥링크</strong>.<br>검색 없이 사진에서 바로 구매.</div>
+      </div>
+      <div class="card">
+        <div class="who">For Creators</div>
+        <div class="big">80<small>%</small></div>
+        <div class="why">제휴 판매 수수료의 <strong>크리에이터 배분율</strong>.<br>링크 작업 0초, 발행 즉시 수익 자산.</div>
+      </div>
+      <div class="card">
+        <div class="who">For Brands</div>
+        <div class="big">AI<small>자동 태깅</small></div>
+        <div class="why">게시물 속 <strong>모든 상품을 객체 단위</strong>로 인식.<br>노출이 아닌 탭·전환·판매를 측정.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 하단 CTA -->
+  <section class="safe foot">
+    <div>
+      <h3>지금 QR을 스캔하고<br><em>사진 속 물건</em>을 탭해 보세요.</h3>
+      <div class="url">sts-mongben.vercel.app</div>
+      <div class="sub">브랜드 · 크리에이터 파트너십 문의는 부스 담당자에게</div>
+    </div>
+    <div class="qr" aria-label="STS 데모 QR 코드">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 33 33" shape-rendering="crispEdges"><path stroke="#12080D" d="M0 0.5h7m1 0h2m2 0h1m4 0h2m1 0h5m1 0h7M0 1.5h1m5 0h1m1 0h2m1 0h2m2 0h2m6 0h1m2 0h1m5 0h1M0 2.5h1m1 0h3m1 0h1m4 0h1m4 0h3m1 0h1m1 0h1m1 0h1m1 0h1m1 0h3m1 0h1M0 3.5h1m1 0h3m1 0h1m1 0h8m1 0h1m1 0h2m1 0h1m1 0h1m1 0h1m1 0h3m1 0h1M0 4.5h1m1 0h3m1 0h1m1 0h3m2 0h3m1 0h1m6 0h1m1 0h1m1 0h3m1 0h1M0 5.5h1m5 0h1m1 0h2m2 0h1m1 0h1m2 0h1m6 0h1m1 0h1m5 0h1M0 6.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M9 7.5h1m2 0h2m2 0h6m1 0h1M3 8.5h1m2 0h1m2 0h1m1 0h1m1 0h5m2 0h2m1 0h2m2 0h3m1 0h2M0 9.5h1m2 0h1m3 0h1m3 0h1m2 0h1m3 0h1m1 0h1m3 0h1m1 0h1m5 0h1M0 10.5h5m1 0h1m2 0h3m2 0h2m1 0h2m2 0h2m1 0h1m4 0h2m1 0h1M0 11.5h1m1 0h4m1 0h1m1 0h1m3 0h1m1 0h2m3 0h1m2 0h1m2 0h1m2 0h1M1 12.5h1m2 0h1m1 0h1m2 0h3m1 0h3m3 0h1m4 0h4m4 0h1M0 13.5h2m5 0h2m1 0h1m2 0h1m1 0h2m5 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1M1 14.5h3m1 0h3m2 0h3m1 0h1m1 0h2m1 0h3m1 0h1m1 0h1m2 0h2m1 0h1M0 15.5h3m4 0h1m2 0h1m2 0h2m2 0h3m1 0h2m1 0h4m3 0h2M2 16.5h1m2 0h3m1 0h2m1 0h1m1 0h3m1 0h1m2 0h1m1 0h1m2 0h3M1 17.5h1m1 0h1m5 0h3m1 0h3m3 0h1m1 0h1m1 0h1m1 0h1m4 0h2M0 18.5h1m2 0h4m2 0h5m1 0h2m1 0h1m1 0h2m4 0h1m3 0h1m1 0h1M2 19.5h1m1 0h2m1 0h1m1 0h1m3 0h5m1 0h1m1 0h1M0 20.5h3m1 0h1m1 0h2m5 0h1m1 0h1m2 0h1m1 0h2m1 0h2m6 0h2M4 21.5h1m5 0h1m1 0h1m1 0h1m1 0h1m2 0h1m1 0h1m1 0h3m1 0h1m3 0h2M0 22.5h2m2 0h3m2 0h1m3 0h1m3 0h1m1 0h2m1 0h7m1 0h1m1 0h1M1 23.5h1m7 0h6m2 0h1m3 0h7m1 0h1m1 0h1M0 24.5h1m1 0h6m4 0h3m1 0h1m2 0h1m1 0h1m1 0h7m2 0h1M8 25.5h1m2 0h1m1 0h2m1 0h1m3 0h3m1 0h1m3 0h1m1 0h3M0 26.5h7m2 0h3m1 0h3m2 0h1m3 0h1m1 0h1m1 0h1m1 0h2m1 0h1M0 27.5h1m5 0h1m3 0h2m2 0h2m1 0h1m2 0h3m1 0h1m3 0h2m2 0h1M0 28.5h1m1 0h3m1 0h1m2 0h6m1 0h1m7 0h5M0 29.5h1m1 0h3m1 0h1m1 0h3m4 0h1m1 0h1m1 0h1m2 0h2m2 0h1m1 0h1m3 0h1M0 30.5h1m1 0h3m1 0h1m2 0h1m2 0h2m1 0h3m1 0h2m1 0h4m1 0h4m1 0h1M0 31.5h1m5 0h1m4 0h1m6 0h2m1 0h8M0 32.5h7m2 0h5m1 0h1m6 0h1m1 0h2m1 0h2m2 0h1"/></svg>
+
+    </div>
+  </section>
+
+  <div class="pocket">
+    <div class="line"></div>
+    <p>STS <b>·</b> See it. Tap it. Shop it. <b>·</b> AI Visual Commerce</p>
+  </div>
+</body>
+</html>
