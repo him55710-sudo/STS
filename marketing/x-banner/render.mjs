@@ -18,7 +18,6 @@ try {
 const here = path.dirname(fileURLToPath(import.meta.url));
 const variants = [
   { html: "sts-x-banner-600x1800.html", suffix: "" },
-  { html: "sts-x-banner-600x1800-dark.html", suffix: "-dark" },
 ];
 const only = process.argv[2]; // 선택: "light" | "dark"
 
