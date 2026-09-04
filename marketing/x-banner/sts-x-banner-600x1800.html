@@ -19,12 +19,12 @@
      ------------------------------------------------------------------ */
   @page { size: 600mm 1800mm; margin: 0; }
   :root {
-    --cream: #FBF5F0; --paper: #FFFFFF; --tint: #FDECE8;
-    --coral: #E8686C; --coral-soft: #F6B3B4; --wine: #7A1234; --wine-deep: #4A0A1F;
+    --cream: #F3F4F6; --paper: #FFFFFF; --tint: #ECEBF2;
+    --coral: #5B556E; --coral-soft: #B9B3C9; --wine: #16171B; --wine-deep: #0C0D10;
     --neon: #D9FF3D; --neon-ink: #1A1A0A;
-    --ink: #1A1418; --muted: #6F656B; --faint: #B3A7AC; --line: #EBDCDA;
+    --ink: #111214; --muted: #6B6F76; --faint: #A9ADB4; --line: #E3E5EA;
     --font: "Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
-    --grad: linear-gradient(115deg, #F07A73 0%, #D8405C 38%, var(--wine) 74%, var(--wine-deep) 100%);
+    --grad: linear-gradient(115deg, #35303F 0%, #221F29 40%, #16171B 75%, #0C0D10 100%);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { width: 600mm; height: 1800mm; }
@@ -47,21 +47,21 @@
   /* 헤더 */
   .top { top: 34mm; display: flex; align-items: center; justify-content: space-between; }
   .brand { display: flex; align-items: center; gap: 9mm; }
-  .mark { width: 34mm; height: 34mm; border-radius: 8.5mm; background: var(--ink); position: relative; display: grid; place-items: center; }
+  .mark { width: 34mm; height: 34mm; border-radius: 8.5mm; background: var(--coral); position: relative; display: grid; place-items: center; }
   .mark span { font-size: 12.5mm; font-weight: 800; letter-spacing: 0.8mm; color: #fff; }
   .mark i { position: absolute; right: 5.5mm; bottom: 11.2mm; width: 3.6mm; height: 3.6mm; border-radius: 50%; background: var(--coral); }
   .wordmark strong { display: block; font-size: 15mm; font-weight: 800; letter-spacing: 1mm; line-height: 1; }
   .wordmark small { display: block; margin-top: 2mm; font-size: 6.6mm; font-weight: 600; letter-spacing: 1.4mm; color: var(--muted); text-transform: uppercase; }
-  .pill { display: inline-flex; align-items: center; gap: 3.5mm; padding: 4mm 9mm; border-radius: 99mm; background: var(--wine); color: #fff; font-size: 7.2mm; font-weight: 700; letter-spacing: 0.5mm; }
+  .pill { display: inline-flex; align-items: center; gap: 3.5mm; padding: 4mm 9mm; border-radius: 99mm; background: var(--coral); color: #fff; font-size: 7.2mm; font-weight: 700; letter-spacing: 0.5mm; }
   .pill b { width: 3.4mm; height: 3.4mm; border-radius: 50%; background: var(--coral-soft); }
 
   /* 히어로 */
   .hero { top: 92mm; height: 186mm; padding: 18mm 44mm; overflow: hidden; background: var(--grad); color: #fff; }
   .hero .orb { position: absolute; border-radius: 50%; filter: blur(18mm); }
-  .hero .o1 { width: 300mm; height: 300mm; right: -80mm; top: -120mm; background: rgba(255,200,170,0.45); }
+  .hero .o1 { width: 300mm; height: 300mm; right: -80mm; top: -120mm; background: rgba(213,200,226,0.22); }
   .hero .kicker { position: relative; font-size: 7.2mm; font-weight: 700; letter-spacing: 1.8mm; text-transform: uppercase; opacity: 0.92; }
   .hero h1 { position: relative; margin-top: 6mm; font-size: 46mm; font-weight: 800; line-height: 0.98; letter-spacing: -0.6mm; }
-  .hero h1 em { color: #FFE0C2; }
+  .hero h1 em { color: #D5C8E2; }
   .hero p { position: relative; margin-top: 9mm; font-size: 11.5mm; font-weight: 500; line-height: 1.35; }
   .hero p strong { font-weight: 800; }
 
@@ -77,12 +77,12 @@
   .prob .w { font-size: 6mm; font-weight: 700; letter-spacing: 0.8mm; color: var(--coral); text-transform: uppercase; }
   .prob .t { margin-top: 2mm; font-size: 9mm; font-weight: 800; line-height: 1.22; }
   .goal { border-radius: 10mm; background: var(--grad); color: #fff; padding: 12mm 13mm; display: flex; flex-direction: column; }
-  .goal .eyebrow { color: #FFD3B8; }
+  .goal .eyebrow { color: #D5C8E2; }
   .goal .big { margin-top: 4mm; font-size: 13.5mm; font-weight: 800; line-height: 1.22; letter-spacing: -0.3mm; }
-  .goal .big em { color: #FFE0C2; }
+  .goal .big em { color: #D5C8E2; }
   .goal ul { margin-top: auto; list-style: none; display: flex; flex-direction: column; gap: 3.2mm; }
   .goal li { display: flex; gap: 4mm; align-items: flex-start; font-size: 7.5mm; font-weight: 600; line-height: 1.35; color: rgba(255,255,255,0.94); }
-  .goal li::before { content: ""; flex: none; width: 3.2mm; height: 3.2mm; margin-top: 3mm; border-radius: 50%; background: #FFE0C2; }
+  .goal li::before { content: ""; flex: none; width: 3.2mm; height: 3.2mm; margin-top: 3mm; border-radius: 50%; background: #D5C8E2; }
 
   /* 02 방향 설정 — 한 줄로 읽히는 결정 경로 */
   .s2 { top: 516mm; }
@@ -93,10 +93,10 @@
   .step .idx { font-size: 6mm; font-weight: 700; letter-spacing: 0.8mm; color: var(--coral); text-transform: uppercase; }
   .step .drop { margin-top: 6mm; font-size: 8.8mm; font-weight: 600; color: var(--faint); }
   .step .drop s { color: var(--faint); }
-  .step .pick { margin-top: 2.5mm; font-size: 14mm; font-weight: 800; line-height: 1.15; letter-spacing: -0.3mm; color: var(--wine); }
+  .step .pick { margin-top: 2.5mm; font-size: 14mm; font-weight: 800; line-height: 1.15; letter-spacing: -0.3mm; color: var(--coral); }
   .step .why { margin-top: auto; font-size: 7.8mm; font-weight: 500; color: var(--muted); line-height: 1.35; }
-  .step.now { background: var(--wine); border-color: var(--wine); color: #fff; }
-  .step.now .idx { color: var(--coral-soft); }
+  .step.now { background: var(--coral); border-color: var(--coral); color: #fff; }
+  .step.now .idx { color: #D5C8E2; }
   .step.now .pick { color: #fff; }
   .step.now .why { color: rgba(255,255,255,0.82); }
 
@@ -106,7 +106,7 @@
   .tl::before { content: ""; position: absolute; left: 8mm; right: 8mm; top: 6mm; height: 1.2mm; border-radius: 1mm; background: linear-gradient(90deg, var(--coral-soft), var(--coral) 45%, var(--wine)); }
   .node { position: relative; }
   .node::before { content: ""; position: absolute; top: -12.6mm; left: 50%; transform: translateX(-50%); width: 7.5mm; height: 7.5mm; border-radius: 50%; background: #fff; border: 1.6mm solid var(--coral); }
-  .node.last::before { background: var(--wine); border-color: var(--wine); box-shadow: 0 0 0 2.4mm rgba(122,18,52,0.18); }
+  .node.last::before { background: var(--coral); border-color: var(--coral); box-shadow: 0 0 0 2.4mm rgba(91,85,110,0.18); }
   .node .box { height: 92mm; padding: 8mm 8.5mm; display: flex; flex-direction: column; }
   .node .when { font-size: 6mm; font-weight: 700; letter-spacing: 0.6mm; color: var(--coral); text-transform: uppercase; }
   .node .t { margin-top: 2.6mm; font-size: 11mm; font-weight: 800; line-height: 1.15; letter-spacing: -0.3mm; }
@@ -118,7 +118,7 @@
   .shot { position: relative; width: 240mm; height: 240mm; border-radius: 10mm; overflow: hidden; background: #ddd; }
   .shot img, .shot svg { position: absolute; width: 480mm; height: 480mm; left: -120mm; top: -48mm; }
   .shot .cap { position: absolute; left: 8mm; top: 8mm; padding: 3mm 7mm; border-radius: 99mm; font-size: 7.2mm; font-weight: 800; letter-spacing: 0.5mm; }
-  .shot .cap.b { background: rgba(26,20,24,0.88); color: #fff; }
+  .shot .cap.b { background: rgba(17,18,20,0.88); color: #fff; }
   .shot .cap.a { background: var(--neon); color: var(--neon-ink); }
   .shot .foot { position: absolute; left: 0; right: 0; bottom: 0; padding: 14mm 8mm 8mm; color: #fff; background: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.78)); }
   .shot .foot b { display: block; font-size: 10.5mm; font-weight: 800; line-height: 1.15; letter-spacing: -0.3mm; }
@@ -140,25 +140,25 @@
   .stage .d { margin-top: auto; font-size: 7mm; font-weight: 500; color: var(--muted); line-height: 1.3; }
   .stage::after { content: ""; position: absolute; right: -5.2mm; top: 50%; width: 5mm; height: 5mm; border-top: 1mm solid var(--coral); border-right: 1mm solid var(--coral); transform: translateY(-50%) rotate(45deg); z-index: 2; }
   .stage:last-child::after { display: none; }
-  .stage:last-child { background: var(--wine); border-color: var(--wine); color: #fff; }
-  .stage:last-child .n { color: var(--coral-soft); } .stage:last-child .d { color: rgba(255,255,255,0.82); }
+  .stage:last-child { background: var(--coral); border-color: var(--coral); color: #fff; }
+  .stage:last-child .n { color: #D5C8E2; } .stage:last-child .d { color: rgba(255,255,255,0.82); }
   .diff { margin-top: 10mm; overflow: hidden; }
   .diff .row { display: grid; grid-template-columns: 120mm 1fr 1fr; }
   .diff .row + .row { border-top: 0.5mm solid var(--line); }
-  .diff .row.head { background: var(--wine); color: #fff; }
+  .diff .row.head { background: var(--ink); color: #fff; }
   .diff .row.head > div { font-size: 7.2mm; font-weight: 700; letter-spacing: 0.8mm; text-transform: uppercase; padding: 4.5mm 8mm; }
-  .diff .row.head > div:nth-child(3) { color: #FFE0C2; }
+  .diff .row.head > div:nth-child(3) { color: #D5C8E2; }
   .diff .row > div { padding: 5.5mm 8mm; font-size: 8mm; line-height: 1.3; display: flex; align-items: center; }
   .diff .row > div:first-child { font-weight: 800; }
   .diff .row > div:nth-child(2) { color: var(--muted); font-weight: 500; }
-  .diff .row > div:nth-child(3) { font-weight: 800; background: var(--tint); }
+  .diff .row > div:nth-child(3) { font-weight: 800; background: var(--tint); color: var(--coral); }
 
   /* 06 최종 결과물 — 폰 목업이 메인 비주얼 */
   .s6 { top: 1423mm; height: 377mm; background: var(--grad); color: #fff; overflow: hidden; }
   .s6 .orb { position: absolute; border-radius: 50%; filter: blur(18mm); }
-  .s6 .o1 { width: 340mm; height: 340mm; left: -40mm; bottom: -120mm; background: rgba(255,200,170,0.32); }
+  .s6 .o1 { width: 340mm; height: 340mm; left: -40mm; bottom: -120mm; background: rgba(213,200,226,0.16); }
   .s6 .inner { position: absolute; left: 44mm; right: 44mm; top: 18mm; bottom: 110mm; display: grid; grid-template-columns: 176mm 1fr; gap: 20mm; align-items: start; }
-  .s6 .ch .ttl { color: #fff; } .s6 .ch .num { color: #FFE0C2; } .s6 .ch .sub { color: rgba(255,255,255,0.78); }
+  .s6 .ch .ttl { color: #fff; } .s6 .ch .num { color: #D5C8E2; } .s6 .ch .sub { color: rgba(255,255,255,0.78); }
   .phone { position: relative; width: 176mm; height: 340mm; border-radius: 24mm; background: #FFFFFF; border: 0.8mm solid rgba(255,255,255,0.9); box-shadow: 0 16mm 36mm rgba(0,0,0,0.35); overflow: hidden; }
   .screen { position: absolute; inset: 3.2mm; border-radius: 21mm; background: #F5F6F7; overflow: hidden; color: var(--ink); }
     .photo { position: absolute; top: 0; left: 0; width: 100%; height: 180mm; overflow: hidden; }
@@ -188,19 +188,19 @@
   .loop { display: flex; align-items: center; gap: 3mm; flex-wrap: wrap; }
   .loop span { padding: 3.4mm 6.5mm; border-radius: 99mm; background: rgba(255,255,255,0.12); border: 0.4mm solid rgba(255,255,255,0.32); font-size: 7.4mm; font-weight: 700; }
   .loop span.hot { background: var(--neon); color: var(--neon-ink); border-color: var(--neon); }
-  .loop i { width: 3.6mm; height: 3.6mm; border-top: 0.8mm solid #FFE0C2; border-right: 0.8mm solid #FFE0C2; transform: rotate(45deg); }
+  .loop i { width: 3.6mm; height: 3.6mm; border-top: 0.8mm solid #D5C8E2; border-right: 0.8mm solid #D5C8E2; transform: rotate(45deg); }
   .road { margin-top: 7mm; }
-  .road .eyebrow { color: #FFD3B8; }
+  .road .eyebrow { color: #D5C8E2; }
   .road .lane { margin-top: 4mm; display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 5mm; }
   .rd { border-radius: 8mm; padding: 6.5mm 7mm; background: rgba(255,255,255,0.1); border: 0.4mm solid rgba(255,255,255,0.3); }
   .rd.now { background: #fff; color: var(--ink); border-color: #fff; }
-  .rd .ph { font-size: 5.8mm; font-weight: 700; letter-spacing: 0.8mm; text-transform: uppercase; color: #FFE0C2; }
+  .rd .ph { font-size: 5.8mm; font-weight: 700; letter-spacing: 0.8mm; text-transform: uppercase; color: #D5C8E2; }
   .rd.now .ph { color: var(--coral); }
   .rd .t { margin-top: 2mm; font-size: 10mm; font-weight: 800; line-height: 1.12; letter-spacing: -0.3mm; }
   .rd .d { margin-top: 2.4mm; font-size: 6.6mm; font-weight: 500; line-height: 1.35; color: rgba(255,255,255,0.84); }
   .rd.now .d { color: var(--muted); }
   .vision { margin-top: 7mm; font-size: 12mm; font-weight: 800; line-height: 1.25; letter-spacing: -0.3mm; }
-  .vision em { color: #FFE0C2; }
+  .vision em { color: #D5C8E2; }
   .cta-row { margin-top: auto; display: grid; grid-template-columns: 1fr 86mm; gap: 10mm; align-items: end; }
   .cta-row .go { font-size: 9.6mm; font-weight: 800; line-height: 1.25; }
   .cta-row .url { margin-top: 2.5mm; font-size: 7.6mm; font-weight: 600; color: rgba(255,255,255,0.85); letter-spacing: 0.2mm; }
@@ -210,7 +210,7 @@
   .pocket { position: absolute; left: 0; right: 0; bottom: 0; height: 110mm; display: flex; align-items: center; justify-content: flex-end; padding-right: 44mm; z-index: 3; }
   .pocket::before { content: ""; position: absolute; top: 0; left: 240mm; right: 44mm; height: 0.5mm; background: rgba(255,255,255,0.22); }
   .pocket p { font-size: 6.6mm; font-weight: 600; letter-spacing: 1.2mm; color: rgba(255,255,255,0.55); text-transform: uppercase; }
-  .pocket p b { color: #FFE0C2; margin: 0 4mm; }
+  .pocket p b { color: #D5C8E2; margin: 0 4mm; }
 </style>
 </head>
 <body>
