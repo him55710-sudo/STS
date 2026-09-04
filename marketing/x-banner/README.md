@@ -33,4 +33,4 @@ node marketing/x-banner/render.mjs
 
 ## 데이터 주입
 
-Before/After 실루엣 폴리곤은 `lib/catalog.ts`의 look6 오브젝트(`l6-shirt`, `l6-bag`, `l6-jeans`) 좌표를 그대로 SVG `<polygon>`에 넣은 것. QR SVG는 `qrcode` 패키지로 생성해 인라인 삽입.
+Before 박스는 `lib/catalog.ts`의 look6 bbox 좌표. After 실루엣(셔츠·청바지·가방)은 배너용으로 사진 위에 0.02 격자를 얹고 옷 경계를 직접 따라 그린 폴리곤(정규화 좌표, `<polygon>` 인라인). QR SVG는 `qrcode` 패키지로 생성해 인라인 삽입.
