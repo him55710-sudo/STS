@@ -10,17 +10,22 @@
 
 | 파일 | 용도 |
 |---|---|
-| `sts-x-banner-600x1800.pdf` | **인쇄소 전달용.** 페이지 크기 600×1800mm, 텍스트 벡터 |
-| `sts-x-banner-600x1800@150dpi.png` | 래스터 출력용 (3543 × 10630 px, 150dpi) |
-| `preview.png` | 검수용 미리보기 (800 × 2400 px) |
-| `sts-x-banner-600x1800.html` | 디자인 원본. 모든 치수는 mm 단위 |
+| `sts-x-banner-600x1800.pdf` | **라이트 버전 인쇄용.** 페이지 크기 600×1800mm, 텍스트 벡터 |
+| `sts-x-banner-600x1800-dark.pdf` | **다크 버전 인쇄용.** 같은 규격 |
+| `sts-x-banner-600x1800@150dpi.png` / `-dark@150dpi.png` | 래스터 출력용 (3543 × 10630 px, 150dpi) |
+| `preview.png` / `preview-dark.png` | 검수용 미리보기 (800 × 2400 px) |
+| `sts-x-banner-600x1800.html` | 라이트 디자인 원본. 모든 치수는 mm 단위 |
+| `sts-x-banner-600x1800-dark.html` | 다크 버전. 라이트 원본 + 색상 오버라이드 블록 |
 | `render.mjs` | HTML → PDF/PNG 렌더 스크립트 |
 
 ## 수정 후 다시 렌더
 
 ```bash
-node marketing/x-banner/render.mjs
+node marketing/x-banner/render.mjs        # 라이트 + 다크 모두
+node marketing/x-banner/render.mjs dark   # 다크만
 ```
+
+다크 버전 HTML은 라이트 HTML을 복사해 `<head>` 끝의 오버라이드 `<style>` 블록만 다르다. 내용을 고칠 때는 라이트 파일을 고친 뒤 다크 파일에 같은 변경을 반영한다.
 
 요구 사항: Playwright + Chromium, Pretendard 폰트(시스템 설치 또는 CDN 접근).
 
