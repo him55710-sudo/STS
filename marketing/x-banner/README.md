@@ -33,4 +33,4 @@ node marketing/x-banner/render.mjs
 
 ## 데이터 주입
 
-Before 박스는 `lib/catalog.ts`의 look6 bbox 좌표. After 실루엣(셔츠·청바지·가방)은 배너용으로 사진 위에 0.02 격자를 얹고 옷 경계(목선, 소매, 밑단, 허리, 양 다리 안쪽·바깥쪽, 밑단)를 직접 따라 그린 폴리곤(정규화 좌표, `<polygon>` 인라인). QR SVG는 `qrcode` 패키지로 생성해 인라인 삽입.
+Before 박스는 `lib/catalog.ts`의 look6 bbox 좌표. After 실루엣(셔츠·청바지·가방)은 손으로 그린 대략 폴리곤을 초기 마스크로 삼아 OpenCV GrabCut(피부색 영역은 배경으로 고정)을 돌린 뒤 윤곽을 1.6px 오차로 단순화한 픽셀 단위 폴리곤(정규화 좌표, `<polygon>` 인라인). 재생성: `python3 marketing/x-banner/tools/segment.py` (opencv-python-headless, numpy 필요) → `tools/segmented-polygons.json`. 시드 폴리곤은 `tools/seed-polygons.json`. 결과 좌표는 HTML에 인라인되어 있다. QR SVG는 `qrcode` 패키지로 생성해 인라인 삽입.
