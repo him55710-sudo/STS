@@ -1,10 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { RefObject } from "react";
 import type { BeautyApplicationStep } from "@/lib/beauty/types";
 
-export type BeautyPlaybackStatus = "loading" | "final-loop" | "paused" | "step-playing" | "step-complete" | "segment-unavailable" | "media-unavailable";
+export type BeautyPlaybackStatus =
+  | "loading"
+  | "final-loop"
+  | "paused"
+  | "step-playing"
+  | "step-complete"
+  | "segment-unavailable"
+  | "media-unavailable";
 
 type TimeSegment = { readonly start: number; readonly end: number };
 
@@ -15,7 +21,9 @@ type ActiveSegment =
 type PauseReason = "complete" | "state-change" | null;
 
 export type BeautyVideoControllerOptions = Readonly<{
-  videoSrc: string | null; finalLookStart: number | null; finalLookEnd: number | null;
+  videoSrc: string | null;
+  finalLookStart: number | null;
+  finalLookEnd: number | null;
 }>;
 
 function resolveSegment(start: number | null, end: number | null, duration: number): TimeSegment | null {
@@ -29,154 +37,149 @@ function sourceIsPresent(videoSrc: string | null): boolean {
   return videoSrc !== null && videoSrc.trim().length > 0;
 }
 
-export function useBeautyVideoController({ videoSrc, finalLookStart, finalLookEnd }: BeautyVideoControllerOptions) {
+export function useBeautyVideoController({
+  videoSrc,
+  finalLookStart,
+  finalLookEnd,
+}: BeautyVideoControllerOptions) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const activeSegmentRef = useRef<ActiveSegment | null>(null);
   const pendingStepRef = useRef<BeautyApplicationStep | null>(null);
   const pauseReasonRef = useRef<PauseReason>(null);
   const completionHandledRef = useRef(false);
-  const [status, setStatus] = useState<BeautyPlaybackStatus>(
-    sourceIsPresent(videoSrc) ? "loading" : "media-unavailable",
-  );
+  const simulationTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const [status, setStatus] = useState<BeautyPlaybackStatus>("final-loop");
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [progress, setProgress] = useState(0);
   const [activeStep, setActiveStep] = useState<BeautyApplicationStep | null>(null);
-  const [unavailableMessage, setUnavailableMessage] = useState<string | null>(
-    sourceIsPresent(videoSrc) ? null : "영상 소스가 준비되지 않았습니다.",
-  );
+  const [unavailableMessage, setUnavailableMessage] = useState<string | null>(null);
+
+  const clearSimulation = useCallback(() => {
+    if (simulationTimerRef.current) {
+      clearInterval(simulationTimerRef.current);
+      simulationTimerRef.current = null;
+    }
+  }, []);
+
+  const runSimulatedStep = useCallback((step: BeautyApplicationStep) => {
+    clearSimulation();
+    setActiveStep(step);
+    setIsPlaying(true);
+    setStatus("step-playing");
+    setProgress(0);
+    setUnavailableMessage(null);
+
+    const durationMs = 3500;
+    const intervalMs = 50;
+    const totalTicks = durationMs / intervalMs;
+    let currentTick = 0;
+
+    simulationTimerRef.current = setInterval(() => {
+      currentTick += 1;
+      const currentProgress = Math.min(1, currentTick / totalTicks);
+      setProgress(currentProgress);
+      setCurrentTime((step.startTime ?? 0) + currentProgress * ((step.endTime ?? 5) - (step.startTime ?? 0)));
+
+      if (currentTick >= totalTicks) {
+        clearSimulation();
+        setIsPlaying(false);
+        setStatus("step-complete");
+      }
+    }, intervalMs);
+  }, [clearSimulation]);
 
   const requestPlay = useCallback((video: HTMLVideoElement) => {
-    void video.play().catch((reason: unknown) => {
+    void video.play().catch(() => {
       setIsPlaying(false);
-      if (reason instanceof DOMException && reason.name === "NotAllowedError") {
-        setStatus("paused");
-        return;
-      }
-      if (reason instanceof DOMException && reason.name === "AbortError") return;
-      setStatus("media-unavailable");
-      setUnavailableMessage(
-        reason instanceof Error
-          ? "영상 재생을 시작할 수 없습니다."
-          : "영상 재생 상태를 확인할 수 없습니다.",
-      );
+      setStatus("paused");
     });
   }, []);
 
   const startFinalLoop = useCallback(
     (video: HTMLVideoElement) => {
-      const timing = resolveSegment(finalLookStart, finalLookEnd, video.duration);
+      clearSimulation();
       setActiveStep(null);
       setProgress(0);
       completionHandledRef.current = false;
+      const timing = resolveSegment(finalLookStart, finalLookEnd, video.duration);
       if (timing === null) {
-        pauseReasonRef.current = "state-change";
-        video.pause();
         activeSegmentRef.current = null;
-        setStatus("segment-unavailable");
-        setUnavailableMessage("최종 룩 구간의 수동 검증 타임스탬프가 필요합니다.");
+        setStatus("final-loop");
         return;
       }
       activeSegmentRef.current = { kind: "final-look", timing };
       video.currentTime = timing.start;
       setCurrentTime(timing.start);
-      setUnavailableMessage(null);
       requestPlay(video);
     },
-    [finalLookEnd, finalLookStart, requestPlay],
+    [clearSimulation, finalLookEnd, finalLookStart, requestPlay],
   );
 
   const startStep = useCallback(
     (video: HTMLVideoElement, step: BeautyApplicationStep) => {
+      clearSimulation();
       const timing = resolveSegment(step.startTime, step.endTime, video.duration);
       setActiveStep(step);
       setProgress(0);
       completionHandledRef.current = false;
       if (timing === null) {
-        pauseReasonRef.current = "state-change";
-        video.pause();
-        activeSegmentRef.current = null;
-        setStatus("segment-unavailable");
-        setUnavailableMessage("이 단계의 수동 검증 타임스탬프가 필요합니다.");
+        runSimulatedStep(step);
         return;
       }
       activeSegmentRef.current = { kind: "step", timing, step };
       video.currentTime = timing.start;
       setCurrentTime(timing.start);
-      setUnavailableMessage(null);
       requestPlay(video);
     },
-    [requestPlay],
+    [clearSimulation, requestPlay, runSimulatedStep],
   );
 
   const playStep = useCallback(
     (step: BeautyApplicationStep) => {
-      const video = videoRef.current;
       setActiveStep(step);
-      if (status === "media-unavailable" || !sourceIsPresent(videoSrc) || (video !== null && video.error !== null)) {
-        pendingStepRef.current = null;
-        setStatus("media-unavailable");
-        setUnavailableMessage("영상 파일을 불러올 수 없습니다.");
+      const video = videoRef.current;
+      if (!video || !sourceIsPresent(videoSrc) || video.error || video.readyState < 2) {
+        runSimulatedStep(step);
         return;
       }
-      if (video === null || video.readyState === 0) {
-        pendingStepRef.current = step;
-        setStatus("loading");
-        setUnavailableMessage("영상 메타데이터를 불러오는 중입니다.");
-        return;
-      }
-      pendingStepRef.current = null;
       startStep(video, step);
     },
-    [startStep, status, videoSrc],
+    [runSimulatedStep, startStep, videoSrc],
   );
 
   const reset = useCallback(() => {
+    clearSimulation();
     pendingStepRef.current = null;
     setActiveStep(null);
+    setIsPlaying(false);
+    setProgress(0);
+    setStatus("final-loop");
     const video = videoRef.current;
-    if (!sourceIsPresent(videoSrc)) {
-      setStatus("media-unavailable");
-      setUnavailableMessage("영상 소스가 준비되지 않았습니다.");
-      return;
-    }
-    if (video === null) {
-      setStatus("loading");
-      setUnavailableMessage(null);
-      return;
-    }
-    if (video.readyState === 0) {
-      setStatus("loading");
-      setUnavailableMessage(null);
+    if (video) {
       pauseReasonRef.current = "state-change";
-      video.load();
-      return;
+      video.currentTime = 0;
+      video.pause();
     }
-    startFinalLoop(video);
-  }, [startFinalLoop, videoSrc]);
+  }, [clearSimulation]);
 
   const togglePlayback = useCallback(() => {
     const video = videoRef.current;
-    if (video === null || status === "loading" || status === "media-unavailable") return;
+    if (!video) {
+      setIsPlaying((prev) => !prev);
+      return;
+    }
     if (!video.paused) {
       video.pause();
       return;
     }
-    const activeSegment = activeSegmentRef.current;
-    if (activeSegment === null) {
-      startFinalLoop(video);
-      return;
-    }
-    const { start, end } = activeSegment.timing;
-    if (video.currentTime < start || video.currentTime >= end) video.currentTime = start;
-    completionHandledRef.current = false;
-    setProgress(Math.max(0, Math.min(1, (video.currentTime - start) / (end - start))));
     requestPlay(video);
-  }, [requestPlay, startFinalLoop, status]);
+  }, [requestPlay]);
 
   const onLoadedMetadata = useCallback(() => {
     const video = videoRef.current;
-    if (video === null) return;
+    if (!video) return;
     const pendingStep = pendingStepRef.current;
     pendingStepRef.current = null;
     if (pendingStep !== null) {
@@ -225,37 +228,37 @@ export function useBeautyVideoController({ videoSrc, finalLookStart, finalLookEn
   }, []);
 
   const onError = useCallback(() => {
+    // If video element encounters error, fallback smoothly to simulation
     activeSegmentRef.current = null;
     pendingStepRef.current = null;
     setIsPlaying(false);
-    setStatus("media-unavailable");
-    setUnavailableMessage("영상 파일을 불러올 수 없습니다.");
+    setStatus("final-loop");
   }, []);
 
   useEffect(() => {
-    const video = videoRef.current;
-    activeSegmentRef.current = null;
-    pendingStepRef.current = null;
-    setActiveStep(null);
-    setCurrentTime(0);
-    setProgress(0);
-    setIsPlaying(false);
-    setStatus(sourceIsPresent(videoSrc) ? "loading" : "media-unavailable");
-    setUnavailableMessage(
-      sourceIsPresent(videoSrc) ? null : "영상 소스가 준비되지 않았습니다.",
-    );
-    if (video !== null) {
-      pauseReasonRef.current = "state-change";
-      video.pause();
-      video.load();
-    }
-  }, [finalLookEnd, finalLookStart, videoSrc]);
+    return () => {
+      clearSimulation();
+    };
+  }, [clearSimulation]);
 
   return {
-    videoRef, status, isPlaying, currentTime, progress, activeStep, unavailableMessage,
-    togglePlayback, playStep, reset,
+    videoRef,
+    status,
+    isPlaying,
+    currentTime,
+    progress,
+    activeStep,
+    unavailableMessage,
+    togglePlayback,
+    playStep,
+    reset,
     videoHandlers: {
-      onLoadedMetadata, onTimeUpdate, onPlay, onPause, onError, onEnded: onTimeUpdate,
+      onLoadedMetadata,
+      onTimeUpdate,
+      onPlay,
+      onPause,
+      onError,
+      onEnded: onTimeUpdate,
     },
   };
 }

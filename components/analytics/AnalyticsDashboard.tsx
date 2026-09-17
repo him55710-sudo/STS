@@ -1,11 +1,24 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { FileText, Sparkles, TrendingUp, ShieldCheck, DollarSign } from "lucide-react";
+import { IrServicePlanModal } from "@/components/ir/IrServicePlanModal";
+import { AttributionEngine } from "@/lib/analytics/attribution-engine";
 
 export default function AnalyticsDashboard() {
   const [period, setPeriod] = useState<"today" | "week" | "month" | "year">("month");
   const [selectedZoneTab, setSelectedZoneTab] = useState<"all" | "lips" | "nose" | "eyes" | "eyebrows" | "cheeks">("all");
+  const [isIrModalOpen, setIsIrModalOpen] = useState(false);
+  const [liveStats, setLiveStats] = useState(AttributionEngine.getTouchpointStats());
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setLiveStats(AttributionEngine.getTouchpointStats());
+    };
+    window.addEventListener("sts_attribution_updated", handleUpdate);
+    return () => window.removeEventListener("sts_attribution_updated", handleUpdate);
+  }, []);
 
   const facialZoneStats = [
     {
@@ -232,6 +245,57 @@ export default function AnalyticsDashboard() {
           </div>
         </div>
 
+        {/* IR 2026 Technology Moat & Settlement Benchmark Bar (PDF 6p, 7p, 10p) */}
+        <div className="rounded-3xl border border-[#FF2D78]/30 bg-gradient-to-r from-[#FF2D78]/10 via-purple-500/10 to-transparent p-6 backdrop-blur-xl">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-[#FF2D78] px-2.5 py-0.5 text-[10px] font-black text-white">
+                  IR 2026 BENCHMARK
+                </span>
+                <span className="text-xs font-bold text-white/80">
+                  기술 해자 & 크리에이터 70:30 실시간 정산 아키텍처
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-white/60">
+                AI 모델은 교체 가능하지만, 구매와 연결된 장면·부위 데이터는 시간이 지날수록 강력해집니다.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsIrModalOpen(true)}
+              className="flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 px-4 py-2 text-xs font-bold text-white transition-all shadow-md shrink-0"
+            >
+              <FileText size={15} className="text-[#FF2D78]" />
+              IR 마스터플랜 전체 열람
+            </button>
+          </div>
+
+          <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-3.5">
+              <span className="text-[11px] text-white/50">상품 인식률 (Recall)</span>
+              <div className="mt-1 text-xl font-black text-emerald-400">86%</div>
+              <p className="text-[10px] text-white/40">22개 중 19개 자동인식</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-3.5">
+              <span className="text-[11px] text-white/50">영역 구분 성공률 (Seg)</span>
+              <div className="mt-1 text-xl font-black text-[#FF2D78]">96%</div>
+              <p className="text-[10px] text-white/40">실제 실루엣 폴리곤 분할</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-3.5">
+              <span className="text-[11px] text-white/50">크리에이터 배분율 (Creator)</span>
+              <div className="mt-1 text-xl font-black text-pink-400">70.0%</div>
+              <p className="text-[10px] text-white/40">Creator 70 / STS 30</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-3.5">
+              <span className="text-[11px] text-white/50">신뢰성 안전장치 (Reliability)</span>
+              <div className="mt-1 text-xl font-black text-indigo-400">3단계</div>
+              <p className="text-[10px] text-white/40">서버 / 기기 / 네트워크</p>
+            </div>
+          </div>
+        </div>
+
         {/* Section: Facial 5-Zone AI Segmentation Breakdown (HIGHLIGHT OF USER REQUIREMENT) */}
         <div className="p-6 sm:p-8 rounded-3xl bg-neutral-900/90 border border-neutral-800 backdrop-blur-xl space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -445,6 +509,8 @@ export default function AnalyticsDashboard() {
           </div>
         </div>
       </main>
+
+      <IrServicePlanModal isOpen={isIrModalOpen} onClose={() => setIsIrModalOpen(false)} />
     </div>
   );
 }

@@ -28,8 +28,10 @@ import {
   ChevronDown,
   Heart,
   Eye,
-  Share2
+  Share2,
+  FileText
 } from "lucide-react";
+import { IrServicePlanModal } from "@/components/ir/IrServicePlanModal";
 
 type CollabTab = "market" | "ad" | "sponsor" | "reward";
 
@@ -43,6 +45,7 @@ export default function ZvzoStyleLanding() {
   // 1초 즉시 구매 간편결제 시트 상태
   const [checkoutProduct, setCheckoutProduct] = useState<CheckoutProduct | null>(null);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState<boolean>(false);
+  const [isIrModalOpen, setIsIrModalOpen] = useState<boolean>(false);
 
   // K-뷰티 모델 피드 쇼케이스 & 정밀 AI 폴리곤 세그멘테이션 상태
   const [activeCreatorIndex, setActiveCreatorIndex] = useState<number>(0);
@@ -149,10 +152,13 @@ export default function ZvzoStyleLanding() {
             </div>
           </div>
 
-          <nav className="hidden md:flex items-center gap-6 text-[14px] font-semibold tracking-[-0.01em]">
+          <nav className="hidden md:flex items-center gap-5 text-[14px] font-semibold tracking-[-0.01em]">
             <Link href="/" className="relative text-[#2F54EB]">
               크리에이터
               <span className="absolute -bottom-2 left-0 h-[2px] w-full rounded-full bg-[#2F54EB]" />
+            </Link>
+            <Link href="/beauty-demo" className="text-pink-600 font-extrabold transition-colors hover:text-pink-700 flex items-center gap-1.5 bg-pink-50 px-2.5 py-1 rounded-full border border-pink-200 shadow-xs">
+              <span>💄</span> 뷰티 8단계 데모
             </Link>
             <Link href="/reels" className="text-neutral-700 font-bold transition-colors hover:text-[#2F54EB] flex items-center gap-1">
               <span className="text-rose-500 text-xs">●</span> 릴스 숏폼
@@ -160,36 +166,38 @@ export default function ZvzoStyleLanding() {
             <Link href="/analytics" className="text-neutral-700 font-bold transition-colors hover:text-[#2F54EB] flex items-center gap-1">
               <span>📊</span> AI 성과분석
             </Link>
-            <Link href="#beauty-process" className="text-neutral-500 transition-colors hover:text-black">
-              K-뷰티 시스템
-            </Link>
-            <Link href="#products-section" className="text-neutral-500 transition-colors hover:text-black">
-              베스트셀러
-            </Link>
+            <button
+              type="button"
+              onClick={() => setIsIrModalOpen(true)}
+              className="text-neutral-700 font-bold transition-colors hover:text-[#FF2D78] flex items-center gap-1"
+            >
+              <span>📑</span> IR 서비스 계획
+            </button>
             <Link href="/feed" className="text-neutral-500 transition-colors hover:text-black">
               소셜 피드
             </Link>
           </nav>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsIrModalOpen(true)}
+              className="hidden sm:inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-[#FF2D78]/10 to-purple-500/10 border border-[#FF2D78]/30 px-3 text-[12px] font-bold text-[#FF2D78] transition-all hover:bg-[#FF2D78]/20 shadow-xs"
+            >
+              <FileText size={13} />
+              IR 2026 계획서
+            </button>
             <Link
-              href="/reels"
+              href="/beauty-demo"
               className="inline-flex h-9 items-center justify-center rounded-full bg-rose-50 border border-rose-200 px-3.5 text-[12px] font-extrabold text-rose-600 transition-all hover:bg-rose-100 shadow-xs"
             >
-              📱 릴스 체험
+              💄 뷰티 체험
             </Link>
             <Link
               href="/feed"
               className="inline-flex h-9 items-center justify-center rounded-full border border-neutral-200 bg-white px-3.5 text-[12px] font-bold text-neutral-800 transition-all hover:bg-neutral-50"
             >
               피드 보기
-            </Link>
-            <Link
-              href="/create"
-              className="group inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-[#111318] px-3.5 text-[12px] font-bold text-white transition-all hover:bg-[#2F54EB] shadow-sm"
-            >
-              앱 다운로드
-              <ArrowRight size={13} className="transition-transform group-hover:translate-x-1" />
             </Link>
           </div>
         </div>
@@ -254,21 +262,28 @@ export default function ZvzoStyleLanding() {
               <strong className="text-white font-bold">진짜 판매되는 K-뷰티 1위 상품</strong>을 탭 한 번으로 연결해 즉시 수익을 만드세요.
             </p>
 
-            <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+            <div className="mt-8 sm:mt-10 flex flex-wrap items-center justify-center gap-3 w-full sm:w-auto">
               <Link
-                href="/create"
-                className="group relative overflow-hidden flex h-[58px] w-full sm:w-auto min-w-[210px] items-center justify-center gap-3 rounded-full bg-white px-8 text-[16px] font-bold text-black transition-all hover:bg-neutral-100 hover:scale-[1.02] active:scale-[0.98] shadow-xl"
+                href="/beauty-demo"
+                className="group relative overflow-hidden flex h-[56px] w-full sm:w-auto min-w-[210px] items-center justify-center gap-2.5 rounded-full bg-gradient-to-r from-[#FF2D78] to-pink-600 px-8 text-[15px] font-bold text-white transition-all hover:scale-[1.02] active:scale-[0.98] shadow-xl shadow-[#FF2D78]/25"
               >
-                {/* 럭셔리 시머 샤인 효과 */}
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-black/10 to-transparent animate-shimmer pointer-events-none" />
-                앱 다운로드
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-black text-white transition-transform group-hover:translate-x-1">
+                <span>💄</span>
+                뷰티 8단계 데모 (Reveal the Process)
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-white transition-transform group-hover:translate-x-1">
                   →
                 </span>
               </Link>
+              <button
+                type="button"
+                onClick={() => setIsIrModalOpen(true)}
+                className="flex h-[56px] w-full sm:w-auto items-center justify-center gap-2 rounded-full border border-white/30 bg-white/10 px-6 text-[15px] font-bold text-white transition-all hover:bg-white/20 backdrop-blur-md"
+              >
+                <FileText size={16} className="text-[#FF2D78]" />
+                IR & 서비스 계획서
+              </button>
               <Link
                 href="#products-section"
-                className="flex h-[58px] w-full sm:w-auto items-center justify-center rounded-full border border-white/25 bg-white/10 px-8 text-[15px] font-bold text-white transition-all hover:bg-white/20 backdrop-blur-md"
+                className="flex h-[56px] w-full sm:w-auto items-center justify-center rounded-full border border-white/20 bg-white/5 px-6 text-[14px] font-medium text-white/90 transition-all hover:bg-white/15 backdrop-blur-md"
               >
                 실제 판매 상품 둘러보기
               </Link>
@@ -1367,6 +1382,12 @@ export default function ZvzoStyleLanding() {
         product={checkoutProduct}
         isOpen={isCheckoutOpen}
         onClose={() => setIsCheckoutOpen(false)}
+      />
+
+      {/* IR 마스터플랜 & 비즈니스 아키텍처 모달 */}
+      <IrServicePlanModal
+        isOpen={isIrModalOpen}
+        onClose={() => setIsIrModalOpen(false)}
       />
     </div>
   );

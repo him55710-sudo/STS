@@ -84,17 +84,24 @@ export default function ReelsViewer() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Link 
+            href="/beauty-demo" 
+            className="px-3 py-1.5 rounded-full bg-[#FF2D78]/20 border border-[#FF2D78]/40 hover:bg-[#FF2D78]/30 text-xs font-bold text-[#FF2D78] transition flex items-center gap-1.5 shadow-sm"
+          >
+            <span>💄</span>
+            <span>뷰티 8단계 데모</span>
+          </Link>
           <Link 
             href="/analytics" 
-            className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-xs font-semibold text-white transition flex items-center gap-1.5"
+            className="hidden sm:flex px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-xs font-semibold text-white transition items-center gap-1.5"
           >
             <span>📊</span>
             <span>애널리틱스</span>
           </Link>
           <Link 
             href="/feed" 
-            className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-xs font-semibold text-white transition flex items-center gap-1.5"
+            className="hidden sm:flex px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-xs font-semibold text-white transition items-center gap-1.5"
           >
             <span>🛍️</span>
             <span>소셜 피드</span>
