@@ -144,7 +144,49 @@ export default function Iphone16ProMockup({ activeMode = "market" }: IphoneMocku
                     }}
                   />
 
-                  {/* 2. 볼 (Cheek) 폴리곤 */}
+                  {/* 2. 코 / 콧대 (Nose) 폴리곤 */}
+                  <polygon
+                    points="47,43 51,43 53,49 54,54 55,57 51,59 47,57 45,54 46,49"
+                    fill={selectedScanItem === "toocool" ? "rgba(245, 158, 11, 0.40)" : "rgba(255, 255, 255, 0.10)"}
+                    stroke={selectedScanItem === "toocool" ? "rgba(251, 191, 36, 0.98)" : "rgba(255, 255, 255, 0.45)"}
+                    strokeWidth={selectedScanItem === "toocool" ? "1.8" : "0.9"}
+                    strokeDasharray={selectedScanItem === "toocool" ? "none" : "3, 2"}
+                    className="cursor-pointer transition-all hover:opacity-100"
+                    onClick={() => setSelectedScanItem("toocool")}
+                    style={{
+                      filter: selectedScanItem === "toocool" ? "drop-shadow(0 0 8px rgba(245, 158, 11, 0.8))" : undefined,
+                    }}
+                  />
+
+                  {/* 3. 눈 / 아이 (Eyes) 폴리곤 */}
+                  <polygon
+                    points="29,41 36,38 43,41 40,45 33,45"
+                    fill={selectedScanItem === "clio-liner" ? "rgba(168, 85, 247, 0.40)" : "rgba(255, 255, 255, 0.10)"}
+                    stroke={selectedScanItem === "clio-liner" ? "rgba(192, 132, 252, 0.98)" : "rgba(255, 255, 255, 0.45)"}
+                    strokeWidth={selectedScanItem === "clio-liner" ? "1.8" : "0.9"}
+                    strokeDasharray={selectedScanItem === "clio-liner" ? "none" : "3, 2"}
+                    className="cursor-pointer transition-all hover:opacity-100"
+                    onClick={() => setSelectedScanItem("clio-liner")}
+                    style={{
+                      filter: selectedScanItem === "clio-liner" ? "drop-shadow(0 0 8px rgba(168, 85, 247, 0.8))" : undefined,
+                    }}
+                  />
+
+                  {/* 4. 눈썹 (Eyebrows) 폴리곤 */}
+                  <polygon
+                    points="27,33 35,30 43,32 42,35 35,33 27,35"
+                    fill={selectedScanItem === "etude" ? "rgba(16, 185, 129, 0.40)" : "rgba(255, 255, 255, 0.10)"}
+                    stroke={selectedScanItem === "etude" ? "rgba(52, 211, 153, 0.98)" : "rgba(255, 255, 255, 0.45)"}
+                    strokeWidth={selectedScanItem === "etude" ? "1.8" : "0.9"}
+                    strokeDasharray={selectedScanItem === "etude" ? "none" : "3, 2"}
+                    className="cursor-pointer transition-all hover:opacity-100"
+                    onClick={() => setSelectedScanItem("etude")}
+                    style={{
+                      filter: selectedScanItem === "etude" ? "drop-shadow(0 0 8px rgba(16, 185, 129, 0.8))" : undefined,
+                    }}
+                  />
+
+                  {/* 5. 볼 (Cheeks) 폴리곤 */}
                   <polygon
                     points="27,46 36,43 43,47 44,56 39,63 29,61 24,53"
                     fill={selectedScanItem === "clio" ? "rgba(59, 130, 246, 0.35)" : "rgba(255, 255, 255, 0.10)"}
@@ -157,68 +199,41 @@ export default function Iphone16ProMockup({ activeMode = "market" }: IphoneMocku
                       filter: selectedScanItem === "clio" ? "drop-shadow(0 0 8px rgba(59, 130, 246, 0.8))" : undefined,
                     }}
                   />
-
-                  {/* 3. T존 / 이마 폴리곤 */}
-                  <polygon
-                    points="40,28 50,25 60,28 58,35 53,38 52,47 48,47 47,38 42,35"
-                    fill={selectedScanItem === "boj" ? "rgba(16, 185, 129, 0.35)" : "rgba(255, 255, 255, 0.10)"}
-                    stroke={selectedScanItem === "boj" ? "rgba(52, 211, 153, 0.98)" : "rgba(255, 255, 255, 0.45)"}
-                    strokeWidth={selectedScanItem === "boj" ? "1.8" : "0.9"}
-                    strokeDasharray={selectedScanItem === "boj" ? "none" : "3, 2"}
-                    className="cursor-pointer transition-all hover:opacity-100"
-                    onClick={() => setSelectedScanItem("boj")}
-                    style={{
-                      filter: selectedScanItem === "boj" ? "drop-shadow(0 0 8px rgba(16, 185, 129, 0.8))" : undefined,
-                    }}
-                  />
                 </svg>
 
                 {/* 상단 HUD 오버레이 */}
                 <div className="absolute top-2.5 inset-x-3 flex items-center justify-between z-20">
                   <div className="flex items-center gap-1.5 rounded-full bg-black/60 px-2.5 py-1 text-[9px] font-bold text-white backdrop-blur-md border border-white/20">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
-                    <span>AI POLYGON MESH: ACTIVE</span>
+                    <span>AI POLYGON 5-ZONE ACTIVE</span>
                   </div>
                   <span className="text-[9px] font-black text-[#92ABFF] bg-black/60 px-2 py-0.8 rounded-full border border-blue-500/30">
                     99.8% 정확도
                   </span>
                 </div>
 
-                {/* 부위 터치 안내 뱃지 */}
-                <div className="absolute bottom-2 inset-x-3 flex items-center justify-center gap-1.5 z-20">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedScanItem("romand")}
-                    className={`px-2 py-0.8 rounded-full text-[9px] font-bold transition-all border ${
-                      selectedScanItem === "romand"
-                        ? "bg-pink-500 text-white border-pink-300 shadow-md scale-105"
-                        : "bg-black/60 text-white/80 border-white/20 hover:bg-black"
-                    }`}
-                  >
-                    💋 입술 (롬앤)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedScanItem("clio")}
-                    className={`px-2 py-0.8 rounded-full text-[9px] font-bold transition-all border ${
-                      selectedScanItem === "clio"
-                        ? "bg-[#2F54EB] text-white border-blue-300 shadow-md scale-105"
-                        : "bg-black/60 text-white/80 border-white/20 hover:bg-black"
-                    }`}
-                  >
-                    🌸 볼 (클리오)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedScanItem("boj")}
-                    className={`px-2 py-0.8 rounded-full text-[9px] font-bold transition-all border ${
-                      selectedScanItem === "boj"
-                        ? "bg-emerald-500 text-white border-emerald-300 shadow-md scale-105"
-                        : "bg-black/60 text-white/80 border-white/20 hover:bg-black"
-                    }`}
-                  >
-                    ✨ T존 (조선미녀)
-                  </button>
+                {/* 5대 부위 터치 선택 칩 */}
+                <div className="absolute bottom-2 inset-x-2 flex items-center justify-center gap-1 z-20 overflow-x-auto no-scrollbar">
+                  {[
+                    { id: "romand", name: "💋 입술", color: "bg-pink-500" },
+                    { id: "toocool", name: "👃 코", color: "bg-amber-500" },
+                    { id: "clio-liner", name: "👁️ 눈", color: "bg-purple-500" },
+                    { id: "etude", name: "✏️ 눈썹", color: "bg-emerald-500" },
+                    { id: "clio", name: "🌸 볼", color: "bg-blue-500" },
+                  ].map((chip) => (
+                    <button
+                      key={chip.id}
+                      type="button"
+                      onClick={() => setSelectedScanItem(chip.id)}
+                      className={`px-1.5 py-0.8 rounded-full text-[9px] font-bold transition-all border shrink-0 ${
+                        selectedScanItem === chip.id
+                          ? `${chip.color} text-white border-white/60 shadow-md scale-105`
+                          : "bg-black/60 text-white/80 border-white/20 hover:bg-black"
+                      }`}
+                    >
+                      {chip.name}
+                    </button>
+                  ))}
                 </div>
               </div>
 
@@ -245,7 +260,85 @@ export default function Iphone16ProMockup({ activeMode = "market" }: IphoneMocku
                       </div>
                     </div>
                     <button className="h-8 px-3 rounded-full bg-[#111318] text-white text-[10px] font-bold hover:bg-[#2F54EB] transition-colors shrink-0 shadow-sm">
-                      태그 확정
+                      1초구매
+                    </button>
+                  </>
+                )}
+
+                {selectedScanItem === "toocool" && (
+                  <>
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <img
+                        src="/products/kb-toocool-shading.jpg"
+                        alt="투쿨"
+                        className="w-12 h-12 rounded-xl object-contain bg-neutral-50 p-1 border border-neutral-100 shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <span className="text-[9px] font-extrabold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
+                          👃 코 / 콧대 쉐딩 인식
+                        </span>
+                        <p className="text-[12px] font-bold text-neutral-900 truncate mt-0.5">
+                          투쿨포스쿨 아트클래스 바이로댕
+                        </p>
+                        <p className="text-[11px] font-extrabold text-neutral-900">
+                          <span className="text-red-500">30%</span> 11,200원 · <span className="text-[#2F54EB]">커미션 14%</span>
+                        </p>
+                      </div>
+                    </div>
+                    <button className="h-8 px-3 rounded-full bg-[#111318] text-white text-[10px] font-bold hover:bg-[#2F54EB] transition-colors shrink-0 shadow-sm">
+                      1초구매
+                    </button>
+                  </>
+                )}
+
+                {selectedScanItem === "clio-liner" && (
+                  <>
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <img
+                        src="/products/kb-clio-liner.jpg"
+                        alt="클리오 라이너"
+                        className="w-12 h-12 rounded-xl object-contain bg-neutral-50 p-1 border border-neutral-100 shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <span className="text-[9px] font-extrabold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded">
+                          👁️ 눈 / 아이라이너 인식
+                        </span>
+                        <p className="text-[12px] font-bold text-neutral-900 truncate mt-0.5">
+                          클리오 워터프루프 킬브라운 펜라이너
+                        </p>
+                        <p className="text-[11px] font-extrabold text-neutral-900">
+                          <span className="text-red-500">30%</span> 12,600원 · <span className="text-[#2F54EB]">커미션 13%</span>
+                        </p>
+                      </div>
+                    </div>
+                    <button className="h-8 px-3 rounded-full bg-[#111318] text-white text-[10px] font-bold hover:bg-[#2F54EB] transition-colors shrink-0 shadow-sm">
+                      1초구매
+                    </button>
+                  </>
+                )}
+
+                {selectedScanItem === "etude" && (
+                  <>
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <img
+                        src="/products/kb-etude-brow.jpg"
+                        alt="에뛰드"
+                        className="w-12 h-12 rounded-xl object-contain bg-neutral-50 p-1 border border-neutral-100 shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <span className="text-[9px] font-extrabold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
+                          ✏️ 눈썹 / 아이브로우 인식
+                        </span>
+                        <p className="text-[12px] font-bold text-neutral-900 truncate mt-0.5">
+                          에뛰드 드로잉 슬림 0.05mm
+                        </p>
+                        <p className="text-[11px] font-extrabold text-neutral-900">
+                          <span className="text-red-500">30%</span> 3,500원 · <span className="text-[#2F54EB]">커미션 12%</span>
+                        </p>
+                      </div>
+                    </div>
+                    <button className="h-8 px-3 rounded-full bg-[#111318] text-white text-[10px] font-bold hover:bg-[#2F54EB] transition-colors shrink-0 shadow-sm">
+                      1초구매
                     </button>
                   </>
                 )}
@@ -260,18 +353,18 @@ export default function Iphone16ProMockup({ activeMode = "market" }: IphoneMocku
                       />
                       <div className="min-w-0">
                         <span className="text-[9px] font-extrabold text-[#2F54EB] bg-blue-50 px-1.5 py-0.5 rounded">
-                          🌸 볼/광대 폴리곤 인식 완료
+                          🌸 볼 / 베이스 폴리곤 완료
                         </span>
                         <p className="text-[12px] font-bold text-neutral-900 truncate mt-0.5">
-                          클리오 킬커버 더 뉴 파운웨어 쿠션
+                          클리오 킬커버 파운웨어 쿠션
                         </p>
                         <p className="text-[11px] font-extrabold text-neutral-900">
-                          <span className="text-red-500">30%</span> 25,200원 · <span className="text-[#2F54EB]">광고제휴</span>
+                          <span className="text-red-500">30%</span> 25,200원 · <span className="text-emerald-600">광고비 150만</span>
                         </p>
                       </div>
                     </div>
                     <button className="h-8 px-3 rounded-full bg-[#111318] text-white text-[10px] font-bold hover:bg-[#2F54EB] transition-colors shrink-0 shadow-sm">
-                      태그 확정
+                      1초구매
                     </button>
                   </>
                 )}

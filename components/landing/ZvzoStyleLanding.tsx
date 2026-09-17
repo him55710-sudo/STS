@@ -10,6 +10,7 @@ import {
   KBeautyCreatorPost
 } from "@/lib/real-products-data";
 import Iphone16ProMockup from "@/components/landing/Iphone16ProMockup";
+import InstantCheckoutSheet, { CheckoutProduct } from "@/components/checkout/InstantCheckoutSheet";
 import {
   Sparkles,
   ArrowRight,
@@ -38,6 +39,10 @@ export default function ZvzoStyleLanding() {
   const [selectedProduct, setSelectedProduct] = useState<RealProduct | null>(null);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
   const [appliedProducts, setAppliedProducts] = useState<Record<string, boolean>>({});
+
+  // 1초 즉시 구매 간편결제 시트 상태
+  const [checkoutProduct, setCheckoutProduct] = useState<CheckoutProduct | null>(null);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState<boolean>(false);
 
   // K-뷰티 모델 피드 쇼케이스 & 정밀 AI 폴리곤 세그멘테이션 상태
   const [activeCreatorIndex, setActiveCreatorIndex] = useState<number>(0);
@@ -144,35 +149,47 @@ export default function ZvzoStyleLanding() {
             </div>
           </div>
 
-          <nav className="hidden md:flex items-center gap-7 text-[14px] font-semibold tracking-[-0.01em]">
+          <nav className="hidden md:flex items-center gap-6 text-[14px] font-semibold tracking-[-0.01em]">
             <Link href="/" className="relative text-[#2F54EB]">
               크리에이터
               <span className="absolute -bottom-2 left-0 h-[2px] w-full rounded-full bg-[#2F54EB]" />
+            </Link>
+            <Link href="/reels" className="text-neutral-700 font-bold transition-colors hover:text-[#2F54EB] flex items-center gap-1">
+              <span className="text-rose-500 text-xs">●</span> 릴스 숏폼
+            </Link>
+            <Link href="/analytics" className="text-neutral-700 font-bold transition-colors hover:text-[#2F54EB] flex items-center gap-1">
+              <span>📊</span> AI 성과분석
             </Link>
             <Link href="#beauty-process" className="text-neutral-500 transition-colors hover:text-black">
               K-뷰티 시스템
             </Link>
             <Link href="#products-section" className="text-neutral-500 transition-colors hover:text-black">
-              베스트셀러 상품
+              베스트셀러
             </Link>
             <Link href="/feed" className="text-neutral-500 transition-colors hover:text-black">
               소셜 피드
             </Link>
           </nav>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
+            <Link
+              href="/reels"
+              className="inline-flex h-9 items-center justify-center rounded-full bg-rose-50 border border-rose-200 px-3.5 text-[12px] font-extrabold text-rose-600 transition-all hover:bg-rose-100 shadow-xs"
+            >
+              📱 릴스 체험
+            </Link>
             <Link
               href="/feed"
-              className="inline-flex h-10 items-center justify-center rounded-full border border-neutral-200 bg-white px-4 text-[13px] font-bold text-neutral-800 transition-all hover:bg-neutral-50"
+              className="inline-flex h-9 items-center justify-center rounded-full border border-neutral-200 bg-white px-3.5 text-[12px] font-bold text-neutral-800 transition-all hover:bg-neutral-50"
             >
               피드 보기
             </Link>
             <Link
               href="/create"
-              className="group inline-flex h-10 items-center justify-center gap-1.5 rounded-full bg-[#111318] px-4 text-[13px] font-bold text-white transition-all hover:bg-[#2F54EB] shadow-md"
+              className="group inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-[#111318] px-3.5 text-[12px] font-bold text-white transition-all hover:bg-[#2F54EB] shadow-sm"
             >
               앱 다운로드
-              <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
+              <ArrowRight size={13} className="transition-transform group-hover:translate-x-1" />
             </Link>
           </div>
         </div>
@@ -950,14 +967,24 @@ export default function ZvzoStyleLanding() {
                                 {activeZone.price.toLocaleString()}원
                               </p>
                             </div>
-                            <a
-                              href={matchedProduct?.purchaseUrl || `https://search.shopping.naver.com/search/all?query=${encodeURIComponent(activeZone.productName)}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="rounded-xl bg-[#111318] hover:bg-[#2F54EB] text-white px-3 py-2 text-[11px] font-bold shrink-0 shadow-md transition-colors"
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCheckoutProduct({
+                                  id: activeZone.productId,
+                                  brand: activeZone.brand,
+                                  name: activeZone.productName,
+                                  price: activeZone.price,
+                                  discount: activeZone.discount,
+                                  image: activeZone.productImage,
+                                });
+                                setIsCheckoutOpen(true);
+                              }}
+                              className="rounded-xl bg-gradient-to-r from-[#2F54EB] to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white px-3 py-2 text-[11px] font-extrabold shrink-0 shadow-md shadow-blue-500/25 transition-all flex items-center gap-1 active:scale-95"
                             >
-                              구매처
-                            </a>
+                              <span>⚡ 1초구매</span>
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -973,7 +1000,7 @@ export default function ZvzoStyleLanding() {
 
                 <p className="mt-4 text-[12px] font-bold text-neutral-500 flex items-center gap-1.5">
                   <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                  얼굴 속 <strong className="text-neutral-800">입술이나 볼의 폴리곤</strong>을 직접 클릭하면 해당 레이어로 전환됩니다
+                  얼굴 속 <strong className="text-neutral-800">코, 입술, 눈, 눈썹, 볼</strong>을 직접 클릭하면 해당 레이어로 즉시 전환됩니다
                 </p>
               </div>
 
@@ -1038,13 +1065,33 @@ export default function ZvzoStyleLanding() {
                                   정확도 {zone.confidence}%
                                 </span>
                               </div>
-                              <span
-                                className={`text-[12px] font-bold ${
-                                  isSelected ? "text-[#2F54EB]" : "text-neutral-400"
-                                }`}
-                              >
-                                {isSelected ? "● 레이어 활성" : "선택"}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={`text-[12px] font-bold ${
+                                    isSelected ? "text-[#2F54EB]" : "text-neutral-400"
+                                  }`}
+                                >
+                                  {isSelected ? "● 활성" : "선택"}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setCheckoutProduct({
+                                      id: zone.productId,
+                                      brand: zone.brand,
+                                      name: zone.productName,
+                                      price: zone.price,
+                                      discount: zone.discount,
+                                      image: zone.productImage,
+                                    });
+                                    setIsCheckoutOpen(true);
+                                  }}
+                                  className="rounded-lg bg-[#111318] hover:bg-[#2F54EB] text-white px-2.5 py-1 text-[10px] font-extrabold shadow-xs transition"
+                                >
+                                  ⚡ 바로구매
+                                </button>
+                              </div>
                             </div>
 
                             {/* 상품 정보 및 발색 효과 */}
@@ -1280,15 +1327,26 @@ export default function ZvzoStyleLanding() {
               {selectedProduct.description}
             </p>
 
-            <div className="mt-5 flex gap-2.5">
-              <a
-                href={selectedProduct.purchaseUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 rounded-full border border-neutral-300 py-3 text-center text-[13px] font-bold text-neutral-800 hover:bg-neutral-50"
+            <div className="mt-5 flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setCheckoutProduct({
+                    id: selectedProduct.id,
+                    brand: selectedProduct.brand,
+                    name: selectedProduct.name,
+                    price: selectedProduct.salePrice,
+                    originalPrice: selectedProduct.originalPrice,
+                    discount: selectedProduct.discountRate,
+                    image: selectedProduct.image,
+                  });
+                  setSelectedProduct(null);
+                  setIsCheckoutOpen(true);
+                }}
+                className="flex-1 rounded-full bg-gradient-to-r from-[#2F54EB] to-indigo-600 hover:from-blue-600 hover:to-indigo-700 py-3 text-center text-[13px] font-extrabold text-white shadow-md shadow-blue-500/25 flex items-center justify-center gap-1"
               >
-                실제 판매처 확인
-              </a>
+                <span>⚡ 1초 즉시구매</span>
+              </button>
               <button
                 type="button"
                 onClick={() => {
@@ -1303,6 +1361,13 @@ export default function ZvzoStyleLanding() {
           </div>
         </div>
       )}
+
+      {/* 1초 즉시 구매 간편결제 모달 시트 */}
+      <InstantCheckoutSheet
+        product={checkoutProduct}
+        isOpen={isCheckoutOpen}
+        onClose={() => setIsCheckoutOpen(false)}
+      />
     </div>
   );
 }

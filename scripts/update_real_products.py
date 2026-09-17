@@ -1,4 +1,8 @@
-export interface RealProduct {
+import sys
+
+file_path = r"c:\Users\임현수\Downloads\STS\STS-claude-visual-commerce-prd-m2xfdo\lib\real-products-data.ts"
+
+new_content = '''export interface RealProduct {
   id: string;
   brand: string;
   name: string;
@@ -1591,3 +1595,9 @@ export const KBEAUTY_CREATOR_POSTS: KBeautyCreatorPost[] = [
     ]
   }
 ];
+'''
+
+with open(file_path, "w", encoding="utf-8") as f:
+    f.write(new_content)
+
+print("Updated real-products-data.ts successfully")

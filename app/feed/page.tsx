@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { Post } from "@/lib/types";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
@@ -107,25 +108,39 @@ export default function FeedPage() {
           <h1 className="text-[20px] font-extrabold tracking-[0.14em]">
             STS<span className="text-primary">.</span>
           </h1>
-          <div className="flex gap-4 text-[14px]">
-            <button
-              onClick={() => setTab("foryou")}
-              className={`pb-0.5 transition-colors ${
-                tab === "foryou" ? "border-b-[1.5px] border-ink font-semibold text-ink" : "text-ink-2"
-              }`}
+          <div className="flex items-center gap-3 text-[13px]">
+            <Link
+              href="/reels"
+              className="px-2.5 py-1 rounded-full bg-rose-50 text-rose-600 font-extrabold text-xs flex items-center gap-1 border border-rose-200 shadow-2xs hover:bg-rose-100"
             >
-              For You
-            </button>
-            <button
-              onClick={() => setTab("following")}
-              className={`pb-0.5 transition-colors ${
-                tab === "following"
-                  ? "border-b-[1.5px] border-ink font-semibold text-ink"
-                  : "text-ink-2"
-              }`}
+              <span>📱</span> 릴스 숏폼
+            </Link>
+            <Link
+              href="/analytics"
+              className="px-2.5 py-1 rounded-full bg-neutral-100 text-neutral-800 font-bold text-xs flex items-center gap-1 hover:bg-neutral-200"
             >
-              Following
-            </button>
+              <span>📊</span> 애널리틱스
+            </Link>
+            <div className="flex gap-3 pl-2 border-l border-line">
+              <button
+                onClick={() => setTab("foryou")}
+                className={`pb-0.5 transition-colors ${
+                  tab === "foryou" ? "border-b-[1.5px] border-ink font-semibold text-ink" : "text-ink-2"
+                }`}
+              >
+                For You
+              </button>
+              <button
+                onClick={() => setTab("following")}
+                className={`pb-0.5 transition-colors ${
+                  tab === "following"
+                    ? "border-b-[1.5px] border-ink font-semibold text-ink"
+                    : "text-ink-2"
+                }`}
+              >
+                Following
+              </button>
+            </div>
           </div>
         </div>
       </header>
