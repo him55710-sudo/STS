@@ -265,6 +265,12 @@ export interface DetectedObject {
   polygons?: [number, number][][];
   /** canonical fashion class */
   canonicalClass?: string;
+  /** 뷰티 세그멘테이션 부위 (입술, 눈, 볼, 눈썹, 피부톤 등) */
+  zone?: "lips" | "eyes" | "cheeks" | "eyebrows" | "skin" | "hair" | string;
+  /** 서브 카테고리 (예: makeup, skincare, footwear, top 등) */
+  subCategory?: string;
+  /** 세그멘테이션 마스크 소스 (face-landmarker, point+parsing, parsing 등) */
+  maskSource?: string;
   /** 탐지 단계에서 추출된 구조화 속성 (브랜드 후보·로고·패턴 등) */
   attributes?: FashionAttributes;
 }

@@ -29,13 +29,31 @@ export type FashionClass =
   | "necklace"
   | "earrings"
   | "ring"
+  | "lens"
+  | "lips"
+  | "eyes"
+  | "cheeks"
+  | "eyebrows"
+  | "shading"
+  | "skin"
+  | "hair"
+  | "cosmetics"
   | "object"; // non-fashion (머그·가구·가전 등)
 
 /**
- * Fashion Ontology — 자유 라벨(영/한) → canonical class 매핑.
+ * Fashion & Beauty Ontology — 자유 라벨(영/한) → canonical class 매핑.
  * prompt ensembling과 라벨 정규화 양쪽에서 사용한다.
  */
 export const FASHION_ONTOLOGY: Record<Exclude<FashionClass, "object">, string[]> = {
+  lens: ["lens", "contact lens", "color lens", "circle lens", "iris", "렌즈", "컬러렌즈", "써클렌즈", "콘택트렌즈", "눈동자", "아이리스"],
+  lips: ["lip", "lips", "lipstick", "lip tint", "lip gloss", "lip balm", "립", "입술", "립스틱", "틴트", "립글로스", "립밤"],
+  eyes: ["eye", "eyes", "eyeshadow", "eyeliner", "mascara", "아이섀도우", "아이라이너", "마스카라", "눈", "아이 메이크업", "섀도우"],
+  eyebrows: ["eyebrow", "eyebrows", "brow", "아이브로우", "눈썹", "브로우"],
+  cheeks: ["cheek", "cheeks", "blush", "blusher", "치크", "블러셔", "볼터치", "볼"],
+  shading: ["shading", "contour", "highlighter", "nose shading", "쉐딩", "컨투어링", "하이라이터", "노즈 쉐딩", "음영"],
+  skin: ["skin", "foundation", "cushion", "concealer", "base makeup", "face", "피부", "파운데이션", "쿠션", "컨실러", "베이스", "피부톤", "얼굴"],
+  hair: ["hair", "hairstyle", "hair dye", "헤어", "머리", "헤어스타일", "염색", "헤어케어"],
+  cosmetics: ["cosmetic", "cosmetics", "serum", "cream", "toner", "sunscreen", "ampoule", "화장품", "세럼", "크림", "토너", "선크림", "앰플"],
   top: ["shirt", "t-shirt", "tee", "blouse", "sweater", "knit", "hoodie", "sweatshirt", "top", "polo", "셔츠", "티셔츠", "니트", "블라우스", "후드", "맨투맨", "스웨트", "상의"],
   outerwear: ["jacket", "blazer", "coat", "cardigan", "outerwear", "fleece", "parka", "puffer", "자켓", "재킷", "블레이저", "코트", "가디건", "아우터", "플리스", "패딩"],
   pants: ["pants", "trousers", "jeans", "denim", "slacks", "joggers", "바지", "팬츠", "청바지", "데님", "슬랙스", "조거", "하의"],
@@ -55,11 +73,14 @@ export const FASHION_ONTOLOGY: Record<Exclude<FashionClass, "object">, string[]>
   ring: ["ring", "finger ring", "반지"],
 };
 
+const BEAUTY_CLASSES = new Set<FashionClass>(["lens", "lips", "eyes", "cheeks", "eyebrows", "shading", "skin", "hair", "cosmetics"]);
+
 /** 자유 라벨 → canonical class */
 export function canonicalClass(label: string): FashionClass {
   const l = label.toLowerCase();
-  // 구체적인 클래스(액세서리·신발)가 먼저 매칭되도록 우선순위 순회
+  // 구체적인 클래스(눈동자 렌즈·뷰티 부위·액세서리·신발)가 먼저 매칭되도록 우선순위 순회
   const order: Exclude<FashionClass, "object">[] = [
+    "lens", "lips", "eyes", "cheeks", "eyebrows", "shading", "cosmetics", "skin", "hair",
     "watch", "bracelet", "necklace", "earrings", "ring", "glasses", "belt", "hat", "scarf",
     "shoes", "bag", "dress", "skirt", "shorts", "outerwear", "pants", "top",
   ];
@@ -71,15 +92,22 @@ export function canonicalClass(label: string): FashionClass {
 
 /** canonical class → 앱 카테고리 */
 export function classCategory(cls: FashionClass): Category {
+  if (BEAUTY_CLASSES.has(cls)) return "beauty";
   if (cls === "object") return "lifestyle";
   return "fashion";
 }
 
 /**
- * UI 히트 테스트 우선순위 — 겹칠 때 작은 액세서리가 소매/상의를 이겨야 한다.
+ * UI 히트 테스트 우선순위 — 겹칠 때 작은 부위나 액세서리가 상위 영역을 이겨야 한다.
  * 값이 클수록 우선.
  */
 export const INTERACTION_PRIORITY: Record<FashionClass, number> = {
+  lens: 130,
+  lips: 120,
+  eyes: 115,
+  eyebrows: 110,
+  cheeks: 105,
+  shading: 100,
   ring: 100,
   watch: 100,
   bracelet: 100,
@@ -91,6 +119,9 @@ export const INTERACTION_PRIORITY: Record<FashionClass, number> = {
   bag: 85,
   shoes: 85,
   belt: 80,
+  skin: 75,
+  hair: 72,
+  cosmetics: 70,
   outerwear: 70,
   top: 65,
   pants: 65,
@@ -100,8 +131,15 @@ export const INTERACTION_PRIORITY: Record<FashionClass, number> = {
   object: 50,
 };
 
-/** 클래스별 최소 신뢰도 — 작은 액세서리는 임계값을 낮게 */
+/** 클래스별 최소 신뢰도 — 작은 액세서리·뷰티 부위는 임계값을 낮게 */
 export const MIN_CONFIDENCE_BY_CLASS: Partial<Record<FashionClass, number>> = {
+  lens: 0.08,
+  lips: 0.1,
+  eyes: 0.1,
+  cheeks: 0.1,
+  eyebrows: 0.1,
+  shading: 0.12,
+  skin: 0.15,
   watch: 0.12,
   bracelet: 0.12,
   earrings: 0.1,
@@ -111,8 +149,17 @@ export const MIN_CONFIDENCE_BY_CLASS: Partial<Record<FashionClass, number>> = {
 };
 export const DEFAULT_MIN_CONFIDENCE = 0.25;
 
-/** 클래스별 최소 면적 (이미지 대비 비율) — 액세서리를 area threshold로 죽이지 않는다 */
+/** 클래스별 최소 면적 (이미지 대비 비율) — 뷰티 부위와 액세서리를 area threshold로 죽이지 않는다 */
 export const MIN_AREA_BY_CLASS: Partial<Record<FashionClass, number>> = {
+  lens: 0.00001,
+  lips: 0.00004,
+  eyes: 0.00004,
+  eyebrows: 0.00004,
+  shading: 0.0001,
+  cheeks: 0.0002,
+  skin: 0.002,
+  hair: 0.002,
+  cosmetics: 0.0005,
   top: 0.005,
   outerwear: 0.005,
   pants: 0.005,
@@ -138,7 +185,13 @@ export const DEFAULT_MIN_AREA = 0.002;
  */
 export const ANATOMICAL_BAND: Partial<Record<FashionClass, [number, number]>> = {
   hat: [0, 0.2],
+  hair: [0, 0.3],
+  eyebrows: [0.02, 0.18],
+  eyes: [0.03, 0.2],
   glasses: [0.02, 0.22],
+  cheeks: [0.05, 0.22],
+  lips: [0.08, 0.25],
+  skin: [0.01, 0.28],
   earrings: [0.04, 0.22],
   necklace: [0.1, 0.35],
   scarf: [0.08, 0.4],

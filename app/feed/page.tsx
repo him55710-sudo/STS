@@ -75,10 +75,15 @@ export default function FeedPage() {
     };
   }, [mode]);
 
+  const activeMode: FeedMode =
+    mode === "fixture" || (repositoryPosts.length === 0 && repositoryState !== "loading")
+      ? "fixture"
+      : mode;
+
   const feed = useMemo(() => {
     return selectFeedPosts(
       {
-        mode,
+        mode: activeMode,
         repositoryPosts,
         fixturePosts: MIXED_FEED_FIXTURE_POSTS,
         localPosts: userPosts,
@@ -88,10 +93,10 @@ export default function FeedPage() {
       tab,
       following,
     );
-  }, [tab, mode, repositoryPosts, hydrated, userPosts, following]);
+  }, [tab, activeMode, repositoryPosts, hydrated, userPosts, following]);
 
   const emptyMessage =
-    mode === "repository" && (repositoryPosts.length === 0 || repositoryState !== "ready")
+    activeMode === "repository" && (repositoryPosts.length === 0 || repositoryState !== "ready")
       ? repositoryEmptyMessage(repositoryState)
       : "팔로우한 크리에이터의 콘텐츠가 여기에 표시돼요.";
 

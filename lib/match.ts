@@ -51,6 +51,21 @@ export const KEYWORDS: Record<string, string[]> = {
   "plw-silver-stud": ["earring", "earrings", "stud", "귀걸이", "이어링", "스터드"],
   "plw-silver-rings": ["ring", "rings", "반지", "링"],
   "plw-socks": ["socks", "sock", "양말", "삭스"],
+  // ── K-뷰티 상품 ─────────────────────────────────────────
+  "kb-romand-tint": ["lips", "tint", "lipstick", "lip", "립", "틴트", "립스틱", "립글로스", "베어그레이프", "롬앤"],
+  "kb-clio-cushion": ["cushion", "foundation", "skin", "face", "base", "쿠션", "파운데이션", "베이스", "피부", "클리오", "킬커버"],
+  "kb-boj-sun": ["sun", "sunscreen", "cream", "skin", "선크림", "자외선", "조선미녀", "맑은쌀선크림"],
+  "kb-dalba-serum": ["serum", "spray", "mist", "달바", "세럼", "미스트", "화이트트러플", "스프레이"],
+  "kb-roundlab-cream": ["cream", "moisture", "skin", "수분크림", "크림", "라운드랩", "자작나무"],
+  "kb-manyo-oil": ["oil", "cleansing", "cleanser", "클렌징", "오일", "마녀공장"],
+  "kb-torriden-serum": ["serum", "hyaluronic", "세럼", "토리든", "다이브인", "수분"],
+  "kb-anua-heartleaf-toner": ["toner", "heartleaf", "토너", "아누아", "어성초", "진정"],
+  "kb-medicube-booster-pro": ["device", "booster", "beauty", "기기", "부스터", "메디큐브", "에이지알"],
+  "kb-aestura-cream": ["cream", "barrier", "크림", "에스트라", "아토베리어"],
+  "kb-hapa-lens": ["lens", "iris", "contact lens", "contact", "color lens", "렌즈", "컬러렌즈", "서클렌즈", "눈동자", "하파크리스틴", "브라운"],
+  "kb-olens-lens": ["lens", "iris", "contact lens", "contact", "color lens", "렌즈", "컬러렌즈", "서클렌즈", "눈동자", "오렌즈", "무드나잇"],
+  "kb-clio-brow": ["eyebrows", "eyebrow", "brow", "pencil", "눈썹", "아이브로우", "브로우", "클리오", "킬브로우"],
+  "kb-dasique-shadow": ["eyes", "eyeshadow", "shadow", "palette", "눈", "아이섀도우", "섀도우", "팔레트", "데이지크", "음영"],
 };
 
 /**

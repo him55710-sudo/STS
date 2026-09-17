@@ -53,4 +53,52 @@ declare module "@mediapipe/tasks-vision" {
     segment(image: HTMLImageElement | HTMLCanvasElement): SegmenterResult;
     close(): void;
   }
+
+  export interface Connection {
+    start: number;
+    end: number;
+  }
+
+  export interface NormalizedLandmark {
+    x: number;
+    y: number;
+    z: number;
+    visibility?: number;
+  }
+
+  export interface FaceLandmarkerResult {
+    faceLandmarks: NormalizedLandmark[][];
+    faceBlendshapes?: Array<{ categories: Array<{ categoryName: string; score: number }> }>;
+    facialTransformationMatrixes?: unknown[];
+    close?: () => void;
+  }
+
+  export class FaceLandmarker {
+    static createFromOptions(
+      fileset: unknown,
+      options: {
+        baseOptions?: BaseOptions;
+        numFaces?: number;
+        minFaceDetectionConfidence?: number;
+        minFacePresenceConfidence?: number;
+        minTrackingConfidence?: number;
+        outputFaceBlendshapes?: boolean;
+        outputFacialTransformationMatrixes?: boolean;
+        runningMode?: "IMAGE" | "VIDEO";
+      }
+    ): Promise<FaceLandmarker>;
+    detect(image: HTMLImageElement | HTMLCanvasElement): FaceLandmarkerResult;
+    close(): void;
+
+    static FACE_LANDMARKS_LIPS: Connection[];
+    static FACE_LANDMARKS_LEFT_EYE: Connection[];
+    static FACE_LANDMARKS_LEFT_EYEBROW: Connection[];
+    static FACE_LANDMARKS_LEFT_IRIS: Connection[];
+    static FACE_LANDMARKS_RIGHT_EYE: Connection[];
+    static FACE_LANDMARKS_RIGHT_EYEBROW: Connection[];
+    static FACE_LANDMARKS_RIGHT_IRIS: Connection[];
+    static FACE_LANDMARKS_FACE_OVAL: Connection[];
+    static FACE_LANDMARKS_CONTOURS: Connection[];
+    static FACE_LANDMARKS_TESSELATION: Connection[];
+  }
 }

@@ -75,54 +75,111 @@ function loadModel(): Promise<CocoModel> {
   return modelPromise;
 }
 
-export async function detectOnDevice(dataUrl: string): Promise<DetectedRegion[]> {
-  const [img, model] = await Promise.all([loadImage(dataUrl), loadModel()]);
-  const preds = await model.detect(img, 15, 0.35);
+export async function detectOnDevice(
+  dataUrl: string,
+  mode: "all" | "fashion" | "beauty" = "all"
+): Promise<DetectedRegion[]> {
+  const img = await loadImage(dataUrl);
+
+  const tasks: [Promise<CocoModel | null>, Promise<DetectedObject[]>] = [
+    mode !== "beauty"
+      ? loadModel().catch(() => null)
+      : Promise.resolve(null),
+    mode !== "fashion"
+      ? import("./mask/face-beauty-detector")
+          .then((m) => m.detectFaceBeautyOnDevice(img))
+          .catch(() => [])
+      : Promise.resolve([]),
+  ];
+
+  const [model, beautyObjects] = await Promise.all(tasks);
   const W = img.width;
   const H = img.height;
 
   const regions: DetectedRegion[] = [];
-  for (const p of preds) {
-    const [bx, by, bw, bh] = p.bbox;
-    if (p.class === "person") {
-      // 사람은 상품이 아니다 — 착장 존 3분할로 변환
-      for (const z of PERSON_ZONES) {
-        regions.push(
-          clampRegion({
-            label: z.label,
-            labelKo: z.labelKo,
-            category: "fashion",
-            x: (bx + bw * z.fx) / W,
-            y: (by + bh * z.fy) / H,
-            w: (bw * z.fw) / W,
-            h: (bh * z.fh) / H,
-            confidence: round2(p.score * z.conf),
-          })
-        );
+
+  // 1. 패션 및 일반 객체 (COCO-SSD)
+  if (model) {
+    try {
+      const preds = await model.detect(img, 15, 0.35);
+      for (const p of preds) {
+        const [bx, by, bw, bh] = p.bbox;
+        if (p.class === "person") {
+          // 사람은 상품이 아니다 — 착장 존 3분할로 변환 (상의, 하의, 신발)
+          for (const z of PERSON_ZONES) {
+            regions.push(
+              clampRegion({
+                label: z.label,
+                labelKo: z.labelKo,
+                category: "fashion",
+                x: (bx + bw * z.fx) / W,
+                y: (by + bh * z.fy) / H,
+                w: (bw * z.fw) / W,
+                h: (bh * z.fh) / H,
+                confidence: round2(p.score * z.conf),
+              })
+            );
+          }
+        } else if (COCO_MAP[p.class]) {
+          const m = COCO_MAP[p.class];
+          regions.push(
+            clampRegion({
+              label: m.label,
+              labelKo: m.labelKo,
+              category: m.category,
+              x: bx / W,
+              y: by / H,
+              w: bw / W,
+              h: bh / H,
+              confidence: round2(p.score),
+            })
+          );
+        }
       }
-    } else if (COCO_MAP[p.class]) {
-      const m = COCO_MAP[p.class];
+    } catch (err) {
+      console.warn("[vision] coco-ssd detect failed:", err);
+    }
+  }
+
+  // 2. 뷰티 & 얼굴 객체 (MediaPipe FaceLandmarker 오픈소스)
+  if (beautyObjects && beautyObjects.length > 0) {
+    for (const bo of beautyObjects) {
       regions.push(
         clampRegion({
-          label: m.label,
-          labelKo: m.labelKo,
-          category: m.category,
-          x: bx / W,
-          y: by / H,
-          w: bw / W,
-          h: bh / H,
-          confidence: round2(p.score),
+          ...bo,
+          x: bo.x,
+          y: bo.y,
+          w: bo.w,
+          h: bo.h,
+          confidence: bo.confidence,
         })
       );
     }
   }
 
-  const picked = dedupe(regions)
-    .filter((r) => r.w * r.h > 0.004)
-    .sort((a, b) => b.confidence - a.confidence)
-    .slice(0, 8);
+  // 뷰티 객체와 패션 객체를 각각 정제하여 도메인별 핵심 객체 보존
+  const beautyPicked = dedupe(regions.filter((r) => r.category === "beauty"))
+    .sort((a, b) => b.confidence - a.confidence);
 
-  for (const r of picked) r.tone = regionTone(img, r);
+  const otherPicked = dedupe(regions.filter((r) => r.category !== "beauty"))
+    .filter((r) => r.w * r.h > 0.004)
+    .sort((a, b) => b.confidence - a.confidence);
+
+  let picked: DetectedRegion[] = [];
+  if (mode === "beauty") {
+    picked = beautyPicked.slice(0, 8);
+  } else if (mode === "fashion") {
+    picked = otherPicked.slice(0, 8);
+  } else {
+    // 통합 모드: 뷰티 객체와 패션 객체 균형 있게 배치
+    picked = [...beautyPicked.slice(0, 5), ...otherPicked.slice(0, 6)]
+      .sort((a, b) => b.confidence - a.confidence)
+      .slice(0, 10);
+  }
+
+  for (const r of picked) {
+    if (!r.tone) r.tone = regionTone(img, r);
+  }
   return picked;
 }
 

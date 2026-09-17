@@ -30,6 +30,9 @@ export interface MaskedObject extends DetectedObject {
 }
 
 // selfie_multiclass 카테고리 인덱스: 0=bg 1=hair 2=body-skin 3=face-skin 4=clothes 5=others
+const MC_HAIR = 1;
+const MC_BODY_SKIN = 2;
+const MC_FACE_SKIN = 3;
 const MC_CLOTHES = 4;
 const MC_OTHERS = 5;
 
@@ -117,9 +120,11 @@ export async function extractSilhouettes(
   }
 
   // ── Human parsing 역할: 멀티클래스 시맨틱 마스크 (1회) ──
-  // clothes(4) = 의류 픽셀, others(5) = 착용 액세서리·가방·신발 등 비의류 물체 픽셀
+  // clothes(4) = 의류 픽셀, others(5) = 착용 비의류 물체, faceSkin(3) = 얼굴 피부, hair(1) = 헤어
   let clothes: Uint8Array | null = null;
   let others: Uint8Array | null = null;
+  let faceSkin: Uint8Array | null = null;
+  let hair: Uint8Array | null = null;
   const tParse = performance.now();
   try {
     const res = engines.multiclass.segment(canvas);
@@ -128,16 +133,23 @@ export async function extractSilhouettes(
       const data = cat.getAsUint8Array();
       clothes = new Uint8Array(W * H);
       others = new Uint8Array(W * H);
+      faceSkin = new Uint8Array(W * H);
+      hair = new Uint8Array(W * H);
       for (let i = 0; i < data.length; i++) {
-        if (data[i] === MC_CLOTHES) clothes[i] = 1;
-        else if (data[i] === MC_OTHERS) others[i] = 1;
+        const val = data[i];
+        if (val === MC_CLOTHES) clothes[i] = 1;
+        else if (val === MC_OTHERS) others[i] = 1;
+        else if (val === MC_FACE_SKIN) faceSkin[i] = 1;
+        else if (val === MC_HAIR) hair[i] = 1;
       }
       cat.close();
     }
     res.close?.();
   } catch {
-    clothes = null; // parsing 실패 → open-vocab 단독 (fallback graph)
+    clothes = null;
     others = null;
+    faceSkin = null;
+    hair = null;
   }
   timings.humanParsing = Math.round(performance.now() - tParse);
 
@@ -147,6 +159,13 @@ export async function extractSilhouettes(
   for (const obj of objects) {
     const cls = canonicalClass(`${obj.label} ${obj.labelKo}`);
     const masked: MaskedObject = { ...obj, canonicalClass: cls };
+
+    // MediaPipe FaceLandmarker 등으로 이미 고정밀 구분선(polygon)이 확보된 뷰티/얼굴 객체는 최우선 보존
+    if (obj.polygon && obj.polygon.length >= 3 && (obj.category === "beauty" || obj.zone)) {
+      maskSources[obj.label] = obj.maskSource || "face-landmarker";
+      out.push({ ...masked, maskSource: maskSources[obj.label] });
+      continue;
+    }
 
     try {
       // ── 포인트 프롬프트 세그멘테이션 (SAM refinement 역할) ──

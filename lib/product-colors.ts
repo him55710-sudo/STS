@@ -45,6 +45,21 @@ export const PRODUCT_TONES: Record<string, string> = {
   "plw-socks": "#f4f3ef",
   "plw-silver-stud": "#d5d5d5",
   "plw-polene-bag": "#121212",
+  // K-뷰티 상품 톤
+  "kb-romand-tint": "#b8455a", // 베어그레이프 쿨로즈 립 톤
+  "kb-clio-cushion": "#ecd1bb", // 페어/바닐라 쿠션 피부 톤
+  "kb-boj-sun": "#fdfcf9", // 맑은쌀 선크림
+  "kb-dalba-serum": "#f5e6a8", // 화이트트러플 오일 세럼
+  "kb-roundlab-cream": "#e8f4f8", // 자작나무 수분크림
+  "kb-manyo-oil": "#f7f0d0", // 퓨어 클렌징 오일
+  "kb-torriden-serum": "#dbeef8", // 다이브인 히알루론산 세럼
+  "kb-anua-heartleaf-toner": "#ecefe6", // 어성초 토너
+  "kb-medicube-booster-pro": "#2a2b2d", // 부스터 프로 기기
+  "kb-aestura-cream": "#f7f6f2", // 아토베리어 크림
+  "kb-hapa-lens": "#6b442a", // 원앤온리 브라운 렌즈 톤
+  "kb-olens-lens": "#5a3d28", // 무드나잇 무드브라운 렌즈 톤
+  "kb-clio-brow": "#42342b", // 킬브로우 오토 하드 브라운 톤
+  "kb-dasique-shadow": "#d5b292", // 데이지크 밀크라떼 음영 톤
 };
 
 /** RGB 거리 (0 ~ 441) */

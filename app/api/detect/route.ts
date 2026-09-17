@@ -122,22 +122,28 @@ function parseImageDataUrl(dataUrl: string): ImageParseResult {
  * 대형(의류) / 중형(신발·가방·모자·벨트·안경) / 소형(시계·팔찌·목걸이·귀걸이·반지)을
  * 크기와 무관하게 각각 독립 객체로 요구하고, tight box를 강제한다.
  */
-const PROMPT = `You are a visual commerce tagging engine for fashion content. Detect every distinct purchasable item visible in this image.
+const PROMPT = `You are a visual commerce tagging engine specialized in both Fashion and Beauty domains. Detect every distinct purchasable item or beauty makeup application visible in this image.
 
 Detect ALL of these when visible, each as its own object:
 - Garments: shirt, t-shirt, knit, blouse, hoodie, sweatshirt / jacket, blazer, coat, cardigan, fleece / pants, jeans, trousers, shorts / skirt, dress
 - Footwear: each pair of shoes, sneakers, loafers, boots, sandals, clogs (one object for the pair)
 - Bags: handbag, shoulder bag, crossbody bag, backpack, tote
-- Accessories (do NOT skip these even if small): hat, cap, glasses, sunglasses, belt, scarf, watch, bracelet, necklace, earrings, ring
-- Non-fashion products if present: furniture, home decor, electronics, beauty products
+- Accessories: hat, cap, glasses, sunglasses, belt, scarf, watch, bracelet, necklace, earrings, ring
+- Beauty & Face Makeup (crucial for beauty/creator portraits):
+  * lips: lipstick, tint, lip gloss on lips (label: "lips tint", labelKo: "립 메이크업 (틴트·립스틱)", category: "beauty")
+  * eyes: eyeshadow, eyeliner, mascara on eye area (label: "eye makeup", labelKo: "아이 메이크업", category: "beauty")
+  * cheeks: blush, blusher, cheek tint on cheeks (label: "blush cheek", labelKo: "치크·블러셔", category: "beauty")
+  * eyebrows: brow pencil, brow powder (label: "eyebrow", labelKo: "아이브로우", category: "beauty")
+  * skin: cushion foundation, base makeup, glow skin (label: "cushion foundation", labelKo: "쿠션·파운데이션", category: "beauty")
+  * beauty cosmetics products/bottles: toner, serum, cream, perfume, cushion compact, lipstick case (category: "beauty")
+- Non-fashion/non-beauty if prominent: furniture, home decor, electronics (category: "interior" | "tech" | "lifestyle")
 
 Rules:
-- Products only — never the person, body parts, or background architecture.
-- Layered items are separate objects (jacket AND the shirt under it AND pants AND shoes AND bag).
-- box_2d must be TIGHT around the item itself: [ymin, xmin, ymax, xmax] on a 0-1000 scale. A top ends at the waist; pants start at the waist; do not extend a garment box over the whole body.
-- Small accessories (watch, jewelry): include them even at low confidence; use a small tight box.
+- Distinguish Fashion vs Beauty domains: In fashion shots, detect garments/shoes/accessories. In beauty/portrait/closeup shots, detect the makeup application zones (lips, eyes, cheeks, eyebrows, skin) and cosmetic products.
+- Layered items are separate objects (jacket AND shirt AND pants AND shoes AND bag).
+- box_2d must be TIGHT around the item or makeup zone: [ymin, xmin, ymax, xmax] on a 0-1000 scale.
 - Max 10 objects, most prominent first.
-- label is a short English item name; labelKo is a short Korean shopping label (e.g. "울 코트", "가죽 시계").
+- label is a short English item name; labelKo is a short Korean shopping label (e.g. "울 코트", "립 틴트", "가죽 시계").
 - category is one of: fashion, beauty, interior, tech, lifestyle.
 - confidence is 0~1.
 

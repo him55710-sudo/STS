@@ -49,10 +49,13 @@ interface DraftObject extends DetectedObject {
 type Step = "select" | "analyzing" | "review" | "done";
 
 const SAMPLES = [
-  { src: "/looks/look6.jpg", label: "데일리" },
-  { src: "/looks/look9.jpg", label: "아웃도어" },
-  { src: "/looks/look2.jpg", label: "헤리티지" },
+  { src: "/kbeauty-models/kb-creator-01.jpg", label: "뷰티 메이크업", domain: "beauty" as const },
+  { src: "/looks/look6.jpg", label: "데일리 패션", domain: "fashion" as const },
+  { src: "/looks/look9.jpg", label: "아웃도어", domain: "fashion" as const },
+  { src: "/looks/look2.jpg", label: "헤리티지", domain: "fashion" as const },
 ];
+
+export type DetectionDomainMode = "all" | "fashion" | "beauty";
 
 function createDraftPostId(): string {
   return `user-${Date.now().toString(36)}`;
@@ -93,6 +96,7 @@ export default function CreatePage() {
 
   const [step, setStep] = useState<Step>("select");
   const [draftPostId, setDraftPostId] = useState(createDraftPostId);
+  const [detectionMode, setDetectionMode] = useState<DetectionDomainMode>("all");
   const [stage, setStage] = useState<"detect" | "mask">("detect");
   const [image, setImage] = useState<string | null>(null);
   const [ratio, setRatio] = useState(0.75);
@@ -131,7 +135,7 @@ export default function CreatePage() {
     reader.readAsDataURL(primaryImage);
   };
 
-  const downscale = (dataUrl: string) => {
+  const downscale = (dataUrl: string, targetMode = detectionMode) => {
     const img = new Image();
     img.onload = () => {
       const MAX = 1280;
@@ -140,45 +144,64 @@ export default function CreatePage() {
       canvas.width = Math.round(img.width * scale);
       canvas.height = Math.round(img.height * scale);
       canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
-      startAnalysis(canvas.toDataURL("image/jpeg", 0.85), img.width / img.height);
+      startAnalysis(canvas.toDataURL("image/jpeg", 0.85), img.width / img.height, targetMode);
     };
     img.src = dataUrl;
   };
 
-  const useSample = async (src: string) => {
-    // 샘플 사진도 canvas를 거쳐 실제 업로드와 동일한 경로를 태운다
+  const useSample = async (src: string, targetDomain?: "fashion" | "beauty") => {
+    const modeToUse = targetDomain ?? detectionMode;
+    if (targetDomain) setDetectionMode(targetDomain);
     const img = new Image();
     img.onload = () => {
       const canvas = document.createElement("canvas");
       canvas.width = 900;
       canvas.height = Math.round(900 / (img.width / img.height));
       canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
-      startAnalysis(canvas.toDataURL("image/jpeg", 0.9), img.width / img.height);
+      startAnalysis(canvas.toDataURL("image/jpeg", 0.9), img.width / img.height, modeToUse);
     };
     img.src = src;
   };
 
   // ── Step 2: AI 분석 ───────────────────────────────────
-  // 1순위 Gemini(서버 키 설정 시) → 2순위 온디바이스 오픈소스 모델(coco-ssd)
-  // → 3순위 데모 mock. AI 실패는 흐름을 막지 않는다 (PRD §56).
-  const startAnalysis = async (dataUrl: string, r: number) => {
+  // 1순위 Gemini(서버 키 설정 시) + 오픈소스 MediaPipe FaceLandmarker 뷰티 정밀 인식 결합
+  // 2순위 온디바이스 오픈소스 모델(coco-ssd + MediaPipe FaceLandmarker)
+  // → AI 실패는 흐름을 막지 않는다 (PRD §56).
+  const startAnalysis = async (dataUrl: string, r: number, mode = detectionMode) => {
     setImage(dataUrl);
     setRatio(r);
     setStep("analyzing");
     setStartedAt(Date.now());
     track("asset_view"); // upload_start에 해당
 
+    // 서버 API 제한(150KB)을 준수하도록 필요 시 최적화된 dataUrl 생성
+    let serverPayload = dataUrl;
+    if (dataUrl.length > 120_000) {
+      try {
+        const sCanvas = document.createElement("canvas");
+        sCanvas.width = 640;
+        sCanvas.height = Math.round(640 / (r || 1));
+        const sCtx = sCanvas.getContext("2d");
+        const sImg = new Image();
+        sImg.src = dataUrl;
+        sCtx?.drawImage(sImg, 0, 0, sCanvas.width, sCanvas.height);
+        serverPayload = sCanvas.toDataURL("image/jpeg", 0.65);
+      } catch {
+        serverPayload = dataUrl;
+      }
+    }
+
     const serverP = fetch("/api/detect", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ image: dataUrl }),
+      body: JSON.stringify({ image: serverPayload }),
     })
       .then((res) => res.json() as Promise<{ objects?: DetectedObject[]; source?: string }>)
       .catch(() => null);
     const deviceP = import("@/lib/vision")
       .then((m) =>
         Promise.race([
-          m.detectOnDevice(dataUrl),
+          m.detectOnDevice(dataUrl, mode),
           new Promise<never>((_, rej) => setTimeout(() => rej(new Error("timeout")), 25000)),
         ])
       )
@@ -186,14 +209,23 @@ export default function CreatePage() {
 
     let detected: DetectedObject[] = [];
     let source = "";
-    const server = await serverP;
+    const [server, device] = await Promise.all([serverP, deviceP]);
+
     if (server?.source === "gemini" && server.objects?.length) {
       detected = server.objects;
       source = "gemini";
+      // 뷰티/얼굴 객체가 디바이스(MediaPipe FaceLandmarker)에서 추출된 경우 결합하여 정밀 구분선(polygon) 확보
+      if (device && device.length > 0 && mode !== "fashion") {
+        const beautyFromDevice = device.filter((d) => d.category === "beauty" || !!d.zone);
+        if (beautyFromDevice.length > 0) {
+          // 서버에서 이미 뷰티를 잡았더라도 디바이스의 478개 랜드마크 폴리곤으로 강화
+          const nonBeauty = detected.filter((o) => o.category !== "beauty");
+          detected = [...beautyFromDevice, ...nonBeauty];
+          source = "gemini+facelandmarks";
+        }
+      }
     } else {
-      const device = await deviceP;
       if (device?.length) {
-        // 쿼터 소진으로 정밀 탐지가 빠졌음을 구분 표시
         detected = device;
         source = server?.source === "quota" ? "device-quota" : "device";
       } else if (server?.objects?.length) {
@@ -413,6 +445,30 @@ export default function CreatePage() {
 
       {step === "select" && (
         <div className="px-4 pt-5">
+          {/* 패션 vs 뷰티 도메인 선택 탭 */}
+          <div className="mb-4 flex rounded-xl bg-ink/5 p-1">
+            {(
+              [
+                { id: "all", label: "전체 통합 인식" },
+                { id: "beauty", label: "💄 뷰티 (얼굴·메이크업)" },
+                { id: "fashion", label: "👗 패션 (의류·잡화)" },
+              ] as const
+            ).map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setDetectionMode(tab.id)}
+                className={`flex-1 rounded-lg py-1.5 text-center text-[12px] font-semibold transition-all ${
+                  detectionMode === tab.id
+                    ? "bg-surface text-ink shadow-xs"
+                    : "text-ink-2 hover:text-ink"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
           <button
             onClick={() => fileRef.current?.click()}
             className="flex w-full flex-col items-center gap-2.5 rounded-(--radius-card) border border-dashed border-line bg-surface py-14"
@@ -420,25 +476,45 @@ export default function CreatePage() {
             <ImageIcon size={30} strokeWidth={1.25} className="text-ink-2" />
             <span className="text-[14px] font-medium">사진 업로드</span>
             <span className="text-[12px] text-ink-2">
-              올리기만 하면 AI가 상품을 찾아드려요
+              {detectionMode === "beauty"
+                ? "얼굴 메이크업(립·아이·치크·베이스)을 자동 인식해 구분선을 생성해요"
+                : detectionMode === "fashion"
+                ? "착장(상의·하의·신발·가방·액세서리)을 자동 인식해요"
+                : "패션 착장과 뷰티 메이크업 부위를 한 번에 모두 찾아드려요"}
             </span>
           </button>
-	          <input
-	            ref={fileRef}
-	            type="file"
-	            accept="image/*,video/*"
-              multiple
-	            hidden
-	            onChange={(e) => onFiles(e.target.files)}
-	          />
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*,video/*"
+            multiple
+            hidden
+            onChange={(e) => onFiles(e.target.files)}
+          />
 
-          <p className="mb-2 mt-7 text-[13px] font-semibold text-ink-2">샘플로 체험하기</p>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="mb-2 mt-7 flex items-center justify-between">
+            <p className="text-[13px] font-semibold text-ink-2">샘플로 체험하기</p>
+            <span className="text-[11px] text-ink-2">
+              {detectionMode === "beauty" ? "뷰티 특화 모드" : detectionMode === "fashion" ? "패션 특화 모드" : "통합 모드"}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {SAMPLES.map((s) => (
-              <button key={s.src} onClick={() => useSample(s.src)} className="overflow-hidden rounded-(--radius-card) border border-line">
+              <button
+                key={s.src}
+                onClick={() => useSample(s.src, s.domain)}
+                className="group relative overflow-hidden rounded-(--radius-card) border border-line text-left transition hover:border-ink/30"
+              >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={s.src} alt={s.label} className="aspect-[3/4] w-full object-cover" />
-                <p className="bg-surface py-1.5 text-center text-[12px] text-ink-2">{s.label}</p>
+                <img src={s.src} alt={s.label} className="aspect-[3/4] w-full object-cover transition group-hover:scale-105" />
+                <div className="bg-surface p-1.5 text-center">
+                  <span className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                    s.domain === "beauty" ? "bg-rose-100 text-rose-700" : "bg-blue-100 text-blue-700"
+                  }`}>
+                    {s.domain === "beauty" ? "뷰티" : "패션"}
+                  </span>
+                  <p className="mt-0.5 text-[12px] font-medium text-ink truncate">{s.label}</p>
+                </div>
               </button>
             ))}
           </div>
@@ -455,11 +531,13 @@ export default function CreatePage() {
           <div className="mt-5 flex items-center justify-center gap-2.5">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
             <p className="text-[14px] text-ink-2">
-              {stage === "mask" ? "실루엣을 추출하고 있어요..." : "오브제를 찾고 있어요..."}
+              {stage === "mask"
+                ? "객체 구분선(실루엣·페이스 윤곽)을 정밀 추출하고 있어요..."
+                : "패션 및 뷰티 얼굴 객체를 찾고 있어요..."}
             </p>
           </div>
           <p className="mt-2 text-center text-[11.5px] text-ink-2">
-            첫 분석은 AI 모델 준비로 몇 초 더 걸릴 수 있어요
+            MediaPipe 오픈소스 온디바이스 엔진이 정밀한 외곽선을 계산하고 있어요
           </p>
         </div>
       )}
@@ -470,7 +548,7 @@ export default function CreatePage() {
           <div ref={imgRef} className="relative cursor-crosshair select-none" onClick={addObjectAt}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={image} alt="" className="w-full" />
-            {/* 실루엣(polygon) 우선, 없으면 bbox — fashion_v2 */}
+            {/* 실루엣(polygon) 우선, 없으면 bbox — 뷰티/패션 구분선 스타일 차별화 */}
             <svg
               className="pointer-events-none absolute inset-0 h-full w-full"
               viewBox="0 0 100 100"
@@ -478,13 +556,22 @@ export default function CreatePage() {
             >
               {objects.map((o) => {
                 const sel = o.id === selectedId;
+                const isBeauty = o.category === "beauty" || !!o.zone;
+                const strokeColor = isBeauty
+                  ? sel
+                    ? "#e11d48"
+                    : o.tone || "#f43f5e"
+                  : sel
+                  ? "var(--color-accent)"
+                  : "color-mix(in srgb, var(--color-accent) 50%, white)";
+                const fillColor = isBeauty ? o.tone || "#f43f5e" : "var(--color-accent)";
+                const fillOpacity = sel ? (isBeauty ? 0.25 : 0.12) : isBeauty ? 0.14 : 0.05;
+
                 const common = {
-                  fill: "var(--color-accent)",
-                  fillOpacity: sel ? 0.08 : 0.04,
-                  stroke: sel
-                    ? "var(--color-accent)"
-                    : "color-mix(in srgb, var(--color-accent) 50%, white)",
-                  strokeWidth: sel ? 1.75 : 1.25,
+                  fill: fillColor,
+                  fillOpacity,
+                  stroke: strokeColor,
+                  strokeWidth: sel ? (isBeauty ? 2.0 : 1.75) : (isBeauty ? 1.5 : 1.25),
                   vectorEffect: "non-scaling-stroke" as const,
                 };
                 const rings = o.polygons ?? (o.polygon && o.polygon.length >= 3 ? [o.polygon] : null);
@@ -510,25 +597,32 @@ export default function CreatePage() {
                 );
               })}
             </svg>
-            {objects.map((o, i) => (
-              <span
-                key={`n-${o.id}`}
-                className="absolute flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-ink text-[10px] font-bold text-surface"
-                style={{ left: `${o.x * 100}%`, top: `${o.y * 100}%` }}
-              >
-                {i + 1}
-              </span>
-            ))}
+            {objects.map((o, i) => {
+              const isBeauty = o.category === "beauty" || !!o.zone;
+              return (
+                <span
+                  key={`n-${o.id}`}
+                  className={`absolute flex h-5 min-w-[20px] px-1 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-[10px] font-bold text-surface shadow-xs ${
+                    isBeauty ? "bg-rose-600 ring-1 ring-white/50" : "bg-ink"
+                  }`}
+                  style={{ left: `${o.x * 100}%`, top: `${o.y * 100}%` }}
+                >
+                  {isBeauty && o.zone === "lips" ? "💄" : isBeauty && o.zone === "eyes" ? "👁️" : i + 1}
+                </span>
+              );
+            })}
           </div>
 
           <p className="px-4 pt-2.5 text-[12px] text-ink-2">
             {objects.length > 0
-              ? `오브젝트 ${objects.length}개를 찾았어요 · 놓친 물건은 화면을 탭해 추가하세요`
-              : "화면 속 물건을 탭해서 직접 추가해보세요"}
-            {aiSource === "device" && " · 온디바이스 AI 탐지"}
+              ? `오브젝트 ${objects.length}개를 찾았어요 (패션·뷰티 부위 구분선 생성 완료)`
+              : "화면 속 물건이나 메이크업 부위를 탭해서 추가해보세요"}
+            {aiSource.includes("facelandmarks") && " · MediaPipe 뷰티 랜드마크 융합"}
+            {aiSource === "device" && " · 온디바이스 AI 탐지 (MediaPipe + COCO-SSD)"}
+            {aiSource === "gemini" && " · Gemini 비전 AI 탐지"}
             {aiSource === "device-quota" && (
               <span className="text-[#b3752e]">
-                {" "}· AI 정밀 탐지 쿼터 초과 — 기본 탐지로 진행했어요 (모자·가방 등이 빠질 수 있어요)
+                {" "}· AI 정밀 탐지 쿼터 초과 — 온디바이스 모델로 자동 처리했어요
               </span>
             )}
             {aiSource !== "gemini" && aiSource !== "device" && aiSource !== "device-quota" && aiSource && " · 데모 탐지 모드"}
@@ -550,12 +644,26 @@ export default function CreatePage() {
                     onClick={() => setSelectedId(isSel ? null : o.id)}
                     className="flex w-full items-center gap-3 px-3.5 py-3 text-left"
                   >
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-2 text-[11px] font-bold">
-                      {String(i + 1).padStart(2, "0")}
+                    <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
+                      o.category === "beauty" || !!o.zone ? "bg-rose-100 text-rose-700" : "bg-surface-2 text-ink"
+                    }`}>
+                      {o.category === "beauty" || !!o.zone ? "💄" : String(i + 1).padStart(2, "0")}
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="flex items-center gap-1.5 truncate text-[14px] font-medium">
                         {o.labelKo}
+                        {(o.category === "beauty" || !!o.zone) && (
+                          <span className="shrink-0 rounded bg-rose-50 px-1 py-0.2 text-[10px] font-bold text-rose-600 border border-rose-200/60">
+                            뷰티
+                          </span>
+                        )}
+                        {o.tone && (
+                          <span
+                            className="inline-block h-3 w-3 shrink-0 rounded-full border border-black/10 shadow-2xs"
+                            style={{ backgroundColor: o.tone }}
+                            title={`추출 색상: ${o.tone}`}
+                          />
+                        )}
                         {o.confidence < 1 && (
                           <span className="shrink-0 text-[10.5px] font-semibold text-ink-2">
                             신뢰도 {Math.round(o.confidence * 100)}%
