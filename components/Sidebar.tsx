@@ -15,12 +15,12 @@ import {
 } from "./Icons";
 
 const NAV = [
-  { href: "/feed", label: "홈", Icon: HomeIcon },
-  { href: "/reels", label: "릴스", Icon: EyeIcon },
-  { href: "/discover", label: "발견", Icon: SearchIcon },
-  { href: "/saved", label: "저장됨", Icon: BookmarkIcon },
+  { href: "/", label: "메인 홈", Icon: HomeIcon },
+  { href: "/feed", label: "소셜 피드", Icon: BookmarkIcon },
+  { href: "/reels", label: "릴스 숏폼", Icon: EyeIcon },
+  { href: "/analytics", label: "AI 성과분석", Icon: BarChartIcon },
   { href: "/create", label: "만들기", Icon: PlusIcon },
-  { href: "/analytics", label: "애널리틱스", Icon: BarChartIcon },
+  { href: "/discover", label: "발견", Icon: SearchIcon },
   { href: "/admin", label: "운영", Icon: SettingsIcon },
 ];
 
@@ -36,7 +36,7 @@ export default function Sidebar() {
 
   return (
     <aside className="sticky top-0 hidden h-dvh w-[232px] shrink-0 flex-col border-r border-line bg-bg px-4 py-6 lg:flex">
-      <Link href="/home" className="px-3 text-[22px] font-extrabold tracking-[0.14em]">
+      <Link href="/" className="px-3 text-[22px] font-extrabold tracking-[0.14em] hover:opacity-80 transition">
         STS<span className="text-primary">.</span>
       </Link>
       <p className="mt-1 px-3 text-[11px] text-ink-2">See it. Tap it. Shop it.</p>

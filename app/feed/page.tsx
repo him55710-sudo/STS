@@ -105,9 +105,16 @@ export default function FeedPage() {
     <div>
       <header className="sticky top-0 z-30 border-b border-line bg-bg/95 backdrop-blur-sm">
         <div className="flex items-end justify-between px-4 pb-2.5 pt-3.5">
-          <h1 className="text-[20px] font-extrabold tracking-[0.14em]">
-            STS<span className="text-primary">.</span>
-          </h1>
+          <Link
+            href="/"
+            className="text-[20px] font-extrabold tracking-[0.14em] hover:opacity-80 transition flex items-center gap-2 text-ink"
+            title="STS 메인 홈페이지로 이동"
+          >
+            <span>STS<span className="text-primary">.</span></span>
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-200 shadow-2xs">
+              🏠 메인홈
+            </span>
+          </Link>
           <div className="flex items-center gap-3 text-[13px]">
             <Link
               href="/reels"

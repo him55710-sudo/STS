@@ -5,11 +5,10 @@ import { usePathname } from "next/navigation";
 import { BookmarkIcon, EyeIcon, HomeIcon, PlusIcon, SearchIcon, UserIcon } from "./Icons";
 
 const TABS = [
-  { href: "/feed", label: "홈", Icon: HomeIcon },
-  { href: "/discover", label: "발견", Icon: SearchIcon },
+  { href: "/", label: "메인홈", Icon: HomeIcon },
+  { href: "/feed", label: "피드", Icon: BookmarkIcon },
   { href: "/create", label: "만들기", Icon: PlusIcon, center: true },
   { href: "/reels", label: "릴스", Icon: EyeIcon },
-  { href: "/saved", label: "저장", Icon: BookmarkIcon },
   { href: "/profile", label: "프로필", Icon: UserIcon },
 ];
 
