@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowUpRight, Play, RotateCcw } from "lucide-react";
+import { Play, RotateCcw } from "lucide-react";
 import { getReviewedSteps, normalizeTikTokUrl, parsePlayerMessage, TIKTOK_ORIGIN } from "@/lib/beauty-commerce/tiktok";
 import type { CreatorRecord, ManualSegment } from "@/lib/beauty-commerce/tiktok";
 import { useBeautyCommerce } from "@/lib/beauty-commerce/context";
@@ -82,9 +82,8 @@ export function CreatorPlayer({ record, segments, onChooseStep, requestedStep }:
           referrerPolicy="strict-origin-when-cross-origin" onError={() => setState("unavailable")}
         />}
       </div>
-      <a className={styles.originalLink} href={source.url} target="_blank" rel="noopener noreferrer">{t("Watch the original on TikTok", "Xem bản gốc trên TikTok", "틱톡에서 원본 보기")}<ArrowUpRight size={16} /></a>
       {state !== "ready" && <div className={styles.playerNotice} role="status">
-        <p>{state === "loading" ? t("Press play in the TikTok player to start. Step controls activate when the player responds.", "Nhấn phát trong TikTok để bắt đầu. Điều khiển các bước bật khi trình phát phản hồi.", "TikTok 플레이어의 재생 버튼으로 시작하세요. 플레이어가 응답하면 단계 이동이 연결됩니다.") : t("Press play in the video. If it stays blank or playback is restricted, open the original or reload. Product notes remain available.", "Nhấn phát trong video. Nếu màn hình trống hoặc bị hạn chế, mở bản gốc hoặc tải lại. Ghi chú sản phẩm vẫn khả dụng.", "영상의 재생 버튼을 눌러 보세요. 화면이 비어 있거나 재생이 제한되면 원본을 열거나 다시 불러오세요. 제품 정보는 계속 볼 수 있습니다.")}</p>
+        <p>{state === "loading" ? t("Press play to start. Step controls activate when the video is ready.", "Nhấn phát để bắt đầu. Các bước bật khi video sẵn sàng.", "재생 버튼으로 시작하세요. 영상이 준비되면 단계 이동이 연결됩니다.") : t("The video could not start here. Try again; product notes remain available.", "Video chưa thể phát. Hãy thử lại; ghi chú sản phẩm vẫn khả dụng.", "영상을 재생하지 못했습니다. 다시 시도해 주세요. 제품 정보는 계속 볼 수 있습니다.")}</p>
         {state === "unavailable" && <button type="button" onClick={() => { setState("loading"); setReload((value) => value + 1); }}><RotateCcw size={14} />{t("Reload player", "Tải lại trình phát", "플레이어 다시 불러오기")}</button>}
       </div>}
       {segments.length > 0 && reviewed.length === 0 && <div className={styles.manualTimeline}>

@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { BeautyHome } from "@/components/beauty-commerce/BeautyHome";
 export const metadata: Metadata = {
-  title: "STS — Thấy đẹp. Hiểu cách. Chọn đúng.",
-  description: "Khám phá K-beauty qua những thao tác trang điểm thật. Xem từng bước, lưu diện mạo và tìm sản phẩm dành cho bạn tại Việt Nam.",
-  openGraph: { title: "STS — The beauty edit", description: "Thấy vẻ đẹp. Hiểu từng bước.", images: ["/beauty-media/lip-application.jpg"] },
+  title: "STS — See the look. Learn the steps.",
+  description: "Watch real K-beauty application, explore the steps and find products for your routine in Vietnam.",
+  openGraph: { title: "STS — The beauty edit", description: "See the look. Learn the steps. Make it yours.", images: ["/beauty-media/modern-lip.webp"] },
 };
 export default function HomePage() { return <BeautyHome />; }

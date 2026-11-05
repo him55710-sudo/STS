@@ -144,7 +144,7 @@ try {
     await isolated.goto(`${base}/creators`);
     await isolated.getByRole("button", { name: "Reload player", exact: true }).waitFor({ timeout: 16000 });
     assert.equal(await isolated.getByTestId("creator-product-layers").count(), 1);
-    assert.match(await isolated.getByRole("link", { name: "Watch the original on TikTok" }).getAttribute("href"), /jooshica\/video\/7518741157669653790/);
+    assert(await isolated.locator('a[href="https://www.tiktok.com/@jooshica/video/7518741157669653790"]').count() > 0);
     await unavailable.close();
   });
   await check("Official player protocol seeks, pauses and synchronizes reviewed product areas in an isolated harness", async () => {

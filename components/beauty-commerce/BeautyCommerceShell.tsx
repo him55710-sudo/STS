@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowUpRight, Bookmark, Compass, Home, PlaySquare, Search, UserRound } from "lucide-react";
+import { ArrowUpRight, Bookmark, Compass, Home, PlayCircle, PlaySquare, Search, UserRound } from "lucide-react";
 import { BeautyCommerceProvider, useBeautyCommerce } from "@/lib/beauty-commerce/context";
 import { localize, translator } from "@/lib/beauty-commerce/types";
 import { LanguageSelect } from "./LanguageSelect";
 
 const navigation = [
   { href: "/", label: { en: "Home", vi: "Trang chủ", ko: "홈" }, icon: Home },
+  { href: "/watch", label: { en: "Watch", vi: "Xem", ko: "영상" }, icon: PlayCircle },
   { href: "/discover", label: { en: "Explore", vi: "Khám phá", ko: "탐색" }, icon: Compass },
   { href: "/creators", label: { en: "Creators", vi: "Nhà sáng tạo", ko: "크리에이터" }, icon: PlaySquare },
   { href: "/saved", label: { en: "Saved", vi: "Đã lưu", ko: "저장" }, icon: Bookmark },
@@ -27,7 +28,7 @@ function CommerceFrame({ children }: { readonly children: React.ReactNode }) {
       <header className="bc-header">
         <Link className="bc-logo" href="/" aria-label="sts the beauty edit — home">sts<span>the beauty edit</span></Link>
         <nav className="bc-desktop-nav" aria-label={t("Main navigation", "Điều hướng chính", "주 메뉴")}>
-          {navigation.slice(0, 4).map(({ href, label }) => <Link key={href} href={href} aria-current={pathname === href ? "page" : undefined}>{localize(label, locale)}{href === "/saved" && count > 0 && <span className="bc-count">{count}</span>}</Link>)}
+          {navigation.slice(0, 5).map(({ href, label }) => <Link key={href} href={href} aria-current={pathname === href ? "page" : undefined}>{localize(label, locale)}{href === "/saved" && count > 0 && <span className="bc-count">{count}</span>}</Link>)}
         </nav>
         <div className="bc-header-actions">
           <span className="bc-market">VIETNAM <span>·</span> VND</span>
