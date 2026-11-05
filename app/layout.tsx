@@ -1,15 +1,17 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import "./globals.css";
+import "./beauty-commerce.css";
 import AppShell from "@/components/AppShell";
-import SupabaseAuthProvider from "@/components/SupabaseAuthProvider";
+import { BeautyAuthBoundary } from "@/components/beauty-commerce/BeautyAuthBoundary";
+import { PersonalBeautyProvider } from "@/components/beauty-commerce/PersonalBeautyProvider";
 
 export const metadata: Metadata = {
-  title: "TACTILE",
-  description: "Collectible virtual keycaps with tactile press feedback, customization, sound presets, and reward progress.",
+  title: "STS — The beauty edit",
+  description: "Watch real K-beauty application, explore every product layer, and adapt a routine to your own preferences.",
   openGraph: {
-    title: "TACTILE",
-    description: "Collect, customize, press, and unlock virtual mechanical keycaps.",
+    title: "STS — The beauty edit",
+    description: "See the look. Learn the steps. Make it yours.",
     type: "website",
   },
 };
@@ -17,13 +19,12 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  themeColor: "#f3f0ea",
+  themeColor: "#fbf9f5",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ko">
+    <html lang="en">
       <head>
         {process.env.NODE_ENV === "development" && (
           <>
@@ -46,9 +47,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body>
-        <SupabaseAuthProvider>
-          <AppShell>{children}</AppShell>
-        </SupabaseAuthProvider>
+        <BeautyAuthBoundary>
+          <PersonalBeautyProvider><AppShell>{children}</AppShell></PersonalBeautyProvider>
+        </BeautyAuthBoundary>
       </body>
     </html>
   );

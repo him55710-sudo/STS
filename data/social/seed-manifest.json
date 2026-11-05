@@ -10,9 +10,9 @@
   "constraints": {
     "requiredMinimumRecords": 300,
     "actualLocalImageAssetCount": 49,
-    "actualLocalVideoAssetCount": 0,
+    "actualLocalVideoAssetCount": 3,
     "videoBackedRecordCount": 0,
-    "videoLimitation": "Actual local video assets discovered: 0; fewer than 40 were available, so this deterministic seed keeps remaining records non-video."
+    "videoLimitation": "Actual local video assets discovered: 3; fewer than 40 were available, so this deterministic seed keeps remaining records non-video."
   },
   "records": [
     {

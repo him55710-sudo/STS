@@ -1,5 +1,18 @@
 # STS Design System
 
+## Unified beauty commerce — November 2026
+
+This mode supersedes the separate marketing/beauty-demo direction on consumer routes. Home, explore, saved, profile and look detail share one header, navigation and account state. Beauty leads; fashion remains an explicit explore category. Real media and honest product provenance lead every commerce action.
+
+- Canvas `--bc-canvas: #fbf9f5`; paper `--bc-paper: #ffffff`; ink `--bc-ink: #252a24`; secondary ink `--bc-muted: #62665c`; line `--bc-line: #e3e4da`.
+- Primary olive `--bc-olive: #4b573d`; light olive `--bc-sage: #e9ecdf`; warm rose `--bc-rose: #a05b4b`; peach `--bc-peach: #f1e6de`; disabled `--bc-disabled: #d4d8cb`.
+- Editorial display uses Georgia/Noto Serif/system serif with italic emphasis. UI uses the existing sans stack, Vietnamese diacritics and Korean fallback. Display 44–76px, section 28–38px, body 14–16px, metadata 11–12px.
+- Spacing scale: 4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80px. Content max 1360px, desktop side padding 56px, mobile 20px. Header 80px, mobile 64px. Cards use 4:5 imagery and 12px radius; feature media 24px radius; controls 44px minimum.
+- Product photos use neutral contained surfaces, editorial look photos use edge-to-edge crops. No fake counters, partnerships, prices, exact matches, or simulated purchases. Illustrative looks and products carry compact labels. Search destinations are labeled as searches.
+- Licensed application video has manually reviewed process controls. The featured mirror application uses Artem Podrez / Pexels footage with two actual phases. Product suggestions stay labeled as editorial inspiration. Official TikTok players receive adjacent controls only; caption mentions never become verified on-screen product claims.
+- Sticky desktop header and mobile five-item bottom navigation: Home, Explore, Creators, Saved, You. Detail uses media left / process and products right, stacking on mobile. The creator page puts videos and selectable product layers before editing/import forms. Reduced motion removes travel.
+- Reusable patterns: BeautyCommerceShell, LookCard, LookExperience, ProductPanel, CreatorProductLayers and ProductFit. English is the default with explicit KO/VI choices. Saved looks/products/shades and personal preferences persist locally. ProductFit states evidence and preference tradeoffs without invented suitability scores.
+
 ## Product direction
 
 STS is a photography-first visual discovery product. The interface stays quiet so the image and the object-level product interaction carry the attention.

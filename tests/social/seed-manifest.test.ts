@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { discoverLocalSeedAssets } from "../../lib/social-seed/assets";
 import { buildSocialSeedManifest } from "../../lib/social-seed/generator";
 import { socialSeedManifestSchema, socialSeedPurchaseSchema } from "../../lib/social-seed/schemas";
 
@@ -51,8 +52,9 @@ describe("deterministic rights-aware social seed manifest", () => {
     expect([...categoryCounts.values()].every((count) => count > 0)).toBe(true);
   });
 
-  it("keeps video-backed counts honest when no local video assets exist", () => {
+  it("reports discovered videos without inventing video-backed seed records", () => {
     // Given
+    const localAssets = discoverLocalSeedAssets(process.cwd());
     const manifest = buildSocialSeedManifest(process.cwd());
 
     // When
@@ -61,9 +63,10 @@ describe("deterministic rights-aware social seed manifest", () => {
     );
 
     // Then
-    expect(manifest.constraints.actualLocalVideoAssetCount).toBe(0);
+    expect(manifest.constraints.actualLocalVideoAssetCount).toBe(localAssets.videos.length);
+    expect(manifest.constraints.videoBackedRecordCount).toBe(0);
     expect(videoBackedRecords).toHaveLength(0);
-    expect(manifest.constraints.videoLimitation).toContain("Actual local video assets discovered: 0");
+    expect(manifest.constraints.videoLimitation).toContain(`Actual local video assets discovered: ${localAssets.videos.length}`);
   });
 
   it("prevents fabricated commerce and engagement claims", () => {
